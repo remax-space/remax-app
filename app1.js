@@ -175,7 +175,8 @@ function showSaveToast(msg){
 }
 
 var U = null, mFn = null;
-var senhas = {}; // Senhas carregadas do Supabase — não ficam no código
+var senhas = {}; // Senhas carregadas do Supabase
+try{ var _sLocal=localStorage.getItem('_senhas'); if(_sLocal){ var _sObj=JSON.parse(_sLocal); Object.keys(_sObj).forEach(function(k){senhas[k]=_sObj[k];}); }}catch(e){}
 
 // ===== LOG DE AÇÕES =====
 
@@ -585,10 +586,12 @@ function menuUser() {
       var err = document.getElementById('as-err');
       var uKey = Object.keys(USR).find(function(k){return USR[k].id===U.id;}) || Object.keys(USR).find(function(k){return USR[k].nome===U.nome;});
       if(!uKey){ err.textContent='Usuario nao encontrado'; err.style.display='block'; return; }
-      if(senhas[uKey] !== old){ err.textContent='Senha atual incorreta'; err.style.display='block'; return; }
+      var senhasPadrao = {'tatiana':'remax2024','lbasile':'l123','meirielli':'m123','tmoraes':'remax2024','sjustino':'remax2024','talyta':'remax2024','carlos':'remax2024','dubem':'remax2024'};
+      var senhaCorreta = senhas[uKey] || senhasPadrao[uKey] || '1234';
+      if(senhaCorreta !== old){ err.textContent='Senha atual incorreta'; err.style.display='block'; return; }
       if(!nv || nv.length < 4){ err.textContent='Nova senha deve ter ao menos 4 caracteres'; err.style.display='block'; return; }
       if(nv !== conf){ err.textContent='Confirmacao nao confere'; err.style.display='block'; return; }
-      senhas[uKey] = nv;
+      senhas[uKey] = nv; try{ var _s=JSON.parse(localStorage.getItem('_senhas')||'{}'); _s[uKey]=nv; localStorage.setItem('_senhas',JSON.stringify(_s)); }catch(e){}
       cM();
       alert('Senha alterada com sucesso!');
     }, 'Alterar Senha');
