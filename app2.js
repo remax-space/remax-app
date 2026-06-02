@@ -2249,6 +2249,10 @@ function inativarCT(i){
     });
 }
 
+
+function excluirCT(i){ inativarCT(i); }
+window.excluirCT = excluirCT;
+
 function reativarCT(i){
   if(!confirm('Reativar contrato de '+ctD[i].prop+'?'))return;
   ctD[i].status='Ativo';
