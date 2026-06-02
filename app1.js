@@ -4488,9 +4488,9 @@ function pLC(){
   btnRej.style.cssText = 'background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px';
   btnRej.onclick = function(){ pReajustes(); };
   var btnRel = document.createElement('button');
-  btnRel.textContent = '🖨️ Relatório PDF';
+  btnRel.innerHTML = '🖨️ Relatório PDF';
+  btnRel.setAttribute('onclick', 'relatorioContratos()');
   btnRel.style.cssText = 'background:#0d1f4e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px';
-  btnRel.onclick = function(){ relatorioContratos(); };
   var btnWA = document.createElement('button');
   btnWA.textContent = '📱 WhatsApp';
   btnWA.style.cssText = 'background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer';
