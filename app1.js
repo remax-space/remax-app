@@ -402,16 +402,16 @@ async function verificarLoginSupabase(usuario, senha, errEl, btn){
   
   // Verificar login local PRIMEIRO (mais confiável)
   // Admin
-  if(usuario==='tatiana' && (senha==='remax2024'||senha==='admin123')){
+  if(usuario==='tatiana' && (senha==='remax2024'||senha==='admin123'||(function(){try{return JSON.parse(localStorage.getItem('_senhas')||'{}')['tatiana']===senha;}catch(e){return false;}}()))){
     U=USR['tatiana']||{nome:'Tatiana Basile',ini:'TB',cor:'#D42028',role:'Administrador',role_key:'admin',id:'tbasile'};
     finalizarLogin(); return;
   }
   // Lucas Master
-  if(usuario==='lbasile' && senha==='l123'){ U=USR['lbasile']; finalizarLogin(); return; }
+  if(usuario==='lbasile' && (senha==='l123'||senha===(JSON.parse(localStorage.getItem('_senhas')||'{}')||{})['lbasile'])){ U=USR['lbasile']; finalizarLogin(); return; }
   // Meirielli ADM
-  if(usuario==='meirielli' && senha==='m123'){ U=USR['meirielli']; finalizarLogin(); return; }
+  if(usuario==='meirielli' && (senha==='m123'||senha===(JSON.parse(localStorage.getItem('_senhas')||'{}')||{})['meirielli'])){ U=USR['meirielli']; finalizarLogin(); return; }
   // Corretores — senha padrão remax2024 ou 1234
-  if((senha==='remax2024'||senha==='1234') && USR[usuario]){
+  if((senha==='remax2024'||senha==='1234'||(function(){try{return JSON.parse(localStorage.getItem('_senhas')||'{}')[usuario]===senha;}catch(e){return false;}}())) && USR[usuario]){
     U=USR[usuario]; finalizarLogin(); return;
   }
   // Senhas individuais carregadas
