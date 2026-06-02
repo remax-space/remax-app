@@ -218,10 +218,29 @@ function excluirComSenha(titulo, detalhe, fnExcluir){
 }
 // ===== PERMISSÕES POR MÓDULO =====
 var PERMS = {
-  'admin':    {all:true},
-  'gerente':  {dashboard:1,leads:1,prosp:1,visitas:1,acm:1,docs:1,contratos:1,acoes:1,mcmv:1,'loc-c':1,repasses:1,'loc-l':1,'loc-v':1,boletos:1,iv:1,prop:1,fd:1,fr:1,fp:1,frp:1,rank:1,relat:1,cor:1,'cad-prop':1,'cad-inq':1},
-  'corretor': {dashboard:1,leads:1,prosp:1,visitas:1,acm:1,docs:1,contratos:1,acoes:1,mcmv:1,'loc-l':1,iv:1,rank:1},
-  'financeiro':{dashboard:1,'loc-c':1,repasses:1,boletos:1,fd:1,fr:1,fp:1,frp:1,relat:1}
+  // MASTER: acesso total (Tatiana e Lucas)
+  'master': {all:true},
+
+  // ADM SEM FINANCEIRO: gestão operacional sem dados financeiros sensíveis
+  'adm': {
+    dashboard:1, leads:1, prosp:1, agenda:1, visitas:1, acm:1, docs:1,
+    contratos:1, acoes:1, mcmv:1,
+    'loc-c':1, repasses:1, 'loc-l':1, 'loc-v':1, 'loc-r':1,
+    extrato:1, os:1, captacao:1, vitrine:1,
+    iv:1, prop:1, mkt:1, rank:1, metas:1, relat:1,
+    cor:1, 'cad-prop':1, 'cad-inq':1, 'cad-cor':1,
+    wpp:1, wa:1, recrutamento:1
+    // SEM: boletos, fd, dre, fr, fp, frp, exportar_clientes
+  },
+
+  // CORRETOR: acesso básico operacional
+  'corretor': {
+    dashboard:1, leads:1, prosp:1, agenda:1, visitas:1,
+    acm:1, docs:1, acoes:1, mcmv:1,
+    'loc-l':1, captacao:1, vitrine:1, iv:1,
+    rank:1, metas:1, mkt:1, wpp:1
+    // SEM: contratos, repasses, extrato, boletos, financeiro, cadastros, clientes
+  }
 };
 
 // Permissões customizadas por usuário (sobrescreve role)
@@ -230,23 +249,29 @@ var PERMS_CUSTOM = {};
 function temPermissao(modulo){
   if(!U) return false;
   var role = U.role_key || 'corretor';
-  if(role==='admin'||U.id==='tbasile') return true;
-  var custom = PERMS_CUSTOM[U.id];
-  if(custom) return !!custom[modulo];
+  // Master tem acesso total
+  if(role==='master') return true;
+  // Módulos bloqueados para adm
+  var bloqueadoAdm = ['boletos','fd','dre','fr','fp','frp','financeiro','exportar_clientes'];
+  if(role==='adm' && bloqueadoAdm.indexOf(modulo)>=0) return false;
+  if(role==='adm') return true;
+  // Corretor usa tabela de permissões
   var perm = PERMS[role];
   return perm && (perm.all || !!perm[modulo]);
 }
 
 var USR = {
-  'tatiana':{nome:'Tatiana Basile',ini:'TB',cor:'#D42028',role:'Administrador',role_key:'admin',id:'tbasile'},
-  'meirielli':{nome:'Meirielli',ini:'ME',cor:'#003DA5',role:'Corretora',role_key:'corretor',id:'meirielli'},
-  'tmoraes':{nome:'T. Moraes',ini:'TM',cor:'#B9975B',role:'Corretora',role_key:'corretor',id:'tmoraes'},
-  'sjustino':{nome:'Sergio Justino',ini:'SJ',cor:'#1D9E75',role:'Corretor',role_key:'corretor',id:'sjustino'},
-  'talyta':{nome:'Talyta',ini:'TA',cor:'#533AB7',role:'Corretora',role_key:'corretor',id:'talyta'},
-  'carlos':{nome:'Carlos',ini:'CA',cor:'#E24B4A',role:'Corretor',role_key:'corretor',id:'carlos'},
-  'lbasile':{nome:'Lucas Basile',ini:'LB',cor:'#0F766E',role:'Corretor',role_key:'corretor',id:'lbasile'},
-  'dubem':{nome:'Dubem',ini:'DU',cor:'#854F0B',role:'Corretor',role_key:'corretor',id:'dubem'},
-  'admin':{nome:'Administrador',ini:'AD',cor:'#D42028',role:'Administrador',id:'tbasile'}
+  // MASTER - acesso total
+  'tatiana': {nome:'Tatiana Basile',  ini:'TB',cor:'#D42028',role:'Master',      role_key:'master',   id:'tbasile'},
+  'lbasile':  {nome:'Lucas Basile',   ini:'LB',cor:'#0F766E',role:'Master',      role_key:'master',   id:'lbasile'},
+  // ADM - sem financeiro
+  'meirielli':{nome:'Meirielli',      ini:'ME',cor:'#003DA5',role:'Administradora',role_key:'adm',    id:'meirielli'},
+  // CORRETORES
+  'tmoraes':  {nome:'T. Moraes',      ini:'TM',cor:'#B9975B',role:'Corretora',   role_key:'corretor', id:'tmoraes'},
+  'sjustino': {nome:'Sergio Justino', ini:'SJ',cor:'#1D9E75',role:'Corretor',    role_key:'corretor', id:'sjustino'},
+  'talyta':   {nome:'Talyta',         ini:'TA',cor:'#533AB7',role:'Corretora',   role_key:'corretor', id:'talyta'},
+  'carlos':   {nome:'Carlos',         ini:'CA',cor:'#E24B4A',role:'Corretor',    role_key:'corretor', id:'carlos'},
+  'dubem':    {nome:'Dubem',          ini:'DU',cor:'#854F0B',role:'Corretor',    role_key:'corretor', id:'dubem'}
 };
 
 // DADOS EDITAVEIS
