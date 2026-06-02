@@ -4676,10 +4676,10 @@ function pLC(){
     acTd.style.padding='10px 12px';
     var acDiv=document.createElement('div');
     acDiv.style.cssText='display:flex;gap:4px';
-    var bE=document.createElement('button');bE.textContent='Editar';bE.style.cssText='background:#eff6ff;color:#0d1f4e;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer';bE.onclick=(function(i){return function(){eCT(i);};})(i);
+    var bE=document.createElement('button');bE.textContent='Editar';bE.style.cssText='background:#eff6ff;color:#0d1f4e;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer';bE.onclick=(function(i){return function(){editCT(i);};})(i);
     var bI=document.createElement('button');bI.textContent='🤖';bI.style.cssText='background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer';bI.onclick=(function(i){return function(){gerarContratoIA(i);};})(i);
     var bC=document.createElement('button');bC.textContent='📱';bC.style.cssText='background:#25D366;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer';bC.onclick=(function(i){return function(){msgCobranca(i);};})(i);
-    var bD=document.createElement('button');bD.textContent='Enc.';bD.style.cssText='background:#fef2f2;color:#b91c1c;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer';bD.onclick=(function(i){return function(){excluirCT(i);};})(i);
+    var bD=document.createElement('button');bD.textContent='Enc.';bD.style.cssText='background:#fef2f2;color:#b91c1c;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer';bD.onclick=(function(i){return function(){inativarCT(i);};})(i);
     [bE,bI,bC,bD].forEach(function(b){acDiv.appendChild(b);});
     acTd.appendChild(acDiv);
     tr.appendChild(acTd);
