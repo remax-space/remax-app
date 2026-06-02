@@ -4495,13 +4495,21 @@ function relatorioContratos(){
     + '<div style="margin-top:20px;font-size:9pt;color:#555;text-align:right">RE/MAX Space · Caldas Novas — GO · ' + hoje + '</div>'
     + '</body></html>';
 
-  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'Contratos_Locacao_' + new Date().toISOString().slice(0,10) + '.html';
-  a.click();
-  URL.revokeObjectURL(url);
+  // Abrir em nova aba para imprimir/salvar PDF
+  var w = window.open('', '_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+  else {
+    // Fallback: download
+    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'Contratos_Locacao_' + new Date().toISOString().slice(0,10) + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }
 
 function pLC(){
@@ -4782,13 +4790,21 @@ function relatorioContratos(){
     + '<div style="margin-top:20px;font-size:9pt;color:#555;text-align:right">RE/MAX Space · Caldas Novas — GO · ' + hoje + '</div>'
     + '</body></html>';
 
-  var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'Contratos_Locacao_' + new Date().toISOString().slice(0,10) + '.html';
-  a.click();
-  URL.revokeObjectURL(url);
+  // Abrir em nova aba para imprimir/salvar PDF
+  var w = window.open('', '_blank');
+  if(w){ w.document.write(html); w.document.close(); }
+  else {
+    // Fallback: download
+    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'Contratos_Locacao_' + new Date().toISOString().slice(0,10) + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }
 
 function nCT(){
