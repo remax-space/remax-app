@@ -4413,105 +4413,68 @@ function delMCMV(i){
 // ===== CONTRATOS DE LOCACAO (com total mes e saldo) =====
 function relatorioContratos(){
   var hoje = new Date().toLocaleDateString('pt-BR');
-  var mesAtual = mesAno();
+  var mesAtual = mesAno ? mesAno() : new Date().toLocaleString('pt-BR',{month:'long',year:'numeric'});
   var ativos = ctD.filter(function(c){return c.status !== 'Inativo' && c.status !== 'Encerrada';});
   var encerrados = ctD.filter(function(c){return c.status === 'Encerrada';});
-  var tot = ativos.reduce(function(s,c){return s+c.valor;},0);
+  var tot = ativos.reduce(function(s,c){return s+(c.valor||0);},0);
   var adm = tot * 0.1;
   var liq = tot * 0.9;
   var mi = new Date().getMonth();
-  var recebidos = ativos.filter(function(c){return c.rs&&c.rs[mi]==='R';});
-  var pendentes = ativos.filter(function(c){return !c.rs||c.rs[mi]!=='R';});
+  var recebidos = ativos.filter(function(c){return c.rs&&c.rs[mi]==='R';}).length;
+  var pendentes = ativos.length - recebidos;
 
-  function row(c, status){
-    var st = c.status === 'Ativa' ? '<span style="background:#f0fdf4;color:#1a6e3a;font-size:9pt;font-weight:700;padding:2px 8px;border-radius:4px">Ativo</span>'
-           : '<span style="background:#fef2f2;color:#b91c1c;font-size:9pt;font-weight:700;padding:2px 8px;border-radius:4px">Encerrado</span>';
-    var pgto = c.rs&&c.rs[mi]==='R'
-      ? '<span style="color:#1a6e3a;font-weight:700">✓ Recebido</span>'
-      : '<span style="color:#b91c1c;font-weight:700">✗ Pendente</span>';
-    return '<tr style="border-bottom:1px solid #f0f0f0">'
-      + '<td style="padding:7px 10px;font-weight:700;color:#003DA5">' + c.id + '</td>'
-      + '<td style="padding:7px 10px;font-size:10pt">' + c.prop + '</td>'
-      + '<td style="padding:7px 10px;font-size:10pt">' + c.inq + '</td>'
-      + '<td style="padding:7px 10px;font-size:10pt">' + c.tipo + '</td>'
-      + '<td style="padding:7px 10px;font-size:9pt;color:#555">' + c.end + '</td>'
-      + '<td style="padding:7px 10px;font-weight:700;text-align:right">' + fmt(c.valor) + '</td>'
-      + '<td style="padding:7px 10px;text-align:center">dia ' + c.venc + '</td>'
-      + '<td style="padding:7px 10px;font-size:9pt">' + (c.inicio||'-') + '</td>'
-      + '<td style="padding:7px 10px;font-size:9pt">' + (c.fim||'-') + '</td>'
-      + '<td style="padding:7px 10px;text-align:center">' + pgto + '</td>'
-      + '<td style="padding:7px 10px;text-align:center">' + st + '</td>'
-      + '</tr>';
+  function row(c){
+    var fim = c.fim ? new Date(c.fim) : null;
+    var dias = fim ? Math.round((fim-new Date())/(1000*60*60*24)) : null;
+    var cor = dias===null?'#555':dias<0?'#b91c1c':dias<60?'#d97706':'#059669';
+    return '<tr style="border-bottom:1px solid #f0f0f0">'+
+      '<td style="padding:6px 8px;font-weight:700;color:#003DA5;font-size:11px">'+c.id+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+c.prop+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+c.inq+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px">'+c.tipo+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;font-weight:700;color:#059669">'+fmt(c.valor||0)+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px;text-align:center">Dia '+(c.venc||10)+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px">'+(c.fim||'-')+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px;color:'+cor+';font-weight:700">'+(dias!==null?(dias<0?'Vencido '+ Math.abs(dias)+'d':dias+'d'):'-')+'</td>'+
+    '</tr>';
   }
 
-  var rowsAtivos = ativos.map(function(c){return row(c);}).join('');
-  var rowsEnc = encerrados.map(function(c){return row(c);}).join('');
+  var rows = ativos.map(row).join('');
 
-  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Contratos de Locação — RE/MAX Space</title>'
-    + '<style>'
-    + '@page{margin:2cm}'
-    + 'body{font-family:Arial,sans-serif;font-size:10pt;color:#000;margin:0;padding:24px}'
-    + '.logo{color:#003DA5;font-size:18pt;font-weight:900;letter-spacing:2px}'
-    + 'h1{font-size:13pt;text-transform:uppercase;margin:4px 0}'
-    + '.sub{font-size:10pt;color:#555;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #003DA5}'
-    + '.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}'
-    + '.kpi{background:#f8fafc;border-radius:8px;padding:12px;text-align:center;border:1px solid #e2e8f0}'
-    + '.kpi-l{font-size:9pt;color:#555;text-transform:uppercase;letter-spacing:.5px}'
-    + '.kpi-v{font-size:16pt;font-weight:800;color:#003DA5;margin-top:4px}'
-    + 'h2{font-size:11pt;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0d1f4e;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}'
-    + 'table{width:100%;border-collapse:collapse;font-size:9pt}'
-    + 'th{background:#0d1f4e;color:#fff;padding:8px 10px;text-align:left;font-size:8pt;text-transform:uppercase;letter-spacing:.5px}'
-    + 'tr:nth-child(even){background:#f9fafb}'
-    + '.noprint{background:#0d1f4e;color:#fff;padding:10px 20px;margin:-24px -24px 24px;display:flex;align-items:center;justify-content:space-between}'
-    + '@media print{.noprint{display:none}}'
-    + '</style></head><body>'
-    + '<div class="noprint">'
-    +   '<span style="font-size:13px;font-weight:700">📋 Contratos de Locação — RE/MAX Space</span>'
-    +   '<button onclick="window.print()" style="background:#D42028;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'
-    + '</div>'
-    + '<div class="logo">RE/MAX SPACE — Caldas Novas</div>'
-    + '<h1>Relatório de Contratos de Locação</h1>'
-    + '<div class="sub">' + hoje + ' · Período: ' + mesAtual + '</div>'
-    + '<div class="kpis">'
-    +   '<div class="kpi"><div class="kpi-l">Contratos Ativos</div><div class="kpi-v">' + ativos.length + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Receita Total</div><div class="kpi-v">' + fmt(tot) + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">ADM 10%</div><div class="kpi-v" style="color:#1a6e3a">' + fmt(adm) + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Repasse Líquido</div><div class="kpi-v" style="color:#1a6e3a">' + fmt(liq) + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Recebidos</div><div class="kpi-v" style="color:#1a6e3a">' + recebidos.length + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Pendentes</div><div class="kpi-v" style="color:#b91c1c">' + pendentes.length + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Encerrados</div><div class="kpi-v" style="color:#555">' + encerrados.length + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Total Carteira</div><div class="kpi-v">' + ctD.length + '</div></div>'
-    + '</div>'
-    + '<h2>Contratos Ativos (' + ativos.length + ')</h2>'
-    + '<table><thead><tr>'
-    +   '<th>ID</th><th>Proprietário</th><th>Inquilino</th><th>Tipo</th><th>Endereço</th>'
-    +   '<th>Valor</th><th>Venc.</th><th>Início</th><th>Fim</th><th>Pgto ' + mesAtual + '</th><th>Status</th>'
-    + '</tr></thead><tbody>' + rowsAtivos + '</tbody></table>'
-    + (encerrados.length ? '<h2>Contratos Encerrados (' + encerrados.length + ')</h2>'
-    + '<table><thead><tr>'
-    +   '<th>ID</th><th>Proprietário</th><th>Inquilino</th><th>Tipo</th><th>Endereço</th>'
-    +   '<th>Valor</th><th>Venc.</th><th>Início</th><th>Fim</th><th>Pgto ' + mesAtual + '</th><th>Status</th>'
-    + '</tr></thead><tbody>' + rowsEnc + '</tbody></table>' : '')
-    + '<div style="margin-top:20px;font-size:9pt;color:#555;text-align:right">RE/MAX Space · Caldas Novas — GO · ' + hoje + '</div>'
-    + '</body></html>';
+  var html = '<div style="font-family:Arial,sans-serif;padding:4px">'+
+    '<div style="background:#0f1a35;color:#fff;padding:14px 16px;border-radius:10px;margin-bottom:16px">'+
+      '<div style="font-size:16px;font-weight:900;letter-spacing:1px">RE/MAX SPACE</div>'+
+      '<div style="font-size:12px;opacity:.8">Relatório de Contratos de Locação · '+hoje+'</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">'+
+      '<div style="background:#f0fdf4;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Ativos</div><div style="font-size:22px;font-weight:900;color:#059669">'+ativos.length+'</div></div>'+
+      '<div style="background:#eff6ff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Receita Total</div><div style="font-size:16px;font-weight:900;color:#2563eb">'+fmt(tot)+'</div></div>'+
+      '<div style="background:#fefce8;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Repasse Líq.</div><div style="font-size:16px;font-weight:900;color:#d97706">'+fmt(liq)+'</div></div>'+
+      '<div style="background:#f9fafb;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">ADM 10%</div><div style="font-size:16px;font-weight:900;color:#374151">'+fmt(adm)+'</div></div>'+
+      '<div style="background:#f0fdf4;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Recebidos</div><div style="font-size:16px;font-weight:900;color:#059669">'+recebidos+'</div></div>'+
+      '<div style="background:#fef2f2;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Pendentes</div><div style="font-size:16px;font-weight:900;color:#dc2626">'+pendentes+'</div></div>'+
+    '</div>'+
+    '<div style="overflow-x:auto">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:11px">'+
+      '<thead><tr style="background:#0f1a35;color:#fff">'+
+        '<th style="padding:8px;text-align:left">CT</th>'+
+        '<th style="padding:8px;text-align:left">Proprietário</th>'+
+        '<th style="padding:8px;text-align:left">Inquilino</th>'+
+        '<th style="padding:8px;text-align:left">Tipo</th>'+
+        '<th style="padding:8px;text-align:left">Valor</th>'+
+        '<th style="padding:8px;text-align:center">Venc.</th>'+
+        '<th style="padding:8px;text-align:left">Fim</th>'+
+        '<th style="padding:8px;text-align:center">Prazo</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table></div>'+
+    '<div style="margin-top:14px;text-align:center">'+
+      '<button onclick="window.print()" style="background:#0f1a35;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'+
+    '</div>'+
+  '</div>';
 
-  // Abrir em nova aba para imprimir/salvar PDF
-  var w = window.open('', '_blank');
-  if(w){ w.document.write(html); w.document.close(); }
-  else {
-    // Fallback: download
-    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'Contratos_Locacao_' + new Date().toISOString().slice(0,10) + '.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
+  oM('📋 Relatório de Contratos', html, null, null, true);
 }
-
 function pLC(){
   var pa = document.getElementById('pa');
   pa.innerHTML = '';
@@ -4708,105 +4671,68 @@ function pLC(){
 
 function relatorioContratos(){
   var hoje = new Date().toLocaleDateString('pt-BR');
-  var mesAtual = mesAno();
+  var mesAtual = mesAno ? mesAno() : new Date().toLocaleString('pt-BR',{month:'long',year:'numeric'});
   var ativos = ctD.filter(function(c){return c.status !== 'Inativo' && c.status !== 'Encerrada';});
   var encerrados = ctD.filter(function(c){return c.status === 'Encerrada';});
-  var tot = ativos.reduce(function(s,c){return s+c.valor;},0);
+  var tot = ativos.reduce(function(s,c){return s+(c.valor||0);},0);
   var adm = tot * 0.1;
   var liq = tot * 0.9;
   var mi = new Date().getMonth();
-  var recebidos = ativos.filter(function(c){return c.rs&&c.rs[mi]==='R';});
-  var pendentes = ativos.filter(function(c){return !c.rs||c.rs[mi]!=='R';});
+  var recebidos = ativos.filter(function(c){return c.rs&&c.rs[mi]==='R';}).length;
+  var pendentes = ativos.length - recebidos;
 
-  function row(c, status){
-    var st = c.status === 'Ativa' ? '<span style="background:#f0fdf4;color:#1a6e3a;font-size:9pt;font-weight:700;padding:2px 8px;border-radius:4px">Ativo</span>'
-           : '<span style="background:#fef2f2;color:#b91c1c;font-size:9pt;font-weight:700;padding:2px 8px;border-radius:4px">Encerrado</span>';
-    var pgto = c.rs&&c.rs[mi]==='R'
-      ? '<span style="color:#1a6e3a;font-weight:700">✓ Recebido</span>'
-      : '<span style="color:#b91c1c;font-weight:700">✗ Pendente</span>';
-    return '<tr style="border-bottom:1px solid #f0f0f0">'
-      + '<td style="padding:7px 10px;font-weight:700;color:#003DA5">' + c.id + '</td>'
-      + '<td style="padding:7px 10px;font-size:10pt">' + c.prop + '</td>'
-      + '<td style="padding:7px 10px;font-size:10pt">' + c.inq + '</td>'
-      + '<td style="padding:7px 10px;font-size:10pt">' + c.tipo + '</td>'
-      + '<td style="padding:7px 10px;font-size:9pt;color:#555">' + c.end + '</td>'
-      + '<td style="padding:7px 10px;font-weight:700;text-align:right">' + fmt(c.valor) + '</td>'
-      + '<td style="padding:7px 10px;text-align:center">dia ' + c.venc + '</td>'
-      + '<td style="padding:7px 10px;font-size:9pt">' + (c.inicio||'-') + '</td>'
-      + '<td style="padding:7px 10px;font-size:9pt">' + (c.fim||'-') + '</td>'
-      + '<td style="padding:7px 10px;text-align:center">' + pgto + '</td>'
-      + '<td style="padding:7px 10px;text-align:center">' + st + '</td>'
-      + '</tr>';
+  function row(c){
+    var fim = c.fim ? new Date(c.fim) : null;
+    var dias = fim ? Math.round((fim-new Date())/(1000*60*60*24)) : null;
+    var cor = dias===null?'#555':dias<0?'#b91c1c':dias<60?'#d97706':'#059669';
+    return '<tr style="border-bottom:1px solid #f0f0f0">'+
+      '<td style="padding:6px 8px;font-weight:700;color:#003DA5;font-size:11px">'+c.id+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+c.prop+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+c.inq+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px">'+c.tipo+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;font-weight:700;color:#059669">'+fmt(c.valor||0)+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px;text-align:center">Dia '+(c.venc||10)+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px">'+(c.fim||'-')+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px;color:'+cor+';font-weight:700">'+(dias!==null?(dias<0?'Vencido '+ Math.abs(dias)+'d':dias+'d'):'-')+'</td>'+
+    '</tr>';
   }
 
-  var rowsAtivos = ativos.map(function(c){return row(c);}).join('');
-  var rowsEnc = encerrados.map(function(c){return row(c);}).join('');
+  var rows = ativos.map(row).join('');
 
-  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Contratos de Locação — RE/MAX Space</title>'
-    + '<style>'
-    + '@page{margin:2cm}'
-    + 'body{font-family:Arial,sans-serif;font-size:10pt;color:#000;margin:0;padding:24px}'
-    + '.logo{color:#003DA5;font-size:18pt;font-weight:900;letter-spacing:2px}'
-    + 'h1{font-size:13pt;text-transform:uppercase;margin:4px 0}'
-    + '.sub{font-size:10pt;color:#555;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #003DA5}'
-    + '.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}'
-    + '.kpi{background:#f8fafc;border-radius:8px;padding:12px;text-align:center;border:1px solid #e2e8f0}'
-    + '.kpi-l{font-size:9pt;color:#555;text-transform:uppercase;letter-spacing:.5px}'
-    + '.kpi-v{font-size:16pt;font-weight:800;color:#003DA5;margin-top:4px}'
-    + 'h2{font-size:11pt;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0d1f4e;margin:16px 0 8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}'
-    + 'table{width:100%;border-collapse:collapse;font-size:9pt}'
-    + 'th{background:#0d1f4e;color:#fff;padding:8px 10px;text-align:left;font-size:8pt;text-transform:uppercase;letter-spacing:.5px}'
-    + 'tr:nth-child(even){background:#f9fafb}'
-    + '.noprint{background:#0d1f4e;color:#fff;padding:10px 20px;margin:-24px -24px 24px;display:flex;align-items:center;justify-content:space-between}'
-    + '@media print{.noprint{display:none}}'
-    + '</style></head><body>'
-    + '<div class="noprint">'
-    +   '<span style="font-size:13px;font-weight:700">📋 Contratos de Locação — RE/MAX Space</span>'
-    +   '<button onclick="window.print()" style="background:#D42028;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:12px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'
-    + '</div>'
-    + '<div class="logo">RE/MAX SPACE — Caldas Novas</div>'
-    + '<h1>Relatório de Contratos de Locação</h1>'
-    + '<div class="sub">' + hoje + ' · Período: ' + mesAtual + '</div>'
-    + '<div class="kpis">'
-    +   '<div class="kpi"><div class="kpi-l">Contratos Ativos</div><div class="kpi-v">' + ativos.length + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Receita Total</div><div class="kpi-v">' + fmt(tot) + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">ADM 10%</div><div class="kpi-v" style="color:#1a6e3a">' + fmt(adm) + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Repasse Líquido</div><div class="kpi-v" style="color:#1a6e3a">' + fmt(liq) + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Recebidos</div><div class="kpi-v" style="color:#1a6e3a">' + recebidos.length + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Pendentes</div><div class="kpi-v" style="color:#b91c1c">' + pendentes.length + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Encerrados</div><div class="kpi-v" style="color:#555">' + encerrados.length + '</div></div>'
-    +   '<div class="kpi"><div class="kpi-l">Total Carteira</div><div class="kpi-v">' + ctD.length + '</div></div>'
-    + '</div>'
-    + '<h2>Contratos Ativos (' + ativos.length + ')</h2>'
-    + '<table><thead><tr>'
-    +   '<th>ID</th><th>Proprietário</th><th>Inquilino</th><th>Tipo</th><th>Endereço</th>'
-    +   '<th>Valor</th><th>Venc.</th><th>Início</th><th>Fim</th><th>Pgto ' + mesAtual + '</th><th>Status</th>'
-    + '</tr></thead><tbody>' + rowsAtivos + '</tbody></table>'
-    + (encerrados.length ? '<h2>Contratos Encerrados (' + encerrados.length + ')</h2>'
-    + '<table><thead><tr>'
-    +   '<th>ID</th><th>Proprietário</th><th>Inquilino</th><th>Tipo</th><th>Endereço</th>'
-    +   '<th>Valor</th><th>Venc.</th><th>Início</th><th>Fim</th><th>Pgto ' + mesAtual + '</th><th>Status</th>'
-    + '</tr></thead><tbody>' + rowsEnc + '</tbody></table>' : '')
-    + '<div style="margin-top:20px;font-size:9pt;color:#555;text-align:right">RE/MAX Space · Caldas Novas — GO · ' + hoje + '</div>'
-    + '</body></html>';
+  var html = '<div style="font-family:Arial,sans-serif;padding:4px">'+
+    '<div style="background:#0f1a35;color:#fff;padding:14px 16px;border-radius:10px;margin-bottom:16px">'+
+      '<div style="font-size:16px;font-weight:900;letter-spacing:1px">RE/MAX SPACE</div>'+
+      '<div style="font-size:12px;opacity:.8">Relatório de Contratos de Locação · '+hoje+'</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">'+
+      '<div style="background:#f0fdf4;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Ativos</div><div style="font-size:22px;font-weight:900;color:#059669">'+ativos.length+'</div></div>'+
+      '<div style="background:#eff6ff;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Receita Total</div><div style="font-size:16px;font-weight:900;color:#2563eb">'+fmt(tot)+'</div></div>'+
+      '<div style="background:#fefce8;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Repasse Líq.</div><div style="font-size:16px;font-weight:900;color:#d97706">'+fmt(liq)+'</div></div>'+
+      '<div style="background:#f9fafb;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">ADM 10%</div><div style="font-size:16px;font-weight:900;color:#374151">'+fmt(adm)+'</div></div>'+
+      '<div style="background:#f0fdf4;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Recebidos</div><div style="font-size:16px;font-weight:900;color:#059669">'+recebidos+'</div></div>'+
+      '<div style="background:#fef2f2;border-radius:8px;padding:10px;text-align:center"><div style="font-size:10px;color:#6b7280">Pendentes</div><div style="font-size:16px;font-weight:900;color:#dc2626">'+pendentes+'</div></div>'+
+    '</div>'+
+    '<div style="overflow-x:auto">'+
+    '<table style="width:100%;border-collapse:collapse;font-size:11px">'+
+      '<thead><tr style="background:#0f1a35;color:#fff">'+
+        '<th style="padding:8px;text-align:left">CT</th>'+
+        '<th style="padding:8px;text-align:left">Proprietário</th>'+
+        '<th style="padding:8px;text-align:left">Inquilino</th>'+
+        '<th style="padding:8px;text-align:left">Tipo</th>'+
+        '<th style="padding:8px;text-align:left">Valor</th>'+
+        '<th style="padding:8px;text-align:center">Venc.</th>'+
+        '<th style="padding:8px;text-align:left">Fim</th>'+
+        '<th style="padding:8px;text-align:center">Prazo</th>'+
+      '</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table></div>'+
+    '<div style="margin-top:14px;text-align:center">'+
+      '<button onclick="window.print()" style="background:#0f1a35;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'+
+    '</div>'+
+  '</div>';
 
-  // Abrir em nova aba para imprimir/salvar PDF
-  var w = window.open('', '_blank');
-  if(w){ w.document.write(html); w.document.close(); }
-  else {
-    // Fallback: download
-    var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'Contratos_Locacao_' + new Date().toISOString().slice(0,10) + '.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
+  oM('📋 Relatório de Contratos', html, null, null, true);
 }
-
 function nCT(){
   oM('Novo Contrato','<div class="fg2"><div class="fg"><label>Proprietario</label><input id="nc-p"></div><div class="fg"><label>Inquilino</label><input id="nc-i"></div></div><div class="fg"><label>Endereco</label><input id="nc-e"></div><div class="fg3"><div class="fg"><label>Tipo</label><select id="nc-t"><option>Casa</option><option>Apartamento</option><option>Kitnet</option><option>Sala Comercial</option><option>Chale</option></select></div><div class="fg"><label>Valor R$</label><input id="nc-v" type="number"></div><div class="fg"><label>Venc dia</label><input id="nc-ve" type="number" value="10"></div></div><div class="fg2"><div class="fg"><label>Inicio</label><input type="date" id="nc-in"></div><div class="fg"><label>Fim</label><input type="date" id="nc-fi"></div></div><div class="fg"><label>Corretor</label><select id="nc-c">'+corrSel()+'</select></div>',
   function(){var nid='CT-0'+String(ctD.length+1).padStart(2,'0');ctD.push({id:nid,prop:document.getElementById('nc-p').value,inq:document.getElementById('nc-i').value,tipo:document.getElementById('nc-t').value,end:document.getElementById('nc-e').value,valor:parseFloat(document.getElementById('nc-v').value)||0,venc:parseInt(document.getElementById('nc-ve').value)||10,inicio:document.getElementById('nc-in').value,fim:document.getElementById('nc-fi').value,corretor:document.getElementById('nc-c').value,status:'Ativa',rs:Array(12).fill('N'),forma:'PIX',banco:'',obs:''});cM();salvarTudo();pLC();});
