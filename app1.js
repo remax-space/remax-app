@@ -250,6 +250,7 @@ var USR = {
 };
 
 // DADOS EDITAVEIS
+try{ var _capSaved=localStorage.getItem('capD'); if(_capSaved) capD=JSON.parse(_capSaved); }catch(e){}
 var ctD = CT.map(function(c){
   var o = {};
   for(var k in c) o[k] = c[k];
@@ -2204,7 +2205,7 @@ function pPermissoes(){
     {id:'dashboard',l:'Dashboard'},{id:'leads',l:'Leads'},{id:'prosp',l:'Prospecção'},
     {id:'agenda',l:'Agenda'},{id:'visitas',l:'Visitas'},{id:'acm',l:'ACM'},{id:'contratos',l:'Contratos'},
     {id:'acoes',l:'Ações no Imóvel'},{id:'mcmv',l:'MCMV'},{id:'loc-c',l:'Locação'},
-    {id:'repasses',l:'Repasses'},{id:'boletos',l:'Boletos'},{id:'vitrine',l:'Vitrine Imóveis'},{id:'iv',l:'Imóveis Venda'},
+    {id:'repasses',l:'Repasses'},{id:'boletos',l:'Boletos'},{id:'captacao',l:'🔑 Captação'},{id:'vitrine',l:'Vitrine Imóveis'},{id:'iv',l:'Imóveis Venda'},
     {id:'fd',l:'Fin. Dashboard'},{id:'fr',l:'A Receber'},{id:'fp',l:'Contas Pagar'},
     {id:'dre',l:'DRE'},{id:'rank',l:'Ranking'},{id:'relat',l:'Relatórios'}
   ];
@@ -2254,7 +2255,7 @@ function gP(id){
     dashboard:pDash, whatsapp:pWhatsApp, leads:pLeads, prosp:pProsp, agenda:pAgenda, visitas:pVis,
     acm:pAcm, docs:pDocs, contratos:pContratos, acoes:pAcoes, mcmv:pMCMV,
     'loc-c':pLC, 'loc-r':pLR, 'repasses':pRepasses, 'loc-l':pLL, 'loc-v':pLV, 'boletos':pBoletos, 'extrato':pExtrato, 'os':pOS,
-    iv:pIV, prop:pProp, vitrine:pVitrine, mkt:pMkt,
+    iv:pIV, prop:pProp, vitrine:pVitrine, captacao:pCaptacao, mkt:pMkt,
     fd:pFD, dre:pDRE, fr:pFR, fp:pFP,
     'cad-cor':pCadCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq,
     rank:pRank, metas:pMetas, historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
