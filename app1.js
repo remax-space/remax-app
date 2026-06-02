@@ -2246,7 +2246,7 @@ function pUsuarios(){
   Object.keys(usersExtra).forEach(function(k){ todosUsers[k]=usersExtra[k]; });
   function salvarExtra(){ localStorage.setItem('_usersExtra',JSON.stringify(usersExtra)); Object.keys(usersExtra).forEach(function(k){USR[k]=usersExtra[k];}); }
   var rows = Object.keys(todosUsers).map(function(u){
-    var usr=todosUsers[u]; var isBase=!!USR[u]&&!usersExtra[u];
+    var usr=todosUsers[u]; var isBase=!usersExtra[u]&&(u==='tatiana'||u==='lbasile');
     var cor=usr.role_key==='master'?'#D42028':usr.role_key==='adm'?'#003DA5':'#059669';
     return '<tr style="border-bottom:1px solid #f0f0f0">'+
       '<td style="padding:8px;font-weight:700">'+usr.nome+'</td>'+
