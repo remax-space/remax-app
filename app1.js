@@ -411,7 +411,9 @@ async function verificarLoginSupabase(usuario, senha, errEl, btn){
   // Lucas Master
   if(usuario==='lbasile' && (senha==='l123'||senha===(JSON.parse(localStorage.getItem('_senhas')||'{}')||{})['lbasile'])){ U=USR['lbasile']; finalizarLogin(); return; }
   // Meirielli ADM
-  if(usuario==='meirielli' && (senha==='m123'||senha===(JSON.parse(localStorage.getItem('_senhas')||'{}')||{})['meirielli'])){ U=USR['meirielli']; finalizarLogin(); return; }
+  if(usuario==='meirielli' && (senha==='m123'||senha==='remax2024'||senha===(JSON.parse(localStorage.getItem('_senhas')||'{}')||{})['meirielli'])){ U=USR['meirielli']; finalizarLogin(); return; }
+  // Tayna ADM
+  if(usuario==='tayna' && (senha==='remax2024'||senha==='1234'||senha===(JSON.parse(localStorage.getItem('_senhas')||'{}')||{})['tayna'])){ U=USR['tayna']; finalizarLogin(); return; }
   // Corretores — senha padrão remax2024 ou 1234
   if((senha==='remax2024'||senha==='1234'||(function(){try{return JSON.parse(localStorage.getItem('_senhas')||'{}')[usuario]===senha;}catch(e){return false;}}())) && USR[usuario]){
     U=USR[usuario]; finalizarLogin(); return;
@@ -593,7 +595,7 @@ function menuUser() {
       var err = document.getElementById('as-err');
       var uKey = Object.keys(USR).find(function(k){return USR[k].id===U.id;}) || Object.keys(USR).find(function(k){return USR[k].nome===U.nome;});
       if(!uKey){ err.textContent='Usuario nao encontrado'; err.style.display='block'; return; }
-      var senhasPadrao = {'tatiana':'remax2024','lbasile':'l123','meirielli':'m123','tmoraes':'remax2024','sjustino':'remax2024','talyta':'remax2024','carlos':'remax2024','dubem':'remax2024'};
+      var senhasPadrao = {'tatiana':'remax2024','lbasile':'l123','meirielli':'m123','tayna':'remax2024','tmoraes':'remax2024','sjustino':'remax2024','talyta':'remax2024','carlos':'remax2024','dubem':'remax2024'};
       var senhaCorreta = senhas[uKey] || senhasPadrao[uKey] || '1234';
       if(senhaCorreta !== old){ err.textContent='Senha atual incorreta'; err.style.display='block'; return; }
       if(!nv || nv.length < 4){ err.textContent='Nova senha deve ter ao menos 4 caracteres'; err.style.display='block'; return; }
