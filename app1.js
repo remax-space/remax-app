@@ -405,8 +405,12 @@ async function verificarLoginSupabase(usuario, senha, errEl, btn){
     U=USR['tatiana']||{nome:'Tatiana Basile',ini:'TB',cor:'#D42028',role:'Administrador',role_key:'admin',id:'tbasile'};
     finalizarLogin(); return;
   }
-  // Corretores — senha padrão 1234
-  if(senha==='1234' && USR[usuario]){
+  // Lucas Master
+  if(usuario==='lbasile' && senha==='l123'){ U=USR['lbasile']; finalizarLogin(); return; }
+  // Meirielli ADM
+  if(usuario==='meirielli' && senha==='m123'){ U=USR['meirielli']; finalizarLogin(); return; }
+  // Corretores — senha padrão remax2024 ou 1234
+  if((senha==='remax2024'||senha==='1234') && USR[usuario]){
     U=USR[usuario]; finalizarLogin(); return;
   }
   // Senhas individuais carregadas
@@ -2161,7 +2165,7 @@ function bSB(){
 
 // ===== GERENCIAR SENHAS (só admin) =====
 function pGerenciarSenhas(){
-  if(!isA()){ alert('Apenas administradores podem gerenciar senhas.'); return; }
+  if(!U||U.role_key!=='master'){ alert('Apenas usuários Master podem gerenciar senhas.'); return; }
   
   var rows = Object.keys(USR).map(function(u){
     var usr = USR[u];
