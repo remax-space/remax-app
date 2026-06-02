@@ -4041,6 +4041,11 @@ function novoCT(){
 }
 function editCT(i){ctDraft=JSON.parse(JSON.stringify(ctContratos[i]));ctStep=0;wizCT(i);}
 
+// Aliases para compatibilidade
+function eCT(i){ editCT(i); }
+window.eCT = eCT;
+
+
 function fld(id,lbl,tipo,val,opts){
   val=val||'';
   var key=id.replace(/-/g,'_');
