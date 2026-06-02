@@ -3248,7 +3248,7 @@ function pExtrato(selMes, selAno){
       +'<div><h3 style="color:#fff;font-size:16px">'+prop+'</h3>'
       +'<div style="font-size:11px;opacity:.7">'+contratos.length+' contrato(s) — '+meses[mesAtual]+'/'+anoAtual+'</div></div>'
       +'<div style="display:flex;gap:8px">'
-      +'<button onclick="abrirDescontos('+JSON.stringify(prop)+','+mesAtual+','+anoAtual+','+totalBruto+','+totalAdm+')" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer">💸 Descontos</button>'
+      +'<button onclick="abrirDescontos(\''+prop+'\',' +mesAtual+','+anoAtual+','+totalBruto+','+totalAdm+')" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer">💸 Descontos</button>'
       +'<button class="btn-extrato-wa" data-prop="'+prop+'" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer">📱 WhatsApp</button>'
       +'<button class="btn-extrato-pdf" data-prop="'+prop+'" style="background:#D42028;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;cursor:pointer">📄 PDF</button>'
       +'</div></div></div>'
