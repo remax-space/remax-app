@@ -416,6 +416,11 @@ async function verificarLoginSupabase(usuario, senha, errEl, btn){
   if((senha==='remax2024'||senha==='1234'||(function(){try{return JSON.parse(localStorage.getItem('_senhas')||'{}')[usuario]===senha;}catch(e){return false;}}())) && USR[usuario]){
     U=USR[usuario]; finalizarLogin(); return;
   }
+  // Usuários extras do localStorage
+  try{
+    var _ue=JSON.parse(localStorage.getItem('_usersExtra')||'{}');
+    if(_ue[usuario]){ USR[usuario]=_ue[usuario]; }
+  }catch(e){}
   // Senhas individuais carregadas
   if(senhas[usuario] && senhas[usuario]===senha){
     U=USR[usuario]; finalizarLogin(); return;
@@ -722,7 +727,7 @@ var NAV = [
   {s:'Venda'},{id:'prosp',l:'Prospecção'},{id:'agenda',l:'📅 Agenda'},{id:'visitas',l:'Visitas'},{id:'acm',l:'ACM'},{id:'docs',l:'Documentação'},{id:'contratos',l:'Contratos'},{id:'modelos',l:'📁 Modelos',a:true},{id:'modelos-cor',l:'📄 Representação'},{id:'acoes',l:'Ações no Imóvel'},{id:'mcmv',l:'MCMV'},
   {s:'Locação'},{id:'loc-c',l:'Contratos Ativos'},{id:'repasses',l:'💰 Repasses',a:true},{id:'loc-l',l:'Leads Locação'},{id:'loc-v',l:'Vistorias'},{id:'boletos',l:'📨 Boletos',a:true},{id:'extrato',l:'📄 Extrato Prop.',a:true},{id:'os',l:'🔧 Ordens Serviço'},
   {s:'Portfólio'},{id:'captacao',l:'🔑 Captação Locação'},{id:'vitrine',l:'🏠 Vitrine Imóveis'},{id:'iv',l:'Imóveis Venda'},{id:'prop',l:'Proprietários'},
-  {s:'Marketing'},{id:'mkt',l:'🎨 Marketing'},{s:'Admin'},{id:'senhas',l:'🔐 Senhas',a:true},{id:'permissoes',l:'🛡️ Permissões',a:true},
+  {s:'Marketing'},{id:'mkt',l:'🎨 Marketing'},{s:'Admin'},{id:'usuarios',l:'👥 Usuários',a:true},{id:'senhas',l:'🔐 Senhas',a:true},{id:'permissoes',l:'🛡️ Permissões',a:true},
   {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},
   {s:'Cadastros',a:true},{id:'cad-cor',l:'Corretores',a:true},{id:'cad-prop',l:'Proprietários Cad.',a:true},{id:'cad-inq',l:'Inquilinos',a:true},
   {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
@@ -2289,7 +2294,7 @@ function gP(id){
     dashboard:pDash, whatsapp:pWhatsApp, leads:pLeads, prosp:pProsp, agenda:pAgenda, visitas:pVis,
     acm:pAcm, docs:pDocs, contratos:pContratos, acoes:pAcoes, mcmv:pMCMV,
     'loc-c':pLC, 'loc-r':pLR, 'repasses':pRepasses, 'loc-l':pLL, 'loc-v':pLV, 'boletos':pBoletos, 'extrato':pExtrato, 'os':pOS,
-    iv:pIV, prop:pProp, vitrine:pVitrine, senhas:pGerenciarSenhas, permissoes:pPermissoes, captacao:function(){if(typeof pCaptacao!=='undefined')pCaptacao();else{document.getElementById('pc').innerHTML='<div style="padding:40px;text-align:center;color:#9ca3af">Carregando...</div>';setTimeout(function(){pCaptacao();},500);}}, mkt:pMkt,
+    iv:pIV, prop:pProp, vitrine:pVitrine, usuarios:pUsuarios, senhas:pGerenciarSenhas, permissoes:pPermissoes, captacao:function(){if(typeof pCaptacao!=='undefined')pCaptacao();else{document.getElementById('pc').innerHTML='<div style="padding:40px;text-align:center;color:#9ca3af">Carregando...</div>';setTimeout(function(){pCaptacao();},500);}}, mkt:pMkt,
     fd:pFD, dre:pDRE, fr:pFR, fp:pFP,
     'cad-cor':pCadCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq,
     rank:pRank, metas:pMetas, historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
