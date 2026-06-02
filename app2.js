@@ -2589,30 +2589,22 @@ function gerarPixPayload(valor, txid, desc){
   desc = (desc||'Aluguel').replace(/[^a-zA-Z0-9 ]/g,'').slice(0,25);
   var val = parseFloat(valor).toFixed(2);
   function f(id,v){ var s=String(v); return id+('0'+s.length).slice(-2)+s; }
-  var payload =
-    f('00','01')+
-    f('26', f('00','BR.GOV.BCB.PIX')+f('01',CHAVE_PIX)+f('02',desc))+
-    f('52','0000')+
-    f('53','986')+
-    f('54',val)+
-    f('58','BR')+
-    f('59',NOME_PIX)+
-    f('60',CIDADE_PIX)+
-    f('62',f('05',txid))+
-    '6304';
+  var payload = f('00','01')+f('26',f('00','BR.GOV.BCB.PIX')+f('01',CHAVE_PIX)+f('02',desc))+f('52','0000')+f('53','986')+f('54',val)+f('58','BR')+f('59',NOME_PIX)+f('60',CIDADE_PIX)+f('62',f('05',txid))+'6304';
   var crc = 0xFFFF;
   for(var ci=0;ci<payload.length;ci++){
     crc ^= payload.charCodeAt(ci)<<8;
-    for(var cj=0;cj<8;cj++){
-      if(crc&0x8000){ crc=(crc<<1)^0x1021; } else { crc=crc<<1; }
-    }
+    for(var cj=0;cj<8;cj++){ if(crc&0x8000){ crc=(crc<<1)^0x1021; } else { crc=crc<<1; } }
   }
   return payload+('0000'+(crc&0xFFFF).toString(16).toUpperCase()).slice(-4);
 }
 
 function gerarQrCodePix(valor, txid, desc){
-  var payload = gerarPixPayload(valor, txid, desc);
-  return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(payload);
+  return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(gerarPixPayload(valor,txid,desc));
+}
+
+function copiarPix(){
+  var el = document.getElementById('pix-payload');
+  if(el){ el.select(); navigator.clipboard.writeText(el.value).then(function(){ alert('Copiado!'); }); }
 }
 
 
@@ -2739,7 +2731,7 @@ function pBoletos(){
       var stBadge = b.asaasId ? statusAsaas(b.status) : (b.enviado ? '<span class="badge bg">Enviado manual</span>' : '<span class="badge by">Pendente</span>');
       var dtEnvio = b.dtEnvio ? '<div style="font-size:10px;color:var(--lm);margin-top:2px">Enviado: '+b.dtEnvio+'</div>' : '';
       var linkBoleto = b.bankSlipUrl ? '<a href="'+b.bankSlipUrl+'" target="_blank" class="btn btn-xs" style="background:#dbeafe;color:#1d4ed8;font-size:10px">📄 Boleto</a> ' : '';
-      var pixCode = '<button class="btn btn-xs" style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700" onclick="verPix('+i+')">📱 PIX</button> ';
+      var pixCode = '<button class="btn btn-xs" style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700" onclick="verPix('+i+')">PIX</button> ';
 
       return '<tr data-status="'+( b.status||'PENDING')+'">'
         +'<td style="font-weight:700;color:var(--navy)">'+b.ctId+'</td>'
@@ -2942,10 +2934,9 @@ function desmarcarBoleto(i){
 function verPix(i){
   var b = boletosD[i];
   var txid = ('REMAX'+(b.ctId||'').replace(/[^A-Z0-9]/g,'')).slice(0,25);
-  var desc = 'Aluguel';
-  var qrUrl = b.pixQrCode || gerarQrCodePix(b.valor, txid, desc);
-  var payload = b.pixCopiaECola || gerarPixPayload(b.valor, txid, desc);
-  oM('PIX — '+b.prop,
+  var qrUrl = b.pixQrCode || gerarQrCodePix(b.valor, txid, 'Aluguel');
+  var payload = b.pixCopiaECola || gerarPixPayload(b.valor, txid, 'Aluguel');
+  oM('PIX - '+b.prop,
     '<div style="text-align:center;padding:16px">'+
       '<div style="background:#f0fdf4;border-radius:12px;padding:16px;margin-bottom:14px">'+
         '<img src="'+qrUrl+'" style="width:200px;height:200px;border-radius:8px;display:block;margin:0 auto">'+
@@ -2953,8 +2944,8 @@ function verPix(i){
       '</div>'+
       '<div style="background:#f9fafb;border-radius:10px;padding:12px;margin-bottom:12px;text-align:left">'+
         '<div style="font-size:11px;color:#9ca3af;font-weight:700;margin-bottom:6px">PIX COPIA E COLA</div>'+
-        '<textarea onclick="this.select()" readonly style="width:100%;font-size:9px;font-family:monospace;border:1px solid #e5e7eb;border-radius:6px;padding:8px;height:55px;resize:none;background:#fff;cursor:pointer">'+payload+'</textarea>'+
-        '<button onclick="navigator.clipboard.writeText(''+payload+'').then(function(){alert('Copiado! ✓');})" style="margin-top:8px;background:#003DA5;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;width:100%">Copiar Codigo PIX</button>'+
+        '<textarea id="pix-payload" onclick="this.select()" readonly style="width:100%;font-size:9px;font-family:monospace;border:1px solid #e5e7eb;border-radius:6px;padding:8px;height:55px;resize:none;background:#fff">'+payload+'</textarea>'+
+        '<button onclick="copiarPix()" style="margin-top:8px;background:#003DA5;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;width:100%">Copiar Codigo PIX</button>'+
       '</div>'+
       '<div style="font-size:16px;font-weight:800;color:#059669">'+fmt(b.valor)+'</div>'+
       '<div style="font-size:12px;color:#6b7280;margin-top:2px">'+b.inq+' - '+b.mes+'</div>'+
