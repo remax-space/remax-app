@@ -1,4 +1,4 @@
-function nLL(){
+// v2 - function nLL(){
   oM('+ Novo Lead de Locação',
     '<div class="fg2">'+
       '<div class="fg"><label>Nome</label><input id="nl2-n" placeholder="Nome do interessado"></div>'+
