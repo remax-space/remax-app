@@ -2602,6 +2602,31 @@ function gerarQrCodePix(valor, txid, desc){
   return 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(gerarPixPayload(valor,txid,desc));
 }
 
+// ===== MULTA E JUROS =====
+var MULTA_PCT = 10;    // 10% de multa
+var JUROS_AM  = 1;     // 1% ao mês = 0.0333% ao dia
+
+function calcularEncargos(valor, vencDia, mesRef){
+  // Montar data de vencimento
+  var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var hoje = new Date();
+  // Tentar extrair mes/ano do mesRef (ex: "Junho de 2026")
+  var partes = (mesRef||'').split(' de ');
+  var nomeMes = partes[0]||'';
+  var ano = parseInt(partes[1])||hoje.getFullYear();
+  var idxMes = meses.findIndex(function(m){ return nomeMes.toLowerCase().startsWith(m.toLowerCase().slice(0,3)); });
+  if(idxMes<0) idxMes = hoje.getMonth();
+  var venc = new Date(ano, idxMes, parseInt(vencDia)||10);
+  venc.setHours(23,59,59);
+  if(hoje <= venc) return {multa:0, juros:0, total:valor, diasAtraso:0, vencimento:venc};
+  var diasAtraso = Math.floor((hoje - venc)/(1000*60*60*24));
+  var multa = valor * MULTA_PCT / 100;
+  var juros = valor * (JUROS_AM/100/30) * diasAtraso;
+  var total = valor + multa + juros;
+  return {multa:multa, juros:juros, total:total, diasAtraso:diasAtraso, vencimento:venc};
+}
+
+
 function copiarPix(){
   var el = document.getElementById('pix-payload');
   if(el){ el.select(); navigator.clipboard.writeText(el.value).then(function(){ alert('Copiado!'); }); }
@@ -2962,8 +2987,10 @@ function verPix(i){
 function imprimirBoleto(i){
   var b = boletosD[i];
   var txid = ('REMAX'+(b.ctId||'').replace(/[^A-Z0-9]/g,'')).slice(0,25);
-  var payload = b.pixCopiaECola || gerarPixPayload(b.valor, txid, 'Aluguel');
-  var qrUrl = b.pixQrCode || gerarQrCodePix(b.valor, txid, 'Aluguel');
+  var enc = calcularEncargos(b.valor, b.venc, b.mes);
+  var valorTotal = enc.total;
+  var payload = b.pixCopiaECola || gerarPixPayload(valorTotal, txid, 'Aluguel');
+  var qrUrl = b.pixQrCode || gerarQrCodePix(valorTotal, txid, 'Aluguel');
   var vencFormatado = 'Dia '+b.venc+' de '+b.mes;
   var w = window.open('','_blank','width=800,height=900');
   w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'+
@@ -3008,6 +3035,15 @@ function imprimirBoleto(i){
       '<div class="valor-box">'+
         '<div class="label">VALOR DO ALUGUEL</div>'+
         '<div class="valor">'+fmt(b.valor)+'</div>'+
+        (enc.diasAtraso>0?
+          '<div style="margin-top:8px;font-size:11px;color:#b91c1c">'+
+            '<b>⚠️ '+enc.diasAtraso+' dia(s) de atraso</b><br>'+
+            'Multa (10%): + '+fmt(enc.multa)+' &nbsp;|&nbsp; Juros (1%a.m.): + '+fmt(enc.juros)+'<br>'+
+            '<span style="font-size:14px;font-weight:900">Total com encargos: '+fmt(enc.total)+'</span>'+
+          '</div>'
+        :
+          '<div style="font-size:10px;color:#6b7280;margin-top:6px">Após o vencimento: multa de 10% + juros de 1% a.m.</div>'
+        )+
       '</div>'+
       '<hr class="divider">'+
       '<div class="pix-section">'+
