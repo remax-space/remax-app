@@ -2744,8 +2744,8 @@ function pBoletos(){
         +'<td>'+stBadge+dtEnvio+'</td>'
         +'<td style="white-space:nowrap">'
           +linkBoleto+pixCode
-          +(b.status!=='RECEIVED'&&b.status!=='CONFIRMED' ? '<button class="btn btn-xs btn-green" onclick="marcarBoletoEnviado('+i+')" style="font-size:10px">✓ Manual</button> ' : '')
-          +'<button class="btn btn-xs" style="background:#f0fdf4;color:#166534;font-size:10px" onclick="enviarWA('+i+')">📱 WA</button>'
+          +'<button class="btn btn-xs" onclick="marcarBoletoEnviado('+i+')" style="font-size:10px;background:'+(b.status==='RECEIVED'||b.status==='CONFIRMED'?'#fee2e2;color:#991b1b':'#dcfce7;color:#166534')+';border:none;border-radius:6px;padding:3px 8px;cursor:pointer;font-weight:600">'+(b.status==='RECEIVED'||b.status==='CONFIRMED'?'↩ Desfazer':'✓ Pago')+'</button> '
+          +'<button class="btn btn-xs" style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700" onclick="imprimirBoleto('+i+')">🖨 Boleto</button> '+'<button class="btn btn-xs" style="background:#f0fdf4;color:#166534;font-size:10px" onclick="enviarWA('+i+')">📱 WA</button>'
         +'</td></tr>';
     }).join('');
   }
@@ -2911,16 +2911,23 @@ async function sincronizarBoletos(){
 }
 
 function marcarBoletoEnviado(i){
-  var agora = new Date();
-  boletosD[i].enviado = true;
-  boletosD[i].dtEnvio = agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR');
-  boletosD[i].status = 'RECEIVED';
-  // Sincronizar repasse automaticamente
-  var ctIdx = ctD.findIndex(function(c){return c.id===boletosD[i].ctId;});
-  if(ctIdx>=0){ ctD[ctIdx].rs = ctD[ctIdx].rs||Array(12).fill('N'); ctD[ctIdx].rs[new Date().getMonth()]='R'; }
-  registrarLog('BOLETO PAGO (MANUAL)', boletosD[i].ctId+' — '+boletosD[i].prop+' — '+fmt(boletosD[i].valor));
-  salvarTudo();
-  pBoletos();
+  var b = boletosD[i];
+  if(b.status==='RECEIVED'||b.status==='CONFIRMED'){
+    if(!confirm('Desfazer pagamento de '+b.prop+'?')) return;
+    b.enviado=false; b.dtEnvio=''; b.status='PENDING';
+    var ctIdx=ctD.findIndex(function(c){return c.id===b.ctId;});
+    if(ctIdx>=0&&ctD[ctIdx].rs){ctD[ctIdx].rs[new Date().getMonth()]='N';}
+    registrarLog('BOLETO DESFEITO',b.ctId+' - '+b.prop);
+  } else {
+    var agora=new Date();
+    b.enviado=true;
+    b.dtEnvio=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR');
+    b.status='RECEIVED';
+    var ctIdx=ctD.findIndex(function(c){return c.id===b.ctId;});
+    if(ctIdx>=0){ctD[ctIdx].rs=ctD[ctIdx].rs||Array(12).fill('N');ctD[ctIdx].rs[new Date().getMonth()]='R';}
+    registrarLog('BOLETO PAGO (MANUAL)',b.ctId+' - '+b.prop+' - '+fmt(b.valor));
+  }
+  salvarTudo(); pBoletos();
 }
 
 function desmarcarBoleto(i){
@@ -2951,6 +2958,79 @@ function verPix(i){
       '<div style="font-size:12px;color:#6b7280;margin-top:2px">'+b.inq+' - '+b.mes+'</div>'+
     '</div>', null, 'Fechar');
 }
+
+function imprimirBoleto(i){
+  var b = boletosD[i];
+  var txid = ('REMAX'+(b.ctId||'').replace(/[^A-Z0-9]/g,'')).slice(0,25);
+  var payload = b.pixCopiaECola || gerarPixPayload(b.valor, txid, 'Aluguel');
+  var qrUrl = b.pixQrCode || gerarQrCodePix(b.valor, txid, 'Aluguel');
+  var vencFormatado = 'Dia '+b.venc+' de '+b.mes;
+  var w = window.open('','_blank','width=800,height=900');
+  w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'+
+    '<title>Boleto '+b.ctId+'</title>'+
+    '<style>'+
+      'body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a1a;margin:0;padding:20px;background:#fff}'+
+      '.topo{background:#0f1a35;color:#fff;padding:14px 20px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center}'+
+      '.topo h1{font-size:18px;margin:0;letter-spacing:1px}'+
+      '.topo span{font-size:11px;opacity:.8}'+
+      '.corpo{border:1px solid #ddd;border-top:none;padding:20px;border-radius:0 0 8px 8px}'+
+      '.linha{display:flex;gap:20px;margin-bottom:14px}'+
+      '.campo{flex:1}'+
+      '.campo label{font-size:10px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px}'+
+      '.campo span{font-size:13px;font-weight:600;color:#1a1a1a}'+
+      '.valor-box{background:#f0fdf4;border:2px solid #059669;border-radius:8px;padding:12px 20px;text-align:center;margin:16px 0}'+
+      '.valor-box .label{font-size:11px;color:#6b7280;font-weight:700}'+
+      '.valor-box .valor{font-size:28px;font-weight:900;color:#059669}'+
+      '.divider{border:none;border-top:1px dashed #ddd;margin:16px 0}'+
+      '.pix-section{display:flex;gap:20px;align-items:flex-start;background:#f9fafb;border-radius:8px;padding:16px;margin-top:16px}'+
+      '.pix-qr img{width:130px;height:130px;border:1px solid #e5e7eb;border-radius:6px}'+
+      '.pix-info{flex:1}'+
+      '.pix-info h3{font-size:13px;color:#0f1a35;margin:0 0 8px;font-weight:800}'+
+      '.pix-info p{font-size:11px;color:#6b7280;margin:0 0 8px;line-height:1.5}'+
+      '.pix-codigo{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px;font-size:9px;font-family:monospace;word-break:break-all;color:#374151;max-height:50px;overflow:hidden}'+
+      '.rodape{text-align:center;margin-top:20px;font-size:10px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:12px}'+
+      '@media print{body{padding:10px}.no-print{display:none!important}}'+
+    '</style></head><body>'+
+    '<div class="topo">'+
+      '<div><h1>RE/MAX Space</h1><span>Caldas Novas — GO</span></div>'+
+      '<div style="text-align:right"><span style="font-size:13px;font-weight:700">COBRANÇA DE ALUGUEL</span><br><span>'+b.ctId+'</span></div>'+
+    '</div>'+
+    '<div class="corpo">'+
+      '<div class="linha">'+
+        '<div class="campo"><label>Proprietário</label><span>'+b.prop+'</span></div>'+
+        '<div class="campo"><label>Inquilino</label><span>'+b.inq+'</span></div>'+
+      '</div>'+
+      '<div class="linha">'+
+        '<div class="campo"><label>Mês de Referência</label><span>'+b.mes+'</span></div>'+
+        '<div class="campo"><label>Vencimento</label><span>'+vencFormatado+'</span></div>'+
+        '<div class="campo"><label>Contrato</label><span>'+b.ctId+'</span></div>'+
+      '</div>'+
+      '<div class="valor-box">'+
+        '<div class="label">VALOR DO ALUGUEL</div>'+
+        '<div class="valor">'+fmt(b.valor)+'</div>'+
+      '</div>'+
+      '<hr class="divider">'+
+      '<div class="pix-section">'+
+        '<div class="pix-qr"><img src="'+qrUrl+'"><div style="text-align:center;font-size:9px;color:#9ca3af;margin-top:4px">Escaneie para pagar</div></div>'+
+        '<div class="pix-info">'+
+          '<h3>Pagamento via PIX</h3>'+
+          '<p>Chave PIX (Itaú):<br><b>+55 11 96919-7881</b></p>'+
+          '<p style="font-size:10px;font-weight:700;color:#374151">Pix Copia e Cola:</p>'+
+          '<div class="pix-codigo">'+payload+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="rodape">'+
+        'RE/MAX Space Consultoria Imobiliária • Caldas Novas — GO • (64) 9 9999-9999<br>'+
+        'Este documento é uma cobrança de aluguel emitida pela administradora do imóvel.'+
+      '</div>'+
+    '</div>'+
+    '<div class="no-print" style="text-align:center;margin-top:16px">'+
+      '<button onclick="window.print()" style="background:#0f1a35;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'+
+    '</div>'+
+    '</body></html>');
+  w.document.close();
+}
+
 
 function enviarWA(i){
   var b = boletosD[i];
