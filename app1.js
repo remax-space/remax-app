@@ -2238,6 +2238,62 @@ async function salvarSenhaUser(usuario){
 }
 
 
+function pUsuarios(){
+  if(!U||U.role_key!=='master'){ alert('Apenas Master.'); return; }
+  var usersExtra = {}; try{ usersExtra=JSON.parse(localStorage.getItem('_usersExtra')||'{}'); }catch(e){}
+  var todosUsers = {};
+  Object.keys(USR).forEach(function(k){ todosUsers[k]=USR[k]; });
+  Object.keys(usersExtra).forEach(function(k){ todosUsers[k]=usersExtra[k]; });
+  function salvarExtra(){ localStorage.setItem('_usersExtra',JSON.stringify(usersExtra)); Object.keys(usersExtra).forEach(function(k){USR[k]=usersExtra[k];}); }
+  var rows = Object.keys(todosUsers).map(function(u){
+    var usr=todosUsers[u]; var isBase=!!USR[u]&&!usersExtra[u];
+    var cor=usr.role_key==='master'?'#D42028':usr.role_key==='adm'?'#003DA5':'#059669';
+    return '<tr style="border-bottom:1px solid #f0f0f0">'+
+      '<td style="padding:8px;font-weight:700">'+usr.nome+'</td>'+
+      '<td style="padding:8px"><code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:11px">'+u+'</code></td>'+
+      '<td style="padding:8px"><span style="background:'+cor+';color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700">'+usr.role+'</span></td>'+
+      '<td style="padding:8px">'+(!isBase?'<button onclick="excluirUser(\''+u+'\')" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">Remover</button>':'<span style="font-size:10px;color:#9ca3af">Base</span>')+'</td>'+
+    '</tr>';
+  }).join('');
+  var html = '<div style="margin-bottom:16px;padding:12px;background:#eff6ff;border-radius:8px;font-size:12px;color:#1d4ed8">Usuarios <b>Base</b> nao podem ser removidos. Apos adicionar, defina a senha em Senhas.</div>'+
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:20px"><thead><tr style="background:#0f1a35;color:#fff"><th style="padding:8px;text-align:left;font-size:11px">Nome</th><th style="padding:8px;text-align:left;font-size:11px">Usuario</th><th style="padding:8px;text-align:left;font-size:11px">Nivel</th><th style="padding:8px;font-size:11px">Acao</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div style="background:#f9fafb;border-radius:10px;padding:16px;border:1px solid #e5e7eb">'+
+      '<h4 style="margin:0 0 12px;font-size:13px;color:#0f1a35">Adicionar Novo Usuario</h4>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'+
+        '<div><label style="font-size:11px;color:#6b7280;font-weight:700">NOME</label><input id="nu-nome" placeholder="Nome completo" style="width:100%;padding:7px;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;margin-top:3px;box-sizing:border-box"></div>'+
+        '<div><label style="font-size:11px;color:#6b7280;font-weight:700">USUARIO (login)</label><input id="nu-user" placeholder="semespaco" style="width:100%;padding:7px;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;margin-top:3px;box-sizing:border-box"></div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'+
+        '<div><label style="font-size:11px;color:#6b7280;font-weight:700">NIVEL</label><select id="nu-role" style="width:100%;padding:7px;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;margin-top:3px;box-sizing:border-box"><option value="master">Master</option><option value="adm">Administrador</option><option value="corretor" selected>Corretor</option></select></div>'+
+        '<div><label style="font-size:11px;color:#6b7280;font-weight:700">SENHA INICIAL</label><input id="nu-senha" type="password" placeholder="Senha" style="width:100%;padding:7px;border:1px solid #e5e7eb;border-radius:7px;font-size:12px;margin-top:3px;box-sizing:border-box"></div>'+
+      '</div>'+
+      '<button onclick="adicionarUser()" style="background:#0f1a35;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer;width:100%">Adicionar Usuario</button>'+
+    '</div>';
+  document.getElementById('pa').innerHTML='';
+  document.getElementById('pc').innerHTML='<div class="card"><div class="chd"><h3>Gerenciar Usuarios</h3></div><div style="padding:16px">'+html+'</div></div>';
+  window.adicionarUser=function(){
+    var nome=document.getElementById('nu-nome').value.trim();
+    var user=document.getElementById('nu-user').value.trim().toLowerCase().replace(/ /g,'');
+    var role=document.getElementById('nu-role').value;
+    var senha=document.getElementById('nu-senha').value;
+    if(!nome||!user){alert('Preencha nome e usuario.');return;}
+    if(todosUsers[user]){alert('Usuario "'+user+'" ja existe!');return;}
+    var rl=role==='master'?'Master':role==='adm'?'Administrador':'Corretor';
+    var cor=role==='master'?'#D42028':role==='adm'?'#003DA5':'#059669';
+    usersExtra[user]={nome:nome,ini:nome.slice(0,2).toUpperCase(),cor:cor,role:rl,role_key:role,id:user};
+    salvarExtra();
+    if(senha){var _s={};try{_s=JSON.parse(localStorage.getItem('_senhas')||'{}');}catch(e){}_s[user]=senha;localStorage.setItem('_senhas',JSON.stringify(_s));}
+    registrarLog('USUARIO CRIADO',nome+' ('+user+') '+rl);
+    alert('Usuario "'+nome+'" adicionado!');
+    pUsuarios();
+  };
+  window.excluirUser=function(uKey){
+    if(!confirm('Remover "'+todosUsers[uKey].nome+'"?'))return;
+    delete usersExtra[uKey]; salvarExtra(); delete USR[uKey];
+    registrarLog('USUARIO REMOVIDO',uKey); pUsuarios();
+  };
+}
+
 function pPermissoes(){
   var users = Object.keys(USR).filter(function(k){return (USR[k].role_key||'corretor')!=='admin';});
   var mods = [
