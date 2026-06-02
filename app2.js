@@ -2253,6 +2253,190 @@ function inativarCT(i){
 function excluirCT(i){ inativarCT(i); }
 window.excluirCT = excluirCT;
 
+function gerarContratoIA(i){
+  var c = ctD[i];
+  if(!c){ alert('Contrato não encontrado.'); return; }
+
+  // Busca dados completos do inquilino e proprietário
+  var inq = inqCad.find(function(q){ return q.ct===c.id || q.nome===c.inq; }) || {nome:c.inq,cpf:'',rg:'',nasc:'',tel:'',email:'',end:'',fianca:''};
+  var prop = propCad.find(function(p){ return p.nome===c.prop; }) || {nome:c.prop,cpf:'',tel:'',email:'',end:''};
+
+  // Mostra modal com opções
+  oM('🤖 Gerar Contrato de Locação com IA — '+c.id,
+    '<div style="background:#f0f9ff;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;border:1px solid #bae6fd">'+
+      '<div style="font-weight:700;color:#0369a1;margin-bottom:8px">📋 Dados do Contrato</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">'+
+        '<div><b>Contrato:</b> '+c.id+'</div>'+
+        '<div><b>Tipo:</b> '+c.tipo+'</div>'+
+        '<div><b>Proprietário:</b> '+c.prop+'</div>'+
+        '<div><b>Inquilino:</b> '+c.inq+'</div>'+
+        '<div><b>Imóvel:</b> '+c.end+'</div>'+
+        '<div><b>Valor:</b> '+fmt(c.valor)+'</div>'+
+        '<div><b>Vencimento:</b> Dia '+c.venc+'</div>'+
+        '<div><b>Vigência:</b> '+c.inicio+' a '+c.fim+'</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="fg2">'+
+      '<div class="fg"><label>Cláusula de Multa (%)</label><input id="ct-multa" type="number" value="10" min="0" max="100"></div>'+
+      '<div class="fg"><label>Reajuste Anual</label><select id="ct-reaj"><option>IGPM</option><option>IPCA</option><option>INPC</option><option>IGP-DI</option></select></div>'+
+    '</div>'+
+    '<div class="fg2">'+
+      '<div class="fg"><label>Fiança / Garantia</label><select id="ct-fian"><option>Caução</option><option>Fiador</option><option>Seguro Fiança</option><option>Título de Capitalização</option><option>Sem garantia</option></select></div>'+
+      '<div class="fg"><label>Destino do imóvel</label><select id="ct-dest"><option>Residencial</option><option>Comercial</option><option>Residencial/Comercial</option></select></div>'+
+    '</div>'+
+    '<div class="fg"><label>Observações especiais (opcional)</label><textarea id="ct-obs" placeholder="Ex: proibido animais, permitido sublocação..." rows="2"></textarea></div>'+
+    '<div style="background:#fef9c3;border-radius:8px;padding:10px;font-size:11px;margin-top:8px">'+
+      '⚠️ O contrato será gerado pela IA e deve ser revisado por Tatiana antes de assinar.'+
+    '</div>',
+    function(){
+      var multa = document.getElementById('ct-multa').value || '10';
+      var reaj = document.getElementById('ct-reaj').value;
+      var fian = document.getElementById('ct-fian').value;
+      var dest = document.getElementById('ct-dest').value;
+      var obs = document.getElementById('ct-obs').value;
+      cM();
+      executarGeracaoContrato(c, inq, prop, multa, reaj, fian, dest, obs);
+    }, 'Gerar Contrato com IA');
+}
+
+async function executarGeracaoContrato(c, inq, prop, multa, reaj, fian, dest, obs){
+  // Show loading modal
+  oM('⏳ Gerando Contrato...',
+    '<div id="ct-gen-status" style="text-align:center;padding:30px">'+
+      '<div style="font-size:32px;margin-bottom:12px">✍️</div>'+
+      '<div style="font-size:14px;font-weight:700;color:var(--navy)">A IA está redigindo seu contrato...</div>'+
+      '<div style="font-size:12px;color:var(--lm);margin-top:6px">Isso pode levar 10-20 segundos</div>'+
+    '</div>',
+    null, null, true
+  );
+
+  var hoje = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+
+  var prompt = 'Redija um CONTRATO DE LOCAÇÃO IMOBILIÁRIA completo e juridicamente válido no Brasil com os seguintes dados:\n\n'+
+    '=== PARTES ===\n'+
+    'LOCADOR (Proprietário): '+prop.nome+'\n'+
+    (prop.cpf?'CPF do Locador: '+prop.cpf+'\n':'')+
+    (prop.end?'Endereço do Locador: '+prop.end+'\n':'')+
+    'LOCATÁRIA (Inquilino): '+inq.nome+'\n'+
+    (inq.cpf?'CPF do Locatário: '+inq.cpf+'\n':'')+
+    (inq.rg?'RG do Locatário: '+inq.rg+'\n':'')+
+    (inq.nasc?'Nascimento: '+inq.nasc+'\n':'')+
+    (inq.end?'Endereço do Locatário: '+inq.end+'\n':'')+
+    (inq.tel?'Telefone: '+inq.tel+'\n':'')+
+    '\n=== IMÓVEL ===\n'+
+    'Tipo: '+c.tipo+'\n'+
+    'Endereço: '+c.end+' — Caldas Novas - GO\n'+
+    'Destinação: '+dest+'\n'+
+    '\n=== CONDIÇÕES ===\n'+
+    'Valor do aluguel: '+fmt(c.valor)+'\n'+
+    'Vencimento: dia '+c.venc+' de cada mês\n'+
+    'Início da vigência: '+c.inicio+'\n'+
+    'Fim da vigência: '+c.fim+'\n'+
+    'Reajuste anual: pelo índice '+reaj+'\n'+
+    'Multa por rescisão antecipada: '+multa+'% do valor total do contrato\n'+
+    'Garantia locatícia: '+fian+'\n'+
+    (inq.fianca?'Detalhe da garantia: '+inq.fianca+'\n':'')+
+    '\n=== ADMINISTRAÇÃO ===\n'+
+    'Administradora: RE/MAX Space — Caldas Novas GO\n'+
+    'Responsável: Tatiana Basile — Advogada e Corretora\n'+
+    'Taxa de administração: 10% sobre o valor do aluguel\n'+
+    (obs?'\n=== OBSERVAÇÕES ESPECIAIS ===\n'+obs+'\n':'')+
+    '\n=== INSTRUÇÕES ===\n'+
+    'Redija o contrato completo com:\n'+
+    '1. Identificação das partes\n'+
+    '2. Objeto do contrato\n'+
+    '3. Prazo de locação\n'+
+    '4. Valor e forma de pagamento\n'+
+    '5. Reajuste do aluguel\n'+
+    '6. Obrigações do locador\n'+
+    '7. Obrigações do locatário\n'+
+    '8. Garantia locatícia\n'+
+    '9. Rescisão e penalidades\n'+
+    '10. Disposições gerais\n'+
+    '11. Foro competente (Caldas Novas - GO)\n'+
+    '12. Assinatura das partes e testemunhas\n\n'+
+    'Use linguagem jurídica formal. Base na Lei 8.245/91 (Lei do Inquilinato). '+
+    'Data de hoje: '+hoje+'. Cidade: Caldas Novas - GO.';
+
+  var system = 'Você é Tatiana Basile, advogada especializada em direito imobiliário com mais de 10 anos de experiência em Caldas Novas - GO. Redija contratos de locação completos, claros e juridicamente seguros, baseados na Lei 8.245/91. Use linguagem formal e técnica. Inclua todas as cláusulas necessárias para proteção de ambas as partes.';
+
+  try{
+    var contrato = await callClaude(prompt, system, 4000);
+
+    var el = document.getElementById('ct-gen-status');
+    if(el && el.parentElement){
+      // Build print-ready contract
+      var contratoHtml = contrato
+        .replace(/\n\n/g,'</p><p style="margin-bottom:12px">')
+        .replace(/\n/g,'<br>')
+        .replace(/^/,'<p style="margin-bottom:12px">')
+        .replace(/$/,'</p>');
+
+      el.parentElement.innerHTML =
+        '<div style="width:100%">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
+            '<div style="font-size:13px;font-weight:700;color:var(--navy)">Contrato gerado — '+c.id+' — '+c.inq+'</div>'+
+            '<div style="display:flex;gap:8px">'+
+              '<button class="btn btn-primary" onclick="imprimirContrato()">🖨️ Imprimir / PDF</button>'+
+              '<button class="btn btn-sm" style="background:#7c3aed;color:#fff;border-color:#7c3aed" onclick="gerarContratoIA(ctD.indexOf(ctD.find(function(x){return x.id===\''+c.id+'\'})))">🔄 Gerar novamente</button>'+
+            '</div>'+
+          '</div>'+
+          '<div style="background:#fef9c3;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px">'+
+            '⚠️ Revise o contrato antes de assinar. A IA pode cometer erros. Verifique todos os dados.'+
+          '</div>'+
+          '<div id="contrato-texto" style="background:#fff;border:1px solid var(--lb);border-radius:8px;padding:20px;font-size:12px;line-height:1.8;max-height:400px;overflow-y:auto;font-family:Georgia,serif;white-space:pre-wrap">'+contrato+'</div>'+
+        '</div>';
+
+      // Store for printing
+      window._contratoTexto = contrato;
+      window._contratoId = c.id;
+      window._contratoInq = c.inq;
+    }
+  } catch(e){
+    var el2 = document.getElementById('ct-gen-status');
+    if(el2) el2.innerHTML = '<div style="color:#dc2626;text-align:center;padding:20px">Erro ao gerar: '+e.message+'<br><br><small>Verifique se a Edge Function está ativa no Supabase.</small></div>';
+  }
+}
+
+
+function msgCobranca(i){
+  var c=ctD[i];
+  if(!c) return;
+  var hoje=new Date();
+  var mesRef=hoje.toLocaleString('pt-BR',{month:'long',year:'numeric'});
+  var vencDia=c.venc||10;
+  var tel=(c.inq_tel||'').replace(/\D/g,'');
+  var v=fmt(c.valor);
+
+  function msg0(){ return 'Ola, '+c.inq+'! Tudo bem?\n\nPassando para lembrar que o aluguel de '+mesRef+' vence no dia '+vencDia+'.\n\nValor: '+v+'\nPIX: [chave pix da imobiliaria]\n\nQualquer duvida estou a disposicao!\n\nAtenciosamente,\nRE/MAX Space'; }
+  function msg1(){ return 'Ola, '+c.inq+'! Tudo bem?\n\nO aluguel de '+mesRef+' vence hoje, dia '+vencDia+'.\n\nValor: '+v+'\nPIX: [chave pix da imobiliaria]\n\nFique a vontade para nos contatar.\n\nRE/MAX Space — (64) 9 9000-0000'; }
+  function msg2(){ return 'Ola, '+c.inq+'. Tudo bem?\n\nNosso sistema ainda nao identificou o pagamento do aluguel de '+mesRef+' (vencimento: '+vencDia+').\n\nValor: '+v+'\nPIX: [chave pix da imobiliaria]\n\nPor favor confirme quando efetuar o pagamento.\n\nRE/MAX Space'; }
+  function msg3(){ return 'Prezado(a) '+c.inq+',\n\nInformamos que o aluguel de '+mesRef+' encontra-se em aberto desde o dia '+vencDia+'.\n\nValor em aberto: '+v+'\n\nSolicitamos a regularizacao ate 48 horas para evitar notificacao formal conforme contrato.\n\nRE/MAX Space Caldas Novas\nTatiana Basile - Diretora'; }
+
+  var labels=['Aviso Gentil (antes do vencimento)','1a Cobranca (vencimento hoje)','2a Cobranca (3-5 dias de atraso)','3a Cobranca - Formal (mais de 10 dias)'];
+  var fns=[msg0,msg1,msg2,msg3];
+
+  var btns='';
+  for(var idx=0;idx<4;idx++){
+    btns+='<div style="background:#f9fafb;border:1px solid #e2e8f0;border-radius:10px;padding:12px;margin-bottom:10px">'+
+      '<div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:8px">'+labels[idx]+'</div>'+
+      '<textarea id="cob-msg-'+idx+'" style="width:100%;height:80px;font-size:11px;border:1px solid #e2e8f0;border-radius:6px;padding:8px;resize:vertical;font-family:monospace">'+fns[idx]()+'</textarea>'+
+      '<div style="display:flex;gap:8px;margin-top:6px">'+
+        '<button class="btn btn-sm btn-blue" onclick="copiarMsgIdx('+idx+')">Copiar</button>'+
+        (tel?'<a href="https://wa.me/55'+tel+'" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;border-color:#25D366;text-decoration:none">WhatsApp</a>':'')+
+      '</div>'+
+    '</div>';
+  }
+
+  oM('Mensagem de Cobranca — '+c.inq,
+    '<div style="background:#fef9c3;border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px">'+
+      '<b>Contrato:</b> '+c.id+' | <b>Inquilino:</b> '+c.inq+' | <b>Valor:</b> '+v+' | <b>Vencimento:</b> dia '+vencDia+
+    '</div>'+btns,
+    null, null, true
+  );
+}
+
+
 function reativarCT(i){
   if(!confirm('Reativar contrato de '+ctD[i].prop+'?'))return;
   ctD[i].status='Ativo';
