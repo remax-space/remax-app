@@ -267,6 +267,8 @@ var USR = {
   'lbasile':  {nome:'Lucas Basile',   ini:'LB',cor:'#0F766E',role:'Master',      role_key:'master',   id:'lbasile'},
   // ADM - sem financeiro
   'meirielli':{nome:'Meirielli',      ini:'ME',cor:'#003DA5',role:'Administradora',role_key:'adm',    id:'meirielli'},
+  // ADM - sem financeiro
+  'tayna':    {nome:'Tayna',           ini:'TY',cor:'#7c3aed',role:'Administradora',role_key:'adm',    id:'tayna'},
   // CORRETORES
   'tmoraes':  {nome:'T. Moraes',      ini:'TM',cor:'#B9975B',role:'Corretora',   role_key:'corretor', id:'tmoraes'},
   'sjustino': {nome:'Sergio Justino', ini:'SJ',cor:'#1D9E75',role:'Corretor',    role_key:'corretor', id:'sjustino'},
