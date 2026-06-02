@@ -942,35 +942,32 @@ function pVitrine(){
     : '<span style="font-size:12px;color:#6b7280">Vitrine interna — somente visualização</span>';
   document.getElementById('pa').innerHTML = paHtml;
 
-  // Filtros
   var ops = ['Todos','Venda','Locação'];
   var tipos = ['Todos','Casa','Apartamento','Flat/Apart-Hotel','Chalé','Terreno/Lote','Chácara','Fazenda','Kitnet','Sala Comercial','Outro'];
   var quartos = ['Todos','1','2','3','4+'];
-  var bairros = ['Todos'].concat(vitD.map(function(v){ return v.bairro||''; }).filter(function(b,i,a){ return b && a.indexOf(b)===i; }).sort());
 
   function fBtn(arr, cur, fn){
     return arr.map(function(v){
       var a = cur===v;
-      return '<button onclick="'+fn+'(\''+v+'\')" style="padding:4px 12px;border-radius:20px;border:1.5px solid '+(a?'#003DA5':'#d1d5db')+';background:'+(a?'#003DA5':'#fff')+';color:'+(a?'#fff':'#374151')+';font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap">'+v+'</button>';
+      return '<button onclick="'+fn+'(\''+v+'\')" style="padding:5px 14px;border-radius:20px;border:1.5px solid '+(a?'#003DA5':'#e5e7eb')+';background:'+(a?'#003DA5':'#fff')+';color:'+(a?'#fff':'#6b7280')+';font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s">'+v+'</button>';
     }).join('');
   }
 
-  var filtros = '<div style="background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e5e7eb;margin-bottom:16px">'+
-    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'+
-      '<span style="font-size:11px;font-weight:700;color:#6b7280;padding:4px 0;min-width:60px">Operação:</span>'+
+  var filtros = '<div style="background:#fff;border-radius:14px;padding:14px 16px;border:1px solid #e5e7eb;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.04)">'+
+    '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px">'+
+      '<span style="font-size:11px;font-weight:700;color:#9ca3af;min-width:64px;text-transform:uppercase;letter-spacing:.5px">Operação</span>'+
       fBtn(ops, _vitFiltOp, 'vitSetOp')+
     '</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">'+
-      '<span style="font-size:11px;font-weight:700;color:#6b7280;padding:4px 0;min-width:60px">Tipo:</span>'+
+    '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px">'+
+      '<span style="font-size:11px;font-weight:700;color:#9ca3af;min-width:64px;text-transform:uppercase;letter-spacing:.5px">Tipo</span>'+
       fBtn(tipos, _vitFiltTipo, 'vitSetTipo')+
     '</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
-      '<span style="font-size:11px;font-weight:700;color:#6b7280;padding:4px 0;min-width:60px">Quartos:</span>'+
+    '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">'+
+      '<span style="font-size:11px;font-weight:700;color:#9ca3af;min-width:64px;text-transform:uppercase;letter-spacing:.5px">Quartos</span>'+
       fBtn(quartos, _vitFiltQ, 'vitSetQ')+
     '</div>'+
   '</div>';
 
-  // Filtrar imóveis
   var lista = vitD.filter(function(v){
     if(_vitFiltOp!=='Todos' && v.op!==_vitFiltOp) return false;
     if(_vitFiltTipo!=='Todos' && v.tipo!==_vitFiltTipo) return false;
@@ -982,76 +979,80 @@ function pVitrine(){
     return true;
   });
 
-  // Cards de imóveis
   var cards = '';
   if(!lista.length){
     cards = '<div style="text-align:center;padding:60px 20px;color:#9ca3af">'+
-      '<div style="font-size:48px;margin-bottom:12px">🏠</div>'+
-      '<div style="font-size:16px;font-weight:600">Nenhum imóvel encontrado</div>'+
+      '<div style="font-size:52px;margin-bottom:12px">🏠</div>'+
+      '<div style="font-size:16px;font-weight:700;color:#374151">Nenhum imóvel encontrado</div>'+
       '<div style="font-size:13px;margin-top:6px">'+(isAdm?'Clique em "+ Novo Imóvel" para cadastrar':'Nenhum imóvel disponível com esses filtros')+'</div>'+
     '</div>';
   } else {
-    cards = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">';
-    lista.forEach(function(v,i){
+    cards = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px">';
+    lista.forEach(function(v){
       var idx = vitD.indexOf(v);
       var fotos = (v.fotos||[]).filter(Boolean);
       var foto1 = fotos[0]||'';
       var opCor = v.op==='Venda'?'#003DA5':'#059669';
-      var val = v.valor?'R$ '+Number(v.valor).toLocaleString('pt-BR'):'Consulte';
-      var qStr = v.quartos?v.quartos+' qto'+(v.quartos>1?'s':''):'';
-      var aStr = v.area?v.area+'m²':'';
-      var vStr = v.vagas?v.vagas+' vaga'+(v.vagas>1?'s':''):'';
-      var tags = [qStr,aStr,vStr].filter(Boolean).join(' · ');
+      var opBg  = v.op==='Venda'?'#eff6ff':'#f0fdf4';
+      var val   = v.valor?'R$ '+Number(v.valor).toLocaleString('pt-BR')+(v.op==='Locação'?'/mês':''):'Consulte';
+      var qStr  = v.quartos?'<span>🛏 '+v.quartos+'</span>':'';
+      var aStr  = v.area?'<span>📐 '+v.area+'m²</span>':'';
+      var vStr  = v.vagas?'<span>🚗 '+v.vagas+'</span>':'';
+      var bStr  = v.banheiros?'<span>🚿 '+v.banheiros+'</span>':'';
+      var tags  = [qStr,aStr,vStr,bStr].filter(Boolean).join('');
 
-      // Carrossel de fotos
       var fotoHtml = '';
       if(fotos.length){
-        fotoHtml = '<div id="vit-img-'+idx+'" style="position:relative;height:200px;overflow:hidden;border-radius:10px 10px 0 0;background:#f3f4f6">'+
-          '<img src="'+foto1+'" style="width:100%;height:100%;object-fit:cover" onerror="this.src=\'\';this.parentNode.style.background=\'#e5e7eb\'">'+
+        fotoHtml = '<div id="vit-img-'+idx+'" style="position:relative;height:210px;overflow:hidden;background:#f3f4f6">'+
+          '<img src="'+foto1+'" style="width:100%;height:100%;object-fit:cover;transition:transform .3s" onmouseover="this.style.transform=\'scale(1.04)\'" onmouseout="this.style.transform=\'scale(1)\'" onerror="this.style.display=\'none\'">'+
           (fotos.length>1?
-            '<button onclick="vitFotoAnterior('+idx+')" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px">‹</button>'+
-            '<button onclick="vitFotoProxima('+idx+')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.5);color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:16px">›</button>'+
-            '<span style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px">📷 '+fotos.length+'</span>'
+            '<button onclick="vitFotoAnterior('+idx+')" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">‹</button>'+
+            '<button onclick="vitFotoProxima('+idx+')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">›</button>'+
+            '<span style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:3px 8px;border-radius:12px;font-weight:600">📷 '+fotos.length+'</span>'
           :'')+'</div>';
       } else {
-        fotoHtml = '<div style="height:160px;background:linear-gradient(135deg,#eff6ff,#dbeafe);border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">'+
-          '<span style="font-size:40px">🏠</span>'+
-          '<span style="font-size:11px;color:#93c5fd">Sem foto cadastrada</span>'+
+        fotoHtml = '<div style="height:180px;background:linear-gradient(135deg,#eff6ff,#dbeafe);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">'+
+          '<span style="font-size:44px">🏠</span>'+
+          '<span style="font-size:11px;color:#93c5fd;font-weight:600">Sem foto</span>'+
         '</div>';
       }
 
-      cards += '<div style="background:#fff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);transition:box-shadow .2s">'+
+      cards += '<div style="background:#fff;border-radius:16px;border:1px solid #e5e7eb;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07);display:flex;flex-direction:column">'+
         fotoHtml+
-        '<div style="padding:14px">'+
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
-            '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+opCor+'22;color:'+opCor+'">'+v.op+'</span>'+
-            '<span style="font-size:11px;color:#6b7280;background:#f3f4f6;padding:3px 8px;border-radius:10px">'+v.tipo+'</span>'+
+        '<div style="padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:8px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:'+opBg+';color:'+opCor+'">'+v.op+'</span>'+
+            '<span style="font-size:11px;color:#9ca3af;background:#f9fafb;padding:3px 9px;border-radius:10px">'+v.tipo+'</span>'+
           '</div>'+
-          '<div style="font-weight:700;font-size:15px;color:#111827;margin-bottom:4px">'+v.titulo+'</div>'+
-          '<div style="font-size:12px;color:#6b7280;margin-bottom:8px">📍 '+(v.bairro||v.end||'')+'</div>'+
-          (tags?'<div style="font-size:11px;color:#374151;background:#f9fafb;padding:5px 10px;border-radius:8px;margin-bottom:10px">'+tags+'</div>':'')+
-          (v.descricao?'<div style="font-size:12px;color:#4b5563;margin-bottom:10px;line-height:1.5;max-height:48px;overflow:hidden">'+v.descricao+'</div>':'')+
-          '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #f3f4f6">'+
-            '<div style="font-size:18px;font-weight:800;color:'+opCor+'">'+val+'</div>'+
+          '<div style="font-weight:800;font-size:15px;color:#111827;line-height:1.3">'+v.titulo+'</div>'+
+          (v.bairro||v.end?'<div style="font-size:12px;color:#6b7280">📍 '+(v.bairro||v.end)+'</div>':'')+
+          (tags?'<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+            [qStr,aStr,vStr,bStr].filter(Boolean).map(function(t){
+              return '<span style="background:#f3f4f6;color:#374151;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:600">'+t+'</span>';
+            }).join('')+
+          '</div>':'')+
+          (v.descricao?'<div style="font-size:12px;color:#6b7280;line-height:1.5;flex:1">'+v.descricao.slice(0,90)+(v.descricao.length>90?'…':'')+'</div>':'')+
+          '<div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #f3f4f6;margin-top:auto">'+
+            '<div style="font-size:20px;font-weight:900;color:'+opCor+'">'+val+'</div>'+
             '<div style="display:flex;gap:6px">'+
-              '<button onclick="vitWhatsapp('+idx+')" style="padding:6px 10px;border-radius:8px;border:1px solid #25D366;background:#25D366;color:#fff;font-size:11px;font-weight:700;cursor:pointer">📤 Enviar</button>'+
-              (isAdm?'<button onclick="eVitrine('+idx+')" style="padding:6px 10px;border-radius:8px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:11px;cursor:pointer">✏️</button>':'')+
-              (isAdm?'<button onclick="delVitrine('+idx+')" style="padding:6px 10px;border-radius:8px;border:1px solid #fca5a5;background:#fee2e2;color:#991b1b;font-size:11px;cursor:pointer">🗑</button>':'')+
+              '<button onclick="vitWhatsapp('+idx+')" style="padding:7px 12px;border-radius:8px;background:#25D366;color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer">📤 Enviar</button>'+
+              (isAdm?'<button onclick="eVitrine('+idx+')" style="padding:7px 10px;border-radius:8px;background:#f3f4f6;color:#374151;border:none;font-size:12px;cursor:pointer">✏️</button>':'')+
+              (isAdm?'<button onclick="delVitrine('+idx+')" style="padding:7px 10px;border-radius:8px;background:#fee2e2;color:#991b1b;border:none;font-size:12px;cursor:pointer">🗑</button>':'')+
             '</div>'+
           '</div>'+
         '</div>'+
       '</div>';
     });
     cards += '</div>';
-
-    // Botão gerar lista
-    cards += '<div style="margin-top:20px;text-align:center">'+
-      '<button onclick="vitGerarLista()" style="padding:12px 28px;background:#003DA5;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">📋 Gerar lista para cliente</button>'+
+    cards += '<div style="margin-top:24px;text-align:center">'+
+      '<button onclick="vitGerarLista()" style="padding:13px 32px;background:linear-gradient(90deg,#0f1a35,#003DA5);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(0,61,165,.25)">📋 Gerar lista para cliente</button>'+
     '</div>';
   }
 
   document.getElementById('pc').innerHTML =
-    '<div class="card"><div class="chd"><h3>🏠 Vitrine de Imóveis <span style="font-size:13px;font-weight:400;color:#6b7280">('+lista.length+' disponíveis)</span></h3></div>'+
+    '<div class="card"><div class="chd" style="display:flex;justify-content:space-between;align-items:center">'+
+      '<h3>🏠 Vitrine de Imóveis <span style="font-size:13px;font-weight:400;color:#9ca3af">('+lista.length+' disponível'+(lista.length!==1?'is':'')+')</span></h3>'+
+    '</div>'+
     '<div style="padding:16px">'+filtros+cards+'</div></div>';
 }
 
