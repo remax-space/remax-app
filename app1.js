@@ -66,6 +66,13 @@ function salvarTudo(){
   _saveTimer = setTimeout(async function(){
     try{
       var sb = getSB(); if(!sb) return;
+      // Proteção multi-usuário: ler versão atual antes de gravar
+      var _vRes = await sb.from('app_state').select('updated_at').eq('id','remax_space_main').single();
+      var _vAtual = _vRes.data && _vRes.data.updated_at ? _vRes.data.updated_at : '';
+      if(_lastSaved && _vAtual && _vAtual > _lastSaved && (new Date(_vAtual)-new Date(_lastSaved))>3000){
+        // Outro usuário salvou dados mais recentes — recarregar antes de sobrescrever
+        await carregarDados();
+      }
       var estado = JSON.stringify({
         ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
         cp:cpD, mc:mcmvD, vs:vsD, iq:inqCad,
@@ -86,11 +93,13 @@ function salvarTudo(){
         ak:(typeof ASAAS_KEY!=='undefined'?ASAAS_KEY:''),
         au:(typeof ASAAS_URL!=='undefined'?ASAAS_URL:'')
       });
+      var _ts = new Date().toISOString();
       await sb.from('app_state').upsert({
         id:'remax_space_main',
         data: estado,
-        updated_at: new Date().toISOString()
+        updated_at: _ts
       });
+      _lastSaved = _ts;
       // Toast verde
       var t=document.getElementById('toast-nuvem');
       if(t){t.style.opacity='1';setTimeout(function(){t.style.opacity='0';},2500);}
@@ -104,6 +113,11 @@ async function carregarDados(){
     var res = await sb.from('app_state').select('data').eq('id','remax_space_main').single();
     if(res.data && res.data.data){
       var e = JSON.parse(res.data.data);
+      // Ao carregar, buscar também senhas individuais do auth_users
+      try{
+        var _auRes = await sb.from('auth_users').select('username,senha_hash');
+        if(_auRes.data){ _auRes.data.forEach(function(r){ if(r.username && r.senha_hash){ try{ senhas[r.username]=atob(r.senha_hash); }catch(x){} } }); }
+      }catch(_x){}
       if(e.ct && e.ct.length > 0) ctD = e.ct;
       if(e.iv && e.iv.length > 0) ivD = e.iv;
       if(e.ld) ldD = e.ld;
@@ -176,6 +190,7 @@ function showSaveToast(msg){
 
 var U = null, mFn = null;
 var senhas = {}; // Senhas carregadas do Supabase
+var _lastSaved = null; // Controle de conflito multi-usuário
 try{ var _sLocal=localStorage.getItem('_senhas'); if(_sLocal){ var _sObj=JSON.parse(_sLocal); Object.keys(_sObj).forEach(function(k){senhas[k]=_sObj[k];}); }}catch(e){}
 
 // ===== LOG DE AÇÕES =====
@@ -600,7 +615,11 @@ function menuUser() {
       if(senhaCorreta !== old){ err.textContent='Senha atual incorreta'; err.style.display='block'; return; }
       if(!nv || nv.length < 4){ err.textContent='Nova senha deve ter ao menos 4 caracteres'; err.style.display='block'; return; }
       if(nv !== conf){ err.textContent='Confirmacao nao confere'; err.style.display='block'; return; }
-      senhas[uKey] = nv; try{ var _s=JSON.parse(localStorage.getItem('_senhas')||'{}'); _s[uKey]=nv; localStorage.setItem('_senhas',JSON.stringify(_s)); }catch(e){}
+      senhas[uKey] = nv;
+      try{ var _s=JSON.parse(localStorage.getItem('_senhas')||'{}'); _s[uKey]=nv; localStorage.setItem('_senhas',JSON.stringify(_s)); }catch(e){}
+      var _sb2=getSB();
+      if(_sb2){ try{ var _u2=USR[uKey]||{}; _sb2.from('auth_users').upsert({username:uKey,senha_hash:btoa(nv),nome:_u2.nome||uKey,ini:_u2.ini||uKey.slice(0,2).toUpperCase(),cor:_u2.cor||'#003DA5',role:_u2.role||'Corretor',role_key:_u2.role_key||'corretor',updated_at:new Date().toISOString()}); }catch(_e){} }
+      salvarTudo();
       cM();
       alert('Senha alterada com sucesso!');
     }, 'Alterar Senha');
@@ -619,11 +638,18 @@ function abrirAlterarSenha() {
       var nv = document.getElementById('las-new').value;
       var conf = document.getElementById('las-conf').value;
       var err = document.getElementById('las-err');
-      if(!senhas[u]){ err.textContent='Usuario nao encontrado'; err.style.display='block'; return; }
-      if(senhas[u]!==old){ err.textContent='Senha atual incorreta'; err.style.display='block'; return; }
+      if(!USR[u] && !senhas[u]){ err.textContent='Usuario nao encontrado'; err.style.display='block'; return; }
+      var _sp={'tatiana':'remax2024','lbasile':'l123','meirielli':'m123','tayna':'remax2024','tmoraes':'remax2024','sjustino':'remax2024','talyta':'remax2024','carlos':'remax2024','dubem':'remax2024'};
+      var _sc = senhas[u] || _sp[u] || '1234';
+      if(_sc!==old){ err.textContent='Senha atual incorreta'; err.style.display='block'; return; }
       if(!nv||nv.length<4){ err.textContent='Nova senha muito curta (min 4)'; err.style.display='block'; return; }
       if(nv!==conf){ err.textContent='Confirmacao nao confere'; err.style.display='block'; return; }
-      senhas[u]=nv; cM(); alert('Senha alterada com sucesso!');
+      senhas[u]=nv;
+      try{ var _sl=JSON.parse(localStorage.getItem('_senhas')||'{}'); _sl[u]=nv; localStorage.setItem('_senhas',JSON.stringify(_sl)); }catch(e){}
+      var _sb3=getSB();
+      if(_sb3){ try{ var _u3=USR[u]||{}; _sb3.from('auth_users').upsert({username:u,senha_hash:btoa(nv),nome:_u3.nome||u,ini:_u3.ini||u.slice(0,2).toUpperCase(),cor:_u3.cor||'#003DA5',role:_u3.role||'Corretor',role_key:_u3.role_key||'corretor',updated_at:new Date().toISOString()}); }catch(_e){} }
+      salvarTudo();
+      cM(); alert('Senha alterada com sucesso!');
     }, 'Alterar Senha');
 }
 
