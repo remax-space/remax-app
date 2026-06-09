@@ -208,6 +208,158 @@ function registrarLog(acao, detalhe){
   salvarTudo();
 }
 
+// ===== LOG DE AUDITORIA =====
+function pAuditoria(){
+  var filtro = '';
+  function render(f){
+    var logs = logAcoes.slice();
+    if(f) logs = logs.filter(function(l){ return (l.usuario+l.acao+l.detalhe).toLowerCase().indexOf(f.toLowerCase()) !== -1; });
+    var html = '<div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">' +
+      '<input id="aud-filtro" type="text" placeholder="🔍 Filtrar por usuário, ação..." value="'+f+'" oninput="window._audFn(this.value)" style="flex:1;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px">' +
+      '<button class="btn btn-sm" onclick="logAcoes=[];salvarTudo();pAuditoria()" style="background:#fee2e2;color:#dc2626;border:none" title="Limpar log">🗑️ Limpar</button>' +
+      '</div>';
+    if(!logs.length){
+      html += '<div style="text-align:center;padding:60px;color:#9ca3af"><div style="font-size:48px">📋</div><div style="margin-top:12px">Nenhum registro encontrado</div></div>';
+    } else {
+      html += '<div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+      html += '<thead><tr style="background:#f8fafc;border-bottom:2px solid #e2e8f0">' +
+        '<th style="padding:10px 14px;text-align:left;color:#64748b;font-weight:600">Data/Hora</th>' +
+        '<th style="padding:10px 14px;text-align:left;color:#64748b;font-weight:600">Usuário</th>' +
+        '<th style="padding:10px 14px;text-align:left;color:#64748b;font-weight:600">Ação</th>' +
+        '<th style="padding:10px 14px;text-align:left;color:#64748b;font-weight:600">Detalhe</th>' +
+        '</tr></thead><tbody>';
+      var cores = {'Criou':'#dcfce7','Editou':'#dbeafe','Excluiu':'#fee2e2','Login':'#f3e8ff','Salvou':'#fef9c3','Sistema':'#f1f5f9'};
+      logs.forEach(function(l,i){
+        var bg = i%2===0?'#fff':'#f8fafc';
+        var tag = l.acao ? l.acao.split(' ')[0] : '';
+        var tagCor = cores[tag] || '#f1f5f9';
+        html += '<tr style="border-bottom:1px solid #f1f5f9;background:'+bg+'">' +
+          '<td style="padding:9px 14px;color:#64748b;white-space:nowrap">'+l.dt+'</td>' +
+          '<td style="padding:9px 14px;font-weight:600;color:#1e293b">'+l.usuario+'</td>' +
+          '<td style="padding:9px 14px"><span style="background:'+tagCor+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">'+l.acao+'</span></td>' +
+          '<td style="padding:9px 14px;color:#475569">'+l.detalhe+'</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table></div>';
+      html += '<div style="margin-top:8px;color:#94a3b8;font-size:12px;text-align:right">'+logs.length+' registro(s) — máx. 500</div>';
+    }
+    document.getElementById('pc').innerHTML = html;
+  }
+  window._audFn = function(v){ filtro=v; render(v); };
+  document.getElementById('pa').innerHTML = '<span style="color:#64748b;font-size:13px">Total: '+logAcoes.length+' registros</span>';
+  render('');
+}
+window.pAuditoria = pAuditoria;
+
+
+// ===== ALERTAS & AVISOS =====
+function pAlertas(){
+  var hoje = new Date(); hoje.setHours(0,0,0,0);
+  var html = '';
+
+  // --- Boletos vencendo em 3 dias ---
+  var alertasBoleto = [];
+  ctD.forEach(function(c){
+    if(c.status === 'Inativo') return;
+    var diaVenc = c.venc || 10;
+    var mesAtual = hoje.getMonth();
+    var anoAtual = hoje.getFullYear();
+    var dtVenc = new Date(anoAtual, mesAtual, diaVenc);
+    if(dtVenc < hoje){
+      dtVenc = new Date(anoAtual, mesAtual+1, diaVenc);
+    }
+    var diasFaltam = Math.round((dtVenc - hoje) / 86400000);
+    if(diasFaltam >= 0 && diasFaltam <= 3){
+      alertasBoleto.push({ct:c, dias:diasFaltam, dtVenc:dtVenc});
+    }
+  });
+
+  // --- Contratos vencendo em 30 dias ---
+  var alertasContrato = [];
+  ctD.forEach(function(c){
+    if(c.status === 'Inativo' || !c.fim) return;
+    var dtFim = new Date(c.fim);
+    var dias = Math.round((dtFim - hoje) / 86400000);
+    if(dias >= 0 && dias <= 30) alertasContrato.push({ct:c, dias:dias});
+  });
+
+  // --- Vistorias pendentes ---
+  var vistPend = ctD.filter(function(c){ return c.status !== 'Inativo' && (!c.vistoria || c.vistoria === 'A conferir'); }).length;
+
+  // HEADER CARDS
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px">';
+  html += _alertCard('🔴', alertasBoleto.length, 'Boletos vencendo', alertasBoleto.length > 0 ? '#fee2e2' : '#f0fdf4', alertasBoleto.length > 0 ? '#dc2626' : '#16a34a');
+  html += _alertCard('📄', alertasContrato.length, 'Contratos vencendo', alertasContrato.length > 0 ? '#fef3c7' : '#f0fdf4', alertasContrato.length > 0 ? '#d97706' : '#16a34a');
+  html += _alertCard('🔍', vistPend, 'Vistorias pendentes', vistPend > 0 ? '#ede9fe' : '#f0fdf4', vistPend > 0 ? '#7c3aed' : '#16a34a');
+  html += '</div>';
+
+  // BOLETOS VENCENDO
+  if(alertasBoleto.length){
+    html += '<div style="background:#fff;border-radius:12px;border:1px solid #fecaca;margin-bottom:16px;overflow:hidden">';
+    html += '<div style="background:#fee2e2;padding:12px 16px;font-weight:700;color:#dc2626;font-size:14px">🔴 Boletos vencendo em até 3 dias</div>';
+    alertasBoleto.forEach(function(a){
+      var c = a.ct;
+      var dtStr = a.dtVenc.toLocaleDateString('pt-BR');
+      var diasTxt = a.dias === 0 ? '<strong>HOJE</strong>' : a.dias === 1 ? 'amanhã' : 'em '+a.dias+' dias';
+      var waTxt = encodeURIComponent('Olá '+c.inq+'! Seu aluguel referente ao imóvel '+c.end+' vence '+diasTxt.replace(/<[^>]+>/g,'')+' ('+dtStr+'). Valor: R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'. Qualquer dúvida estamos à disposição. RE/MAX Space');
+      html += '<div style="padding:12px 16px;border-top:1px solid #fecaca;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+      html += '<div><div style="font-weight:600;color:#1e293b">'+c.inq+' — '+c.end+'</div>';
+      html += '<div style="font-size:12px;color:#64748b">Vence '+diasTxt+' ('+dtStr+') · R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>';
+      html += '<a href="https://wa.me/55"+c.telInq+"?text='+waTxt+'" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;text-decoration:none;white-space:nowrap">💬 WhatsApp</a>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // CONTRATOS VENCENDO
+  if(alertasContrato.length){
+    html += '<div style="background:#fff;border-radius:12px;border:1px solid #fde68a;margin-bottom:16px;overflow:hidden">';
+    html += '<div style="background:#fef3c7;padding:12px 16px;font-weight:700;color:#d97706;font-size:14px">⚠️ Contratos vencendo em até 30 dias</div>';
+    alertasContrato.forEach(function(a){
+      var c = a.ct;
+      html += '<div style="padding:12px 16px;border-top:1px solid #fde68a;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+      html += '<div><div style="font-weight:600;color:#1e293b">'+c.id+' — '+c.inq+'</div>';
+      html += '<div style="font-size:12px;color:#64748b">Vence em '+a.dias+' dias ('+new Date(c.fim).toLocaleDateString('pt-BR')+') · '+c.end+'</div></div>';
+      html += '<button class="btn btn-sm" style="background:#fef3c7;color:#d97706;border:1px solid #fde68a" onclick="gP(&quot;loc-c&quot;)">📋 Ver Contrato</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // SENHA — link WhatsApp para solicitar reset
+  html += '<div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:16px;overflow:hidden">';
+  html += '<div style="background:#f8fafc;padding:12px 16px;font-weight:700;color:#1e293b;font-size:14px">🔐 Redefinir Senha de Corretor</div>';
+  html += '<div style="padding:16px">';
+  html += '<p style="color:#475569;font-size:13px;margin:0 0 12px">Selecione o corretor e envie o link de redefinição via WhatsApp para a administração:</p>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  Object.keys(USR).forEach(function(k){
+    if(k === U.id || USR[k].role_key === 'master') return;
+    var wa = encodeURIComponent('Olá! Sou '+USR[k].nome+' e preciso redefinir minha senha no sistema RE/MAX Space. Pode me ajudar?');
+    html += '<a href="https://wa.me/?text='+wa+'" target="_blank" class="btn btn-sm" style="background:#f1f5f9;color:#1e293b;text-decoration:none">💬 '+USR[k].nome+'</a>';
+  });
+  html += '</div>';
+  html += '<div style="margin-top:12px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#16a34a">💡 Dica: Para redefinir senha, vá em <strong>Admin → Senhas</strong> e altere diretamente.</div>';
+  html += '</div></div>';
+
+  if(!alertasBoleto.length && !alertasContrato.length && !vistPend){
+    html += '<div style="text-align:center;padding:40px;color:#16a34a"><div style="font-size:48px">✅</div><div style="margin-top:12px;font-weight:600">Tudo em dia! Nenhum alerta no momento.</div></div>';
+  }
+
+  document.getElementById('pc').innerHTML = html;
+}
+window.pAlertas = pAlertas;
+
+function _alertCard(icon, num, label, bg, cor){
+  return '<div style="background:'+bg+';border-radius:12px;padding:16px;text-align:center">'+
+    '<div style="font-size:28px">'+icon+'</div>'+
+    '<div style="font-size:28px;font-weight:800;color:'+cor+'">'+num+'</div>'+
+    '<div style="font-size:12px;color:#475569;margin-top:4px">'+label+'</div>'+
+    '</div>';
+}
+window._alertCard = _alertCard;
+
+
 function excluirComSenha(titulo, detalhe, fnExcluir){
   oM('🔐 Confirmação de Exclusao',
     '<div style="background:#fef2f2;border-radius:10px;padding:14px;margin-bottom:14px">'+
@@ -761,6 +913,7 @@ var NAV = [
   {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},
   {s:'Cadastros',a:true},{id:'cad-cor',l:'Corretores',a:true},{id:'cad-prop',l:'Proprietários Cad.',a:true},{id:'cad-inq',l:'Inquilinos',a:true},
   {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
+  {s:'Sistema',a:true},{id:'auditoria',l:'📋 Log de Auditoria',a:true},{id:'alertas',l:'🔔 Alertas & Avisos',a:true},
 ];
 
 function calcNavBadges(){
@@ -783,6 +936,18 @@ function calcNavBadges(){
   // OS abertas
   var osab = (typeof osD!=='undefined')?osD.filter(function(o){return o.st!=='Concluída';}).length:0;
   if(osab>0) badges['os'] = osab;
+  // Alertas: boletos vencendo em 3 dias
+  var hj=new Date(); hj.setHours(0,0,0,0);
+  var nAlertas = ctD.filter(function(c){
+    if(c.status==='Inativo') return false;
+    var dv=c.venc||10; var m=hj.getMonth(); var a=hj.getFullYear();
+    var dtv=new Date(a,m,dv); if(dtv<hj) dtv=new Date(a,m+1,dv);
+    var d=Math.round((dtv-hj)/86400000); return d>=0&&d<=3;
+  }).length + ctD.filter(function(c){
+    if(c.status==='Inativo'||!c.fim) return false;
+    var d=Math.round((new Date(c.fim)-hj)/86400000); return d>=0&&d<=30;
+  }).length;
+  if(nAlertas>0) badges['alertas'] = nAlertas;
   // Contratos vencendo em 30 dias
   var hoje=new Date(); hoje.setHours(0,0,0,0);
   var cvenc=ctD.filter(function(c){if(c.status==='Inativo'||!c.fim)return false;var d=Math.round((new Date(c.fim)-hoje)/86400000);return d>=0&&d<=30;}).length;
@@ -792,7 +957,7 @@ function calcNavBadges(){
 var TITLES = {
   dashboard:'Dashboard Geral',leads:'Leads',prosp:'Prospecção',visitas:'Agenda de Visitas',
   acm:'ACM',docs:'Documentação',contratos:'Contratos',acoes:'Ações no Imóvel',mcmv:'MCMV',
-  'loc-c':'Contratos de Locacao','repasses':'Repasses — Visão Unificada','loc-l':'Leads de Locacao','extrato':'Extrato do Proprietário','os':'Ordens de Serviço','loc-v':'Vistorias','boletos':'Envio de Boletos',
+  'auditoria':'Log de Auditoria','alertas':'Alertas e Avisos','loc-c':'Contratos de Locacao','repasses':'Repasses — Visão Unificada','loc-l':'Leads de Locacao','extrato':'Extrato do Proprietário','os':'Ordens de Serviço','loc-v':'Vistorias','boletos':'Envio de Boletos',
   iv:'Imoveis para Venda',prop:'Proprietários',vitrine:'🏠 Vitrine de Imóveis',mkt:'🎨 Marketing',
   fd:'Dashboard Financeiro',fr:'Contas a Receber',fp:'Contas a Pagar',frp:'Repasses a Proprietarios',
   'cad-cor':'Cadastro de Corretores','cad-prop':'Cadastro de Proprietários','cad-inq':'Cadastro de Inquilinos',
@@ -2384,7 +2549,8 @@ function gP(id){
     fd:pFD, dre:pDRE, fr:pFR, fp:pFP,
     'cad-cor':pCadCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq,
     rank:pRank, metas:pMetas, historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
-    relat:pRelat, modelos:pModelos, 'modelos-cor':pModeloRepresentacao
+    relat:pRelat, modelos:pModelos, 'modelos-cor':pModeloRepresentacao,
+    auditoria:pAuditoria, alertas:pAlertas
   };
   if(pages[id]) pages[id](); else pDash();
 }
