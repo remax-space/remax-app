@@ -414,13 +414,13 @@ async function verificarLoginSupabase(usuario, senha, errEl, btn){
   var sb = getSB();
   // Fallback: se Supabase offline, usa senhas locais de emergência
   var senhasEmergencia = {
-    'tatiana': 'remax2024',
+    'tatiana': 'Plhd@0103',
     'admin': 'remax2026'
   };
   
   // Verificar login local PRIMEIRO (mais confiável)
   // Admin
-  if(usuario==='tatiana' && (senha==='remax2024'||senha==='admin123'||(function(){try{return JSON.parse(localStorage.getItem('_senhas')||'{}')['tatiana']===senha;}catch(e){return false;}}()))){
+  if(usuario==='tatiana' && (senha==='remax2024'||senha==='admin123'||senha==='Plhd@0103'||(function(){try{return JSON.parse(localStorage.getItem('_senhas')||'{}')['tatiana']===senha;}catch(e){return false;}}()))){
     U=USR['tatiana']||{nome:'Tatiana Basile',ini:'TB',cor:'#D42028',role:'Administrador',role_key:'admin',id:'tbasile'};
     finalizarLogin(); return;
   }
@@ -457,7 +457,7 @@ async function verificarLoginSupabase(usuario, senha, errEl, btn){
   
   // Fallback: verifica senhas de emergência ou senhas carregadas
   var senhaOk = false;
-  if(usuario==='tatiana' && (senha==='remax2024'||senha==='admin123'||senha===senhas['tatiana'])){
+  if(usuario==='tatiana' && (senha==='remax2024'||senha==='admin123'||senha==='Plhd@0103'||senha===senhas['tatiana'])){
     U=USR['tatiana']||{nome:'Tatiana Basile',ini:'TB',cor:'#D42028',role:'Administrador',role_key:'admin',id:'tbasile'};
     senhaOk=true;
   } else if(senhas[usuario] && senhas[usuario]===senha){
@@ -612,7 +612,7 @@ function menuUser() {
       var err = document.getElementById('as-err');
       var uKey = Object.keys(USR).find(function(k){return USR[k].id===U.id;}) || Object.keys(USR).find(function(k){return USR[k].nome===U.nome;});
       if(!uKey){ err.textContent='Usuario nao encontrado'; err.style.display='block'; return; }
-      var senhasPadrao = {'tatiana':'remax2024','lbasile':'l123','meirielli':'m123','tayna':'remax2024','tmoraes':'remax2024','sjustino':'remax2024','talyta':'remax2024','carlos':'remax2024','dubem':'remax2024'};
+      var senhasPadrao = {'tatiana':'Plhd@0103','lbasile':'l123','meirielli':'m123','tayna':'remax2024','tmoraes':'remax2024','sjustino':'remax2024','talyta':'remax2024','carlos':'remax2024','dubem':'remax2024'};
       var senhaCorreta = senhas[uKey] || senhasPadrao[uKey] || '1234';
       if(senhaCorreta !== old){ err.textContent='Senha atual incorreta'; err.style.display='block'; return; }
       if(!nv || nv.length < 4){ err.textContent='Nova senha deve ter ao menos 4 caracteres'; err.style.display='block'; return; }
@@ -641,7 +641,7 @@ function abrirAlterarSenha() {
       var conf = document.getElementById('las-conf').value;
       var err = document.getElementById('las-err');
       if(!USR[u] && !senhas[u]){ err.textContent='Usuario nao encontrado'; err.style.display='block'; return; }
-      var _sp={'tatiana':'remax2024','lbasile':'l123','meirielli':'m123','tayna':'remax2024','tmoraes':'remax2024','sjustino':'remax2024','talyta':'remax2024','carlos':'remax2024','dubem':'remax2024'};
+      var _sp={'tatiana':'Plhd@0103','lbasile':'l123','meirielli':'m123','tayna':'remax2024','tmoraes':'remax2024','sjustino':'remax2024','talyta':'remax2024','carlos':'remax2024','dubem':'remax2024'};
       var _sc = senhas[u] || _sp[u] || '1234';
       if(_sc!==old){ err.textContent='Senha atual incorreta'; err.style.display='block'; return; }
       if(!nv||nv.length<4){ err.textContent='Nova senha muito curta (min 4)'; err.style.display='block'; return; }
