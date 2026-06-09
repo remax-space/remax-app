@@ -17,6 +17,7 @@ var SUPA_URL = 'https://pokgfnlywtgubpuswmni.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBva2dmbmx5d3RndWJwdXN3bW5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1OTYwNzgsImV4cCI6MjA5NTE3MjA3OH0.wK2qG14wMA7FVnVT0NKEbbLZyAIZkSahsChRivgd-Ko';
 var _sb = null;
 var _saveTimer = null;
+var _pollTimer = null; // Sync automático multi-usuário
 
 function getSB(){
   if(!_sb && window.supabase){
@@ -501,6 +502,7 @@ function finalizarLogin(){
   bSB();
   // Start agenda notifications
   setTimeout(iniciarNotificacoes, 2000);
+  setTimeout(iniciarSync, 3000); // Sync automático multi-usuário
   // Wire global search
   setTimeout(function(){
     var gsi = document.getElementById('gs-inp');
@@ -3196,6 +3198,30 @@ function iniciarNotificacoes(){
   _agNotifTimer = setInterval(verificarLembretes, 30000);
   verificarLembretes();
 }
+
+// ===== SYNC AUTOMÁTICO MULTI-USUÁRIO =====
+function iniciarSync(){
+  if(_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(async function(){
+    try{
+      var sb = getSB(); if(!sb) return;
+      var res = await sb.from('app_state').select('updated_at').eq('id','remax_space_main').single();
+      var updAt = res.data && res.data.updated_at ? res.data.updated_at : null;
+      if(updAt && _lastSaved && updAt > _lastSaved && (new Date(updAt)-new Date(_lastSaved)) > 2000){
+        // Outro usuário salvou — recarregar silenciosamente
+        await carregarDados();
+        _lastSaved = updAt;
+        // Atualizar tela atual
+        var modAtual = document.querySelector('.nav-item.active');
+        if(modAtual){ var fn = modAtual.getAttribute('onclick'); if(fn) eval(fn); }
+        // Toast azul discreto
+        var t = document.getElementById('toast-sync');
+        if(t){ t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
+      }
+    }catch(e){}
+  }, 30000);
+}
+window.iniciarSync = iniciarSync;
 
 function verificarLembretes(){
   if(!agD||!agD.length) return;
