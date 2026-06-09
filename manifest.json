@@ -1,8 +1,9 @@
 {
   "name": "RE/MAX Space",
   "short_name": "RE/MAX Space",
-  "description": "Sistema de gestão RE/MAX Space - Caldas Novas GO",
-  "start_url": "/",
+  "description": "Sistema de gest\u00e3o RE/MAX Space - Caldas Novas GO",
+  "start_url": "https://www.remaxspace.com.br/",
+  "scope": "https://www.remaxspace.com.br/",
   "display": "standalone",
   "background_color": "#0d1829",
   "theme_color": "#0d1829",
