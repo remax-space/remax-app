@@ -3661,52 +3661,174 @@ function gerarExtratoWA(prop){
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
-function gerarExtratoPDF(prop){
-  var contratos = ctD.filter(function(c){return c.prop===prop&&c.status!=='Inativo';});
-  var total = contratos.reduce(function(s,c){return s+c.valor;},0);
+function gerarExtratoPDF(prop, mesParam, anoParam){
   var hoje = new Date();
-  var mes = hoje.toLocaleString('pt-BR',{month:'long',year:'numeric'});
-  mes = mes.charAt(0).toUpperCase()+mes.slice(1);
-  var meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  var mesAtual = hoje.getMonth();
+  var mesAtual = (mesParam !== undefined) ? mesParam : hoje.getMonth();
+  var anoAtual = (anoParam !== undefined) ? anoParam : hoje.getFullYear();
+  var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var mesesAbr = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var mesNome = meses[mesAtual];
+  var contratos = ctD.filter(function(c){ return c.prop===prop && c.status!=='Inativo'; });
+  if(!contratos.length){ alert('Nenhum contrato ativo para '+prop); return; }
 
+  var totalBruto = contratos.reduce(function(s,c){ return s+c.valor; }, 0);
+  var totalAdm = totalBruto * 0.10;
+  var totalLiq = totalBruto * 0.90;
+  var recebidos = contratos.filter(function(c){ return c.rs && c.rs[mesAtual]==='R'; });
+  var totalRec = recebidos.reduce(function(s,c){ return s+c.valor*.9; }, 0);
+
+  // Descontos do mês
+  var descKey = prop+'_'+mesAtual+'_'+anoAtual;
+  var descs = (typeof descontosExtra!=='undefined' && descontosExtra[descKey]) ? descontosExtra[descKey] : [];
+  var totalDesc = descs.reduce(function(s,d){ return s+d.valor; }, 0);
+  var totalFinal = totalLiq - totalDesc;
+
+  // Rows de contratos
   var rows = contratos.map(function(c){
-    var st = c.rs&&c.rs[mesAtual]==='R'?'<span style="color:green;font-weight:700">Recebido</span>':'<span style="color:red">Pendente</span>';
-    return '<tr><td>'+c.id+'</td><td>'+c.inq+'</td><td>'+c.tipo+'</td>'
-      +'<td style="text-align:right">R$ '+c.valor.toFixed(2)+'</td>'
-      +'<td style="text-align:right;font-weight:700">R$ '+(c.valor*.9).toFixed(2)+'</td>'
-      +'<td>Dia '+c.venc+'</td><td>'+st+'</td></tr>';
+    var st = c.rs && c.rs[mesAtual]==='R';
+    var stTag = st
+      ? '<span style="background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700">✓ Recebido</span>'
+      : '<span style="background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700">⚠ Pendente</span>';
+    return '<tr>'+
+      '<td style="padding:9px 12px;font-weight:600;color:#1e293b">'+c.id+'</td>'+
+      '<td style="padding:9px 12px">'+c.inq+'</td>'+
+      '<td style="padding:9px 12px">'+c.tipo+'</td>'+
+      '<td style="padding:9px 12px">'+c.end+'</td>'+
+      '<td style="padding:9px 12px;text-align:center">Dia '+c.venc+'</td>'+
+      '<td style="padding:9px 12px;text-align:right;font-weight:600">R$ '+c.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</td>'+
+      '<td style="padding:9px 12px;text-align:right;color:#16a34a;font-weight:700">R$ '+(c.valor*.9).toLocaleString("pt-BR",{minimumFractionDigits:2})+'</td>'+
+      '<td style="padding:9px 12px;text-align:center">'+stTag+'</td>'+
+      '</tr>';
   }).join('');
 
-  // Histórico
-  var histRows = meses.map(function(m,mi){
-    var rec = contratos.filter(function(c){return c.rs&&c.rs[mi]==='R';});
-    var val = rec.reduce(function(s,c){return s+c.valor*.9;},0);
-    return '<tr style="background:'+(mi%2?'#f9fafb':'#fff')+'"><td>'+m+'/'+hoje.getFullYear()+'</td>'
-      +'<td>'+rec.length+'/'+contratos.length+' contratos</td>'
-      +'<td style="text-align:right;font-weight:600">R$ '+val.toFixed(2)+'</td>'
-      +'<td><div style="background:#e5e7eb;border-radius:4px;height:8px;width:100%"><div style="background:#003DA5;border-radius:4px;height:8px;width:'+(total*.9>0?Math.round(val/total*.9*100):0)+'%"></div></div></td>'
-      +'</tr>';
+  // Rows de descontos
+  var descRows = descs.length ? descs.map(function(d){
+    return '<tr><td colspan="6" style="padding:8px 12px;color:#dc2626">'+d.desc+'</td>'+
+      '<td style="padding:8px 12px;text-align:right;color:#dc2626;font-weight:600">- R$ '+d.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</td><td></td></tr>';
+  }).join('') : '';
+
+  // Histórico 12 meses
+  var histRows = mesesAbr.map(function(m,mi){
+    var rec = contratos.filter(function(c){ return c.rs && c.rs[mi]==='R'; });
+    var val = rec.reduce(function(s,c){ return s+c.valor*.9; }, 0);
+    var pct = totalLiq > 0 ? Math.round(val/totalLiq*100) : 0;
+    var isCurrent = mi === mesAtual;
+    return '<tr style="background:'+(mi%2===0?'#f8fafc':'#fff')+';'+(isCurrent?'border-left:3px solid #D42028;':'')+'">' +
+      '<td style="padding:8px 12px;font-weight:'+(isCurrent?'700':'400')+';color:'+(isCurrent?'#D42028':'#475569')+'">'+m+'/'+anoAtual+'</td>'+
+      '<td style="padding:8px 12px;text-align:center">'+rec.length+'/'+contratos.length+'</td>'+
+      '<td style="padding:8px 12px;text-align:right;font-weight:'+(isCurrent?'700':'400')+';color:'+(isCurrent?'#D42028':'#1e293b')+'">R$ '+val.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</td>'+
+      '<td style="padding:8px 12px"><div style="background:#e2e8f0;border-radius:99px;height:10px;width:100%"><div style="background:'+(isCurrent?'#D42028':'#003DA5')+';height:10px;border-radius:99px;width:'+pct+'%;transition:width .3s"></div></div><span style="font-size:10px;color:#94a3b8">'+pct+'%</span></td>'+
+      '</tr>';
   }).join('');
 
-  gerarHTML('Extrato de Repasse — '+prop+' — '+mes,
-    '<div style="background:#0f1a35;color:#fff;border-radius:12px;padding:20px;margin-bottom:20px">'
-    +'<div style="font-size:18px;font-weight:700">Extrato de Repasse</div>'
-    +'<div style="font-size:13px;opacity:.8;margin-top:4px">Proprietário: <b>'+prop+'</b> | Competência: '+mes+'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px">'
-    +'<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;opacity:.7">Aluguel Bruto</div><div style="font-size:20px;font-weight:700">R$ '+total.toFixed(2)+'</div></div>'
-    +'<div style="background:rgba(212,32,40,.3);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;opacity:.7">ADM 10%</div><div style="font-size:20px;font-weight:700">R$ '+(total*.1).toFixed(2)+'</div></div>'
-    +'<div style="background:rgba(22,163,74,.3);border-radius:8px;padding:12px;text-align:center"><div style="font-size:10px;opacity:.7">Repasse Líquido</div><div style="font-size:20px;font-weight:700">R$ '+(total*.9).toFixed(2)+'</div></div>'
-    +'</div></div>'
-    +'<h2>Contratos — '+mes+'</h2>'
-    +'<table><thead><tr><th>CT</th><th>Inquilino</th><th>Tipo</th><th style="text-align:right">Aluguel</th><th style="text-align:right">Repasse</th><th>Venc</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody>'
-    +'<tfoot><tr style="background:#0f1a35;color:#fff"><td colspan="3"><b>TOTAL</b></td><td style="text-align:right"><b>R$ '+total.toFixed(2)+'</b></td><td style="text-align:right"><b>R$ '+(total*.9).toFixed(2)+'</b></td><td colspan="2"></td></tr></tfoot>'
-    +'</table>'
-    +'<h2>Histórico 2026</h2>'
-    +'<table><thead><tr><th>Mês</th><th>Recebidos</th><th style="text-align:right">Valor Repassado</th><th style="width:200px">Progressão</th></tr></thead><tbody>'+histRows+'</tbody></table>'
-    +'<div style="margin-top:20px;padding:14px;background:#f0fdf4;border-radius:8px;font-size:11px;color:#166534;text-align:center">'
-    +'Este extrato foi gerado automaticamente pelo sistema RE/MAX Space em '+new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR')+'</div>');
+  // Logo SVG RE/MAX
+  var logo = '<svg width="48" height="54" viewBox="0 0 74 84" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="cp"><path d="M37 0C16.6 0 0 16.6 0 37C0 57.4 37 84 37 84S74 57.4 74 37C74 16.6 57.4 0 37 0Z"/></clipPath></defs><path d="M37 0C16.6 0 0 16.6 0 37C0 57.4 37 84 37 84S74 57.4 74 37C74 16.6 57.4 0 37 0Z" fill="#f0f0f0" clip-path="url(#cp)"/><rect x="0" y="0" width="37" height="42" fill="#D42028" clip-path="url(#cp)"/><rect x="37" y="0" width="37" height="42" fill="#003DA5" clip-path="url(#cp)"/><rect x="0" y="42" width="37" height="42" fill="#B9975B" clip-path="url(#cp)"/><rect x="37" y="42" width="37" height="42" fill="#fff" clip-path="url(#cp)"/><rect x="34" y="0" width="6" height="84" fill="#fff" clip-path="url(#cp)"/><rect x="0" y="39" width="74" height="6" fill="#fff" clip-path="url(#cp)"/></svg>';
+
+  var gerado = new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+  var html = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'+
+    '<title>Extrato — '+prop+' — '+mesNome+'/'+anoAtual+'</title>'+
+    '<style>'+
+      '*{box-sizing:border-box;margin:0;padding:0}'+
+      'body{font-family:"Segoe UI",Arial,sans-serif;color:#1e293b;background:#f1f5f9;print-color-adjust:exact;-webkit-print-color-adjust:exact}'+
+      '.page{background:#fff;max-width:900px;margin:0 auto;padding:0}'+
+      '.header{background:linear-gradient(135deg,#0f1a35 0%,#1e3a5f 100%);color:#fff;padding:28px 36px;display:flex;justify-content:space-between;align-items:flex-start}'+
+      '.header-left{display:flex;align-items:center;gap:16px}'+
+      '.header-title{font-size:22px;font-weight:800;letter-spacing:.5px}'+
+      '.header-sub{font-size:12px;opacity:.75;margin-top:4px}'+
+      '.header-right{text-align:right;font-size:12px;opacity:.8}'+
+      '.header-right strong{display:block;font-size:18px;font-weight:800;opacity:1;margin-bottom:2px}'+
+      '.info-bar{background:#0f1a35;color:#fff;padding:10px 36px;display:flex;gap:24px;font-size:11px;opacity:.85}'+
+      '.info-bar span strong{opacity:1}'+
+      '.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:3px solid #e2e8f0}'+
+      '.card-kpi{padding:18px 20px;text-align:center;border-right:1px solid #e2e8f0}'+
+      '.card-kpi:last-child{border-right:none}'+
+      '.card-kpi .label{font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}'+
+      '.card-kpi .value{font-size:20px;font-weight:800}'+
+      '.card-kpi .sub{font-size:10px;color:#94a3b8;margin-top:3px}'+
+      '.section{padding:24px 36px}'+
+      '.section-title{font-size:13px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px;display:flex;align-items:center;gap:8px}'+
+      '.section-title::after{content:"";flex:1;height:1px;background:#e2e8f0}'+
+      'table{width:100%;border-collapse:collapse;font-size:12px}'+
+      'thead th{background:#0f1a35;color:#fff;padding:10px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.3px}'+
+      'tbody tr:nth-child(even){background:#f8fafc}'+
+      'tbody tr:hover{background:#f0f9ff}'+
+      'tfoot td{background:#0f1a35;color:#fff;padding:10px 12px;font-weight:700}'+
+      '.footer{background:#f8fafc;border-top:2px solid #e2e8f0;padding:16px 36px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#94a3b8}'+
+      '.badge-ok{background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}'+
+      '.badge-pend{background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}'+
+      '@media print{body{background:#fff}.page{box-shadow:none}@page{margin:10mm;size:A4}}'+
+    '</style></head><body>'+
+    '<div class="page">'+
+      '<div class="header">'+
+        '<div class="header-left">'+logo+
+          '<div>'+
+            '<div class="header-title">RE/MAX Space</div>'+
+            '<div class="header-sub">Extrato de Repasse ao Proprietário</div>'+
+            '<div class="header-sub" style="margin-top:2px;opacity:.6">CRECI 41.377-J · Caldas Novas - GO</div>'+
+          '</div>'+
+        '</div>'+
+        '<div class="header-right">'+
+          '<strong>'+mesNome+' / '+anoAtual+'</strong>'+
+          '<div>Gerado em '+gerado+'</div>'+
+          '<div style="margin-top:6px;font-size:13px;opacity:1;font-weight:700">'+prop+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="info-bar">'+
+        '<span>📋 <strong>'+contratos.length+'</strong> contrato(s) ativo(s)</span>'+
+        '<span>✅ <strong>'+recebidos.length+'</strong> recebido(s)</span>'+
+        '<span>📅 Vencimentos: dia(s) '+contratos.map(function(c){return c.venc;}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(', ')+'</span>'+
+      '</div>'+
+      '<div class="cards">'+
+        '<div class="card-kpi"><div class="label">Aluguel Bruto</div><div class="value" style="color:#1e293b">R$ '+totalBruto.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div><div class="sub">soma dos contratos</div></div>'+
+        '<div class="card-kpi"><div class="label">Taxa ADM 10%</div><div class="value" style="color:#dc2626">- R$ '+totalAdm.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div><div class="sub">gestão RE/MAX Space</div></div>'+
+        (descs.length ? '<div class="card-kpi"><div class="label">Descontos</div><div class="value" style="color:#d97706">- R$ '+totalDesc.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div><div class="sub">manutenção / outros</div></div>' : '')+
+        '<div class="card-kpi" style="background:#f0fdf4"><div class="label">Repasse Líquido</div><div class="value" style="color:#16a34a;font-size:22px">R$ '+totalFinal.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div><div class="sub">a transferir</div></div>'+
+        '<div class="card-kpi"><div class="label">Recebido</div><div class="value" style="color:#003DA5">R$ '+totalRec.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</div><div class="sub">'+recebidos.length+'/'+contratos.length+' contratos</div></div>'+
+      '</div>'+
+      '<div class="section">'+
+        '<div class="section-title">🏠 Contratos — '+mesNome+'/'+anoAtual+'</div>'+
+        '<table>'+
+          '<thead><tr><th>CT</th><th>Inquilino</th><th>Tipo</th><th>Endereço</th><th style="text-align:center">Venc.</th><th style="text-align:right">Aluguel</th><th style="text-align:right">Repasse</th><th style="text-align:center">Status</th></tr></thead>'+
+          '<tbody>'+rows+descRows+'</tbody>'+
+          '<tfoot><tr>'+
+            '<td colspan="5"><b>TOTAL</b></td>'+
+            '<td style="text-align:right"><b>R$ '+totalBruto.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</b></td>'+
+            '<td style="text-align:right"><b>R$ '+totalFinal.toLocaleString("pt-BR",{minimumFractionDigits:2})+'</b></td>'+
+            '<td></td>'+
+          '</tr></tfoot>'+
+        '</table>'+
+      '</div>'+
+      '<div class="section" style="padding-top:0">'+
+        '<div class="section-title">📊 Histórico de Repasses '+anoAtual+'</div>'+
+        '<table>'+
+          '<thead><tr><th>Mês</th><th style="text-align:center">Recebidos</th><th style="text-align:right">Valor Repassado</th><th>Progressão</th></tr></thead>'+
+          '<tbody>'+histRows+'</tbody>'+
+        '</table>'+
+      '</div>'+
+      '<div class="footer">'+
+        '<div>'+
+          '<strong style="color:#1e293b;font-size:11px">RE/MAX Space</strong> · Caldas Novas - GO<br>'+
+          'CRECI 41.377-J · (64) 9 9914-5346'+
+        '</div>'+
+        '<div style="text-align:center">'+
+          '<div style="font-size:9px;color:#cbd5e1;margin-bottom:6px">Assinatura do Responsável</div>'+
+          '<div style="border-top:1px solid #cbd5e1;width:180px;padding-top:4px;font-size:9px">Tatiana Basile — Responsável</div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          'Documento gerado em '+gerado+'<br>'+
+          '<span style="color:#cbd5e1">via Sistema RE/MAX Space</span>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<script>window.onload=function(){window.print();}<\/script>'+
+    '</body></html>';
+
+  var w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
 }
+
 
 // ===== ORDENS DE SERVIÇO =====
 function pOS(){
