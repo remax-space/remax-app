@@ -3757,7 +3757,7 @@ function gerarExtratoPDF(prop, mesParam, anoParam){
       '.footer{background:#f8fafc;border-top:2px solid #e2e8f0;padding:16px 36px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#94a3b8}'+
       '.badge-ok{background:#dcfce7;color:#16a34a;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}'+
       '.badge-pend{background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700}'+
-      '@media print{body{background:#fff}.page{box-shadow:none}@page{margin:10mm;size:A4}}'+
+      '@media print{body{background:#fff}.page{box-shadow:none}@page{margin:10mm;size:A4;margin-top:0;margin-bottom:0}header,footer{display:none!important}}'+
     '</style></head><body>'+
     '<div class="page">'+
       '<div class="header">'+
