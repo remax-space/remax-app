@@ -2944,7 +2944,7 @@ function pBoletos(){
       var stBadge = b.asaasId ? statusAsaas(b.status) : (b.enviado ? '<span class="badge bg">Enviado manual</span>' : '<span class="badge by">Pendente</span>');
       var dtEnvio = b.dtEnvio ? '<div style="font-size:10px;color:var(--lm);margin-top:2px">Enviado: '+b.dtEnvio+'</div>' : '';
       var linkBoleto = b.bankSlipUrl ? '<a href="'+b.bankSlipUrl+'" target="_blank" class="btn btn-xs" style="background:#dbeafe;color:#1d4ed8;font-size:10px">📄 Boleto</a> ' : '';
-      var pixCode = '<button class="btn btn-xs" style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700" onclick="verPix('+i+')">PIX</button> ';
+      var pixCode = '<button class="btn btn-xs" style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700" onclick="copiarPix('+i+')" title="Copiar código PIX para enviar ao inquilino">📋 Copiar PIX</button> ';
 
       return '<tr data-status="'+( b.status||'PENDING')+'">'
         +'<td style="font-weight:700;color:var(--navy)">'+b.ctId+'</td>'
@@ -3256,16 +3256,59 @@ function imprimirBoleto(i){
 }
 
 
+function copiarPix(i){
+  var b = boletosD[i];
+  var txid = ('REMAX'+(b.ctId||'').replace(/[^A-Z0-9]/g,'')).slice(0,25);
+  var enc = calcularEncargos(b.valor, b.venc, b.mes);
+  var payload = b.pixCopiaECola || gerarPixPayload(enc.total, txid, 'Aluguel');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(payload).then(function(){
+      showToast('✅ PIX copiado! Cole no seu banco.');
+    }).catch(function(){
+      _copiarFallback(payload);
+    });
+  } else {
+    _copiarFallback(payload);
+  }
+}
+function _copiarFallback(txt){
+  var ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try{ document.execCommand('copy'); showToast('✅ PIX copiado! Cole no seu banco.'); }
+  catch(e){ showToast('Erro ao copiar. Tente manualmente.'); }
+  document.body.removeChild(ta);
+}
+
+function showToast(msg){
+  var t = document.getElementById('toast-nuvem');
+  if(t){ t.textContent=msg; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},3000); }
+  else { alert(msg); }
+}
+
 function enviarWA(i){
   var b = boletosD[i];
   var linkBoleto = b.bankSlipUrl ? '\n\nBoleto: '+b.bankSlipUrl : '';
-  var txt = '*RE/MAX Space - Aluguel '+b.mes+'*\n\n'+
-    'Contrato: '+b.ctId+'\n'+
-    'Valor: '+fmt(b.valor)+'\n'+
-    'Vencimento: Dia '+b.venc+'\n'+
-    'Inquilino: '+b.inq+linkBoleto+'\n\n'+
-    'Em caso de duvidas: RE/MAX Space (64) 99xxx-xxxx'+
-    '\n_RE/MAX Space - Caldas Novas GO_';
+  var txid = ('REMAX'+(b.ctId||'').replace(/[^A-Z0-9]/g,'')).slice(0,25);
+  var enc = calcularEncargos(b.valor, b.venc, b.mes);
+  var pixPayload = b.pixCopiaECola || gerarPixPayload(enc.total, txid, 'Aluguel');
+  var encInfo = enc.diasAtraso > 0
+    ? '\n⚠️ *Em atraso: '+enc.diasAtraso+' dia(s)*\nTotal com encargos: *'+fmt(enc.total)+'*'
+    : '';
+  var txt = '*RE/MAX Space — Cobrança de Aluguel*\n\n'+
+    '📋 Contrato: '+b.ctId+'\n'+
+    '👤 Inquilino: '+b.inq+'\n'+
+    '🏠 Proprietário: '+b.prop+'\n'+
+    '📅 Mês: '+b.mes+' • Venc: Dia '+b.venc+'\n'+
+    '💰 Valor: *'+fmt(b.valor)+'*'+encInfo+linkBoleto+
+    '\n\n──────────────────────\n'+
+    '💳 *PIX COPIA E COLA*\n'+
+    pixPayload+
+    '\n──────────────────────\n'+
+    '_Copie o código acima e cole no seu aplicativo de banco para pagar._\n\n'+
+    '_RE/MAX Space • Caldas Novas GO_';
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
