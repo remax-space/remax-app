@@ -3950,9 +3950,21 @@ function assinarD4Sign(i){
       '4. As partes assinam pelo link que recebem por e-mail/WhatsApp'+
     '</div>'+
     '<div style="display:flex;flex-direction:column;gap:8px">'+
-      '<a href="https://app.d4sign.com.br" target="_blank" class="btn btn-primary" style="text-align:center;text-decoration:none">🔗 Abrir D4Sign</a>'+
-      '<a href="https://app.clicksign.com" target="_blank" class="btn btn-sm" style="background:#00b894;color:#fff;border:none;text-align:center;text-decoration:none">🔗 Abrir ClickSign (alternativa)</a>'+
-      '<button class="btn btn-sm btn-outline" onclick="salvarCredsD4Sign()">💾 Salvar credenciais</button>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px">'+
+      '<a href="https://app.d4sign.com.br" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'+
+        '<span style="font-size:18px">✍️</span><div><div>D4Sign</div><div style="font-size:10px;opacity:.8">Mais usado no BR</div></div>'+
+      '</a>'+
+      '<a href="https://app.clicksign.com" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#00b894;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'+
+        '<span style="font-size:18px">🖊️</span><div><div>ClickSign</div><div style="font-size:10px;opacity:.8">Alternativa popular</div></div>'+
+      '</a>'+
+      '<a href="https://assinador.iti.br" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#1351B4;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'+
+        '<span style="font-size:18px">🇧🇷</span><div><div>Gov.br</div><div style="font-size:10px;opacity:.8">Gratuito — assinatura ICP</div></div>'+
+      '</a>'+
+      '<a href="https://www.autentique.com.br" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#0f1a35;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'+
+        '<span style="font-size:18px">📝</span><div><div>Autentique</div><div style="font-size:10px;opacity:.8">Plano grátis disponível</div></div>'+
+      '</a>'+
+    '</div>'+
+    '<button class="btn btn-sm btn-outline" onclick="salvarCredsD4Sign()" style="width:100%">💾 Salvar credenciais D4Sign</button>'+
     '</div>',
     null, null
   );
