@@ -3365,6 +3365,39 @@ function iniciarNotificacoes(){
   verificarLembretes();
 }
 
+// ===== ASSINATURA DIGITAL — CONTRATOS LOCAÇÃO =====
+function assinarDigitalLC(i){
+  var c = ctD[i];
+  if(!c){ return; }
+  oM('✍️ Assinatura Digital — '+c.id,
+    '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px">'+
+      '<div style="font-weight:700;color:#0369a1;margin-bottom:4px">'+c.id+' — '+c.inq+'</div>'+
+      '<div style="color:#475569">Imóvel: '+c.end+'</div>'+
+      '<div style="color:#475569">Valor: R$ '+c.valor.toLocaleString("pt-BR",{minimumFractionDigits:2})+' · Venc. dia '+c.venc+'</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'+
+      '<a href="https://assinador.iti.br" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#1351B4;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'+
+        '<span style="font-size:18px">🇧🇷</span><div><div>Gov.br</div><div style="font-size:10px;opacity:.8">Gratuito — ICP-Brasil</div></div>'+
+      '</a>'+
+      '<a href="https://app.d4sign.com.br" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'+
+        '<span style="font-size:18px">✍️</span><div><div>D4Sign</div><div style="font-size:10px;opacity:.8">Mais usado no BR</div></div>'+
+      '</a>'+
+      '<a href="https://app.clicksign.com" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#00b894;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'+
+        '<span style="font-size:18px">🖊️</span><div><div>ClickSign</div><div style="font-size:10px;opacity:.8">Alternativa popular</div></div>'+
+      '</a>'+
+      '<a href="https://www.autentique.com.br" target="_blank" style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#0f1a35;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">'+
+        '<span style="font-size:18px">📝</span><div><div>Autentique</div><div style="font-size:10px;opacity:.8">Plano grátis disponível</div></div>'+
+      '</a>'+
+    '</div>'+
+    '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:11px;color:#92400e">'+
+      '💡 <strong>Passo a passo:</strong> Gere o PDF do contrato → Acesse a plataforma → Suba o PDF → Adicione os signatários → Envie o link por WhatsApp ou e-mail'+
+    '</div>',
+    null, null
+  );
+}
+window.assinarDigitalLC = assinarDigitalLC;
+
+
 // ===== SYNC AUTOMÁTICO MULTI-USUÁRIO =====
 function iniciarSync(){
   if(_pollTimer) clearInterval(_pollTimer);
@@ -4966,7 +4999,8 @@ function pLC(){
     var bI=document.createElement('button');bI.textContent='🤖';bI.style.cssText='background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer';bI.onclick=(function(i){return function(){gerarContratoIA(i);};})(i);
     var bC=document.createElement('button');bC.textContent='📱';bC.style.cssText='background:#25D366;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer';bC.onclick=(function(i){return function(){msgCobranca(i);};})(i);
     var bD=document.createElement('button');bD.textContent='Enc.';bD.style.cssText='background:#fef2f2;color:#b91c1c;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer';bD.onclick=(function(i){return function(){inativarCT(i);};})(i);
-    [bE,bI,bC,bD].forEach(function(b){acDiv.appendChild(b);});
+    var bSign=document.createElement('button');bSign.textContent='✍️';bSign.title='Assinatura Digital';bSign.style.cssText='background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer';bSign.onclick=(function(i){return function(){assinarDigitalLC(i);};})(i);
+    [bE,bI,bC,bSign,bD].forEach(function(b){acDiv.appendChild(b);});
     acTd.appendChild(acDiv);
     tr.appendChild(acTd);
     tbody.appendChild(tr);
