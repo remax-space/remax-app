@@ -3722,7 +3722,6 @@ function gerarExtratoPDF(prop, mesParam, anoParam){
   }).join('');
 
   // Logo SVG RE/MAX
-  var logo = '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:26px;font-weight:900;color:#D42028;letter-spacing:-1px">RE/MAX</span><span style="font-size:26px;font-weight:300;color:#fff;letter-spacing:1px">Space</span></div>';
 
   var gerado = new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
@@ -3761,17 +3760,16 @@ function gerarExtratoPDF(prop, mesParam, anoParam){
     '</style></head><body>'+
     '<div class="page">'+
       '<div class="header">'+
-        '<div class="header-left">'+logo+
+        '<div style="display:flex;justify-content:space-between;align-items:center">'+
           '<div>'+
-            '<div class="header-title">RE/MAX Space</div>'+
-            '<div class="header-sub">Extrato de Repasse ao Proprietário</div>'+
-            '<div class="header-sub" style="margin-top:2px;opacity:.6">CRECI 41.377-J · Caldas Novas - GO</div>'+
+            '<div style="font-size:28px;font-weight:900;letter-spacing:-0.5px"><span style="color:#D42028">RE/MAX</span><span style="color:#fff;font-weight:300"> Space</span></div>'+
+            '<div style="font-size:11px;opacity:.65;margin-top:3px">Extrato de Repasse ao Proprietário · CRECI 41.377-J · Caldas Novas - GO</div>'+
           '</div>'+
-        '</div>'+
-        '<div class="header-right">'+
-          '<strong>'+mesNome+' / '+anoAtual+'</strong>'+
-          '<div>Gerado em '+gerado+'</div>'+
-          '<div style="margin-top:6px;font-size:13px;opacity:1;font-weight:700">'+prop+'</div>'+
+          '<div style="text-align:right">'+
+            '<div style="font-size:22px;font-weight:800;color:#B9975B">'+mesNome+' / '+anoAtual+'</div>'+
+            '<div style="font-size:11px;opacity:.65;margin-top:2px">Gerado em '+gerado+'</div>'+
+            '<div style="font-size:14px;font-weight:700;margin-top:4px">'+prop+'</div>'+
+          '</div>'+
         '</div>'+
       '</div>'+
       '<div class="info-bar">'+
