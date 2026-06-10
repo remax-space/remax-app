@@ -2776,14 +2776,15 @@ function gerarPixPayload(valor, txid, desc){
   txid = (txid||'REMAXSPACE').replace(/[^A-Za-z0-9]/g,'').slice(0,25)||'REMAXSPACE';
   desc = (desc||'Aluguel').replace(/[^a-zA-Z0-9 ]/g,'').slice(0,25);
   var val = parseFloat(valor).toFixed(2);
-  function f(id,v){ var s=String(v); return id+('0'+s.length).slice(-2)+s; }
-  var payload = f('00','01')+f('26',f('00','BR.GOV.BCB.PIX')+f('01',CHAVE_PIX)+f('02',desc))+f('52','0000')+f('53','986')+f('54',val)+f('58','BR')+f('59',NOME_PIX)+f('60',CIDADE_PIX)+f('62',f('05',txid))+'6304';
-  var crc = 0xFFFF;
-  for(var ci=0;ci<payload.length;ci++){
-    crc ^= payload.charCodeAt(ci)<<8;
-    for(var cj=0;cj<8;cj++){ if(crc&0x8000){ crc=(crc<<1)^0x1021; } else { crc=crc<<1; } }
+  function tlv(tag,v){ var s=String(v); return tag+('0'+s.length).slice(-2)+s; }
+  var merchant = tlv('00','BR.GOV.BCB.PIX')+tlv('01',CHAVE_PIX)+tlv('02',desc);
+  var payload = tlv('00','01')+tlv('26',merchant)+tlv('52','0000')+tlv('53','986')+tlv('54',val)+tlv('58','BR')+tlv('59',NOME_PIX.slice(0,25))+tlv('60',CIDADE_PIX.slice(0,15))+tlv('62',tlv('05',txid))+'6304';
+  var crc=0xFFFF;
+  for(var i=0;i<payload.length;i++){
+    crc^=payload.charCodeAt(i)<<8;
+    for(var j=0;j<8;j++){ crc=(crc&0x8000)?((crc<<1)^0x1021)&0xFFFF:(crc<<1)&0xFFFF; }
   }
-  return payload+('0000'+(crc&0xFFFF).toString(16).toUpperCase()).slice(-4);
+  return payload+('0000'+crc.toString(16).toUpperCase()).slice(-4);
 }
 
 function gerarQrCodePix(valor, txid, desc){
@@ -2944,7 +2945,7 @@ function pBoletos(){
       var stBadge = b.asaasId ? statusAsaas(b.status) : (b.enviado ? '<span class="badge bg">Enviado manual</span>' : '<span class="badge by">Pendente</span>');
       var dtEnvio = b.dtEnvio ? '<div style="font-size:10px;color:var(--lm);margin-top:2px">Enviado: '+b.dtEnvio+'</div>' : '';
       var linkBoleto = b.bankSlipUrl ? '<a href="'+b.bankSlipUrl+'" target="_blank" class="btn btn-xs" style="background:#dbeafe;color:#1d4ed8;font-size:10px">📄 Boleto</a> ' : '';
-      var pixCode = '<button class="btn btn-xs" style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700" onclick="copiarPix('+i+')" title="Copiar código PIX para enviar ao inquilino">📋 Copiar PIX</button> ';
+      var pixCode = '<button class="btn btn-xs" style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700" onclick="verPix('+i+')" title="Ver QR Code e copiar PIX">💳 PIX</button> ';
 
       return '<tr data-status="'+( b.status||'PENDING')+'">'
         +'<td style="font-weight:700;color:var(--navy)">'+b.ctId+'</td>'
@@ -3154,22 +3155,75 @@ function desmarcarBoleto(i){
 function verPix(i){
   var b = boletosD[i];
   var txid = ('REMAX'+(b.ctId||'').replace(/[^A-Z0-9]/g,'')).slice(0,25);
-  var qrUrl = b.pixQrCode || gerarQrCodePix(b.valor, txid, 'Aluguel');
-  var payload = b.pixCopiaECola || gerarPixPayload(b.valor, txid, 'Aluguel');
-  oM('PIX - '+b.prop,
-    '<div style="text-align:center;padding:16px">'+
-      '<div style="background:#f0fdf4;border-radius:12px;padding:16px;margin-bottom:14px">'+
-        '<img src="'+qrUrl+'" style="width:200px;height:200px;border-radius:8px;display:block;margin:0 auto">'+
-        '<div style="font-size:11px;color:#6b7280;margin-top:8px">Escaneie com qualquer banco</div>'+
-      '</div>'+
-      '<div style="background:#f9fafb;border-radius:10px;padding:12px;margin-bottom:12px;text-align:left">'+
-        '<div style="font-size:11px;color:#9ca3af;font-weight:700;margin-bottom:6px">PIX COPIA E COLA</div>'+
-        '<textarea id="pix-payload" onclick="this.select()" readonly style="width:100%;font-size:9px;font-family:monospace;border:1px solid #e5e7eb;border-radius:6px;padding:8px;height:55px;resize:none;background:#fff">'+payload+'</textarea>'+
-        '<button onclick="copiarPix()" style="margin-top:8px;background:#003DA5;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;width:100%">Copiar Codigo PIX</button>'+
-      '</div>'+
-      '<div style="font-size:16px;font-weight:800;color:#059669">'+fmt(b.valor)+'</div>'+
-      '<div style="font-size:12px;color:#6b7280;margin-top:2px">'+b.inq+' - '+b.mes+'</div>'+
+  var enc = calcularEncargos(b.valor, b.venc, b.mes);
+  var qrUrl = b.pixQrCode || gerarQrCodePix(enc.total, txid, 'Aluguel');
+  var payload = b.pixCopiaECola || gerarPixPayload(enc.total, txid, 'Aluguel');
+  window._pixPayloadAtual = payload;
+  var encHtml = enc.diasAtraso > 0
+    ? '<div style="background:#fef2f2;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#991b1b;font-weight:600">⚠️ '+enc.diasAtraso+' dia(s) de atraso — Total: '+fmt(enc.total)+'</div>'
+    : '';
+  oM('💳 PIX — '+b.inq,
+    '<div style="padding:4px 0">'+
+    encHtml+
+    // Valor destaque
+    '<div style="text-align:center;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:12px;padding:16px;margin-bottom:16px">'+
+      '<div style="font-size:11px;color:#6b7280;font-weight:700;letter-spacing:1px;text-transform:uppercase">Valor a pagar</div>'+
+      '<div style="font-size:32px;font-weight:900;color:#059669;line-height:1.1">'+fmt(enc.total)+'</div>'+
+      '<div style="font-size:11px;color:#6b7280;margin-top:2px">'+b.ctId+' · '+b.prop+' · '+b.mes+'</div>'+
+    '</div>'+
+    // QR Code
+    '<div style="text-align:center;margin-bottom:16px">'+
+      '<img src="'+qrUrl+'" style="width:180px;height:180px;border:3px solid #e5e7eb;border-radius:12px">'+
+      '<div style="font-size:11px;color:#9ca3af;margin-top:6px">Escaneie com qualquer banco</div>'+
+    '</div>'+
+    // Separador
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">'+
+      '<div style="flex:1;height:1px;background:#e5e7eb"></div>'+
+      '<span style="font-size:11px;color:#9ca3af;font-weight:600">OU USE O CÓDIGO ABAIXO</span>'+
+      '<div style="flex:1;height:1px;background:#e5e7eb"></div>'+
+    '</div>'+
+    // Código copia e cola - clicável
+    '<div id="pix-box" onclick="copiarPixModal()" style="cursor:pointer;background:#f8fafc;border:2px dashed #003DA5;border-radius:12px;padding:14px;margin-bottom:12px;transition:all .2s">'+
+      '<div style="font-size:10px;color:#003DA5;font-weight:800;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">📋 Clique para copiar o código PIX</div>'+
+      '<div style="font-size:9px;font-family:monospace;word-break:break-all;color:#374151;line-height:1.5;max-height:60px;overflow:hidden">'+payload+'</div>'+
+    '</div>'+
+    // Botão grande copiar
+    '<button id="btn-copiar-pix" onclick="copiarPixModal()" style="width:100%;background:linear-gradient(135deg,#003DA5,#0050cc);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;letter-spacing:.3px;box-shadow:0 4px 12px rgba(0,61,165,.3)">'+
+      '📋 COPIAR CÓDIGO PIX'+
+    '</button>'+
+    '<div id="pix-copiado" style="display:none;text-align:center;margin-top:10px;color:#059669;font-weight:700;font-size:13px">✅ Código copiado! Abra seu banco e cole.</div>'+
     '</div>', null, 'Fechar');
+}
+
+function copiarPixModal(){
+  var payload = window._pixPayloadAtual;
+  if(!payload) return;
+  var btn = document.getElementById('btn-copiar-pix');
+  var ok = document.getElementById('pix-copiado');
+  var box = document.getElementById('pix-box');
+  function sucesso(){
+    if(btn){ btn.style.background='linear-gradient(135deg,#059669,#047857)'; btn.textContent='✅ COPIADO!'; }
+    if(ok){ ok.style.display='block'; }
+    if(box){ box.style.borderColor='#059669'; box.style.background='#f0fdf4'; }
+    setTimeout(function(){
+      if(btn){ btn.style.background='linear-gradient(135deg,#003DA5,#0050cc)'; btn.textContent='📋 COPIAR CÓDIGO PIX'; }
+    }, 3000);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(payload).then(sucesso).catch(function(){
+      var ta=document.createElement('textarea'); ta.value=payload;
+      ta.style.cssText='position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      sucesso();
+    });
+  } else {
+    var ta=document.createElement('textarea'); ta.value=payload;
+    ta.style.cssText='position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    sucesso();
+  }
 }
 
 function imprimirBoleto(i){
