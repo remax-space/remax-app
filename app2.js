@@ -3722,7 +3722,7 @@ function gerarExtratoPDF(prop, mesParam, anoParam){
   }).join('');
 
   // Logo SVG RE/MAX
-  var logo = '<svg width="48" height="54" viewBox="0 0 74 84" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="cp"><path d="M37 0C16.6 0 0 16.6 0 37C0 57.4 37 84 37 84S74 57.4 74 37C74 16.6 57.4 0 37 0Z"/></clipPath></defs><path d="M37 0C16.6 0 0 16.6 0 37C0 57.4 37 84 37 84S74 57.4 74 37C74 16.6 57.4 0 37 0Z" fill="#f0f0f0" clip-path="url(#cp)"/><rect x="0" y="0" width="37" height="42" fill="#D42028" clip-path="url(#cp)"/><rect x="37" y="0" width="37" height="42" fill="#003DA5" clip-path="url(#cp)"/><rect x="0" y="42" width="37" height="42" fill="#B9975B" clip-path="url(#cp)"/><rect x="37" y="42" width="37" height="42" fill="#fff" clip-path="url(#cp)"/><rect x="34" y="0" width="6" height="84" fill="#fff" clip-path="url(#cp)"/><rect x="0" y="39" width="74" height="6" fill="#fff" clip-path="url(#cp)"/></svg>';
+  var logo = '<div style="display:flex;align-items:center;gap:4px"><span style="font-size:26px;font-weight:900;color:#D42028;letter-spacing:-1px">RE/MAX</span><span style="font-size:26px;font-weight:300;color:#fff;letter-spacing:1px">Space</span></div>';
 
   var gerado = new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
