@@ -108,6 +108,7 @@ function salvarTudo(){
   }, 1500);
 }
 
+
 async function carregarDados(){
   try{
     var sb = getSB(); if(!sb) return false;
@@ -198,14 +199,30 @@ try{ var _sLocal=localStorage.getItem('_senhas'); if(_sLocal){ var _sObj=JSON.pa
 
 function registrarLog(acao, detalhe){
   var agora = new Date();
+  var usuario = U ? (U.nome||U.id) : 'Sistema';
+  var role = U ? (U.role||'') : '';
+  // Salvar no array local (sincronizado via app_state)
   logAcoes.unshift({
     dt: agora.toLocaleDateString('pt-BR') + ' ' + agora.toLocaleTimeString('pt-BR'),
-    usuario: U ? (U.nome||U.id) : 'Sistema',
+    usuario: usuario,
     acao: acao,
     detalhe: detalhe
   });
   if(logAcoes.length > 500) logAcoes.pop(); // máximo 500 registros
   salvarTudo();
+  // Salvar também na tabela audit_log do Supabase (histórico permanente)
+  try{
+    var sb = getSB();
+    if(sb){
+      sb.from('audit_log').insert({
+        usuario: usuario,
+        role: role,
+        acao: acao,
+        detalhe: detalhe || '',
+        created_at: agora.toISOString()
+      }).then(function(r){ if(r.error) console.warn('audit_log:', r.error.message); });
+    }
+  }catch(e){ console.warn('audit_log erro:', e.message); }
 }
 
 // ===== LOG DE AUDITORIA =====
@@ -652,6 +669,8 @@ function finalizarLogin(){
   document.getElementById('tbro').textContent=U.role;
   document.getElementById('tbdt').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
   bSB();
+  // Registrar login no audit log
+  setTimeout(function(){ registrarLog('Login', 'Usuário '+U.nome+' acessou o sistema ('+U.role+')'); }, 4000);
   // Start agenda notifications
   setTimeout(iniciarNotificacoes, 2000);
   setTimeout(iniciarSync, 3000); // Sync automático multi-usuário
@@ -5111,7 +5130,7 @@ function relatorioContratos(){
 }
 function nCT(){
   oM('Novo Contrato','<div class="fg2"><div class="fg"><label>Proprietario</label><input id="nc-p"></div><div class="fg"><label>Inquilino</label><input id="nc-i"></div></div><div class="fg"><label>Endereco</label><input id="nc-e"></div><div class="fg3"><div class="fg"><label>Tipo</label><select id="nc-t"><option>Casa</option><option>Apartamento</option><option>Kitnet</option><option>Sala Comercial</option><option>Chale</option></select></div><div class="fg"><label>Valor R$</label><input id="nc-v" type="number"></div><div class="fg"><label>Venc dia</label><input id="nc-ve" type="number" value="10"></div></div><div class="fg2"><div class="fg"><label>Inicio</label><input type="date" id="nc-in"></div><div class="fg"><label>Fim</label><input type="date" id="nc-fi"></div></div><div class="fg"><label>Corretor</label><select id="nc-c">'+corrSel()+'</select></div>',
-  function(){var nid='CT-0'+String(ctD.length+1).padStart(2,'0');ctD.push({id:nid,prop:document.getElementById('nc-p').value,inq:document.getElementById('nc-i').value,tipo:document.getElementById('nc-t').value,end:document.getElementById('nc-e').value,valor:parseFloat(document.getElementById('nc-v').value)||0,venc:parseInt(document.getElementById('nc-ve').value)||10,inicio:document.getElementById('nc-in').value,fim:document.getElementById('nc-fi').value,corretor:document.getElementById('nc-c').value,status:'Ativa',rs:Array(12).fill('N'),forma:'PIX',banco:'',obs:''});cM();salvarTudo();pLC();});
+  function(){var nid='CT-0'+String(ctD.length+1).padStart(2,'0');registrarLog('Novo Contrato','Contrato '+nid+' criado');ctD.push({id:nid,prop:document.getElementById('nc-p').value,inq:document.getElementById('nc-i').value,tipo:document.getElementById('nc-t').value,end:document.getElementById('nc-e').value,valor:parseFloat(document.getElementById('nc-v').value)||0,venc:parseInt(document.getElementById('nc-ve').value)||10,inicio:document.getElementById('nc-in').value,fim:document.getElementById('nc-fi').value,corretor:document.getElementById('nc-c').value,status:'Ativa',rs:Array(12).fill('N'),forma:'PIX',banco:'',obs:''});cM();salvarTudo();pLC();});
 }
 
 // ===== REPASSES =====
@@ -5203,6 +5222,9 @@ function sincronizarModulos(origem){
 function tRep(ci,mi){
   var cyc=['N','R','P','X'], s=ctD[ci].rs[mi], nx=cyc[(cyc.indexOf(s)+1)%4];
   ctD[ci].rs[mi]=nx;
+  var _meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  var _stLabel={R:'Recebido',P:'Parcial',X:'Não pago',N:'Pendente'};
+  registrarLog('Repasse', ctD[ci].id+' → '+_meses[mi]+': '+(_stLabel[s]||s)+' → '+(_stLabel[nx]||nx));
   salvarTudo();
   var el=document.querySelector('#lr-b tr:nth-child('+(ci+1)+') td:nth-child('+(mi+5)+') .rc');
   if(el){ el.className='rc r'+nx; el.innerHTML={R:'&#10003;',P:'1/2',X:'-',N:'&#10007;'}[nx]; }
