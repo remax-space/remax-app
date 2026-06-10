@@ -4706,60 +4706,65 @@ function pdfCT(i,semCapa){
   ].join('');
 
   var anoDoc = new Date().getFullYear();
-  var CAPA = semCapa ? '' : [
-    '<div class="capa">',
-      // Barra superior com logo
-      '<div style="background:#fff;padding:18px 36px;display:flex;justify-content:space-between;align-items:center;border-bottom:4px solid #D42028">',
-        '<div style="display:flex;align-items:center;gap:12px">',
-          // Balão RE/MAX SVG correto
-          '<svg width="44" height="50" viewBox="0 0 74 84" xmlns="http://www.w3.org/2000/svg">',
-            '<defs><clipPath id="cl"><path d="M37 0C16.6 0 0 16.6 0 37C0 57.4 37 84 37 84S74 57.4 74 37C74 16.6 57.4 0 37 0Z"/></clipPath></defs>',
-            '<path d="M37 0C16.6 0 0 16.6 0 37C0 57.4 37 84 37 84S74 57.4 74 37C74 16.6 57.4 0 37 0Z" fill="#eee" clip-path="url(#cl)"/>',
-            '<rect x="0" y="0" width="37" height="42" fill="#D42028" clip-path="url(#cl)"/>',
-            '<rect x="37" y="0" width="37" height="42" fill="#003DA5" clip-path="url(#cl)"/>',
-            '<rect x="0" y="42" width="37" height="42" fill="#B9975B" clip-path="url(#cl)"/>',
-            '<rect x="37" y="42" width="37" height="42" fill="#fff" clip-path="url(#cl)"/>',
-            '<rect x="34" y="0" width="6" height="84" fill="#fff" clip-path="url(#cl)"/>',
-            '<rect x="0" y="39" width="74" height="6" fill="#fff" clip-path="url(#cl)"/>',
-          '</svg>',
-          '<div>',
-            '<div style="font-size:22px;font-weight:900;color:#D42028;letter-spacing:-0.5px;line-height:1">RE/MAX</div>',
-            '<div style="font-size:15px;font-weight:700;color:#003DA5;letter-spacing:3px;margin-top:1px">SPACE</div>',
-            '<div style="font-size:8px;color:#888;letter-spacing:1px">CRECI 41.377-J · Caldas Novas - GO</div>',
-          '</div>',
-        '</div>',
-        '<div style="text-align:right">',
-          '<div style="font-size:9px;color:#888;text-transform:uppercase;letter-spacing:1px">Documento confidencial</div>',
-          '<div style="font-size:11px;color:#003DA5;font-weight:700">'+anoDoc+'</div>',
-        '</div>',
-      '</div>',
-      // Área vermelha principal
-      '<div style="background:#D42028;flex:1;padding:48px 36px;display:flex;flex-direction:column;justify-content:center">',
-        '<div style="font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:3px;margin-bottom:20px">Por que o contrato de representação é o caminho mais rápido para vender seu imóvel?</div>',
-        '<div style="font-size:14px;color:rgba(255,255,255,.8);font-weight:300;margin-bottom:8px">Contrato de</div>',
-        '<div style="font-size:44px;font-weight:900;color:#fff;line-height:1.1;margin-bottom:8px">Intermediação</div>',
-        '<div style="font-size:44px;font-weight:900;color:#fff;line-height:1.1;margin-bottom:32px">e Representação</div>',
-        '<div style="font-size:16px;font-weight:400;color:rgba(255,255,255,.85);border-top:1px solid rgba(255,255,255,.3);padding-top:20px">Imobiliária</div>',
-      '</div>',
-      // Área da foto
-      '<div style="background:#c8b89a;min-height:180px;display:flex;align-items:center;justify-content:center">',
-        '<div style="text-align:center;color:#9a8a78">',
-          '<div style="font-size:32px;margin-bottom:8px">🏠</div>',
-          '<div style="font-size:11px;font-weight:600">'+(c.im_end||'Endereço do Imóvel')+'</div>',
-          '<div style="font-size:10px;opacity:.7">'+(c.im_tipo||'')+(c.prop1_nome?' · '+c.prop1_nome:'')+'</div>',
-        '</div>',
-      '</div>',
-      // Rodapé capa
-      '<div style="background:#0f1a35;padding:14px 36px;display:flex;justify-content:space-between;align-items:center">',
-        '<div style="color:#fff;font-size:11px">',
-          '<span style="font-weight:700">RE/MAX Space</span>',
-          '<span style="opacity:.6"> · Caldas Novas - GO · (64) 9 9914-5346</span>',
-        '</div>',
-        '<div style="color:rgba(255,255,255,.5);font-size:10px">Gerado em '+new Date().toLocaleDateString('pt-BR')+'</div>',
-      '</div>',
-    '</div>'
-  ].join('');
+  var nomeImovel = (c.im_tipo||'Imóvel')+' — '+(c.im_end||'Endereço a definir');
+  var nomeProp = c.prop1_nome || '';
+  var CAPA = semCapa ? '' :
+    '<div style="background:#0f1a35;min-height:100vh;display:flex;flex-direction:column;page-break-after:always;font-family:Arial,sans-serif;">'+
 
+      // TOPO — faixa vermelha fina
+      '<div style="background:#D42028;height:6px;width:100%"></div>'+
+
+      // HEADER BRANCO
+      '<div style="background:#fff;padding:24px 40px;display:flex;justify-content:space-between;align-items:center">'+
+        '<div style="display:flex;align-items:center;gap:14px">'+
+          // Balão SVG correto 4 quadrantes
+          '<svg width="52" height="60" viewBox="0 0 74 84" xmlns="http://www.w3.org/2000/svg">'+
+            '<defs><clipPath id=\"clp\"><path d=\"M37 0C16.6 0 0 16.6 0 37C0 57.4 37 84 37 84S74 57.4 74 37C74 16.6 57.4 0 37 0Z\"/></clipPath></defs>'+
+            '<path d=\"M37 0C16.6 0 0 16.6 0 37C0 57.4 37 84 37 84S74 57.4 74 37C74 16.6 57.4 0 37 0Z\" fill=\"#eee\" clip-path=\"url(#clp)\"/>'+
+            '<rect x=\"0\" y=\"0\" width=\"37\" height=\"42\" fill=\"#D42028\" clip-path=\"url(#clp)\"/>'+
+            '<rect x=\"37\" y=\"0\" width=\"37\" height=\"42\" fill=\"#003DA5\" clip-path=\"url(#clp)\"/>'+
+            '<rect x=\"0\" y=\"42\" width=\"37\" height=\"42\" fill=\"#B9975B\" clip-path=\"url(#clp)\"/>'+
+            '<rect x=\"37\" y=\"42\" width=\"37\" height=\"42\" fill=\"#fff\" clip-path=\"url(#clp)\"/>'+
+            '<rect x=\"34\" y=\"0\" width=\"6\" height=\"84\" fill=\"#fff\" clip-path=\"url(#clp)\"/>'+
+            '<rect x=\"0\" y=\"39\" width=\"74\" height=\"6\" fill=\"#fff\" clip-path=\"url(#clp)\"/>'+
+          '</svg>'+
+          '<div>'+
+            '<div style="font-size:26px;font-weight:900;line-height:1;letter-spacing:-0.5px"><span style="color:#D42028">RE/MAX</span> <span style="color:#003DA5">Space</span></div>'+
+            '<div style="font-size:10px;color:#888;margin-top:3px;letter-spacing:0.5px">CRECI 41.377-J · Caldas Novas - GO · (64) 9 9914-5346</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          '<div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:2px">Documento Particular</div>'+
+          '<div style="font-size:11px;color:#003DA5;font-weight:700;margin-top:2px">'+anoDoc+'</div>'+
+        '</div>'+
+      '</div>'+
+
+      // CORPO ESCURO — título
+      '<div style="flex:1;background:#0f1a35;padding:50px 40px;display:flex;flex-direction:column;justify-content:center">'+
+        '<div style="color:#B9975B;font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;margin-bottom:16px">Instrumento Particular</div>'+
+        '<div style="color:rgba(255,255,255,0.5);font-size:15px;font-weight:300;margin-bottom:6px">Contrato de</div>'+
+        '<div style="color:#fff;font-size:52px;font-weight:900;line-height:1;margin-bottom:4px">Intermediação</div>'+
+        '<div style="color:#D42028;font-size:52px;font-weight:900;line-height:1;margin-bottom:4px">e Representação</div>'+
+        '<div style="color:rgba(255,255,255,0.7);font-size:20px;font-weight:300;margin-bottom:40px">Imobiliária</div>'+
+        '<div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:28px;display:flex;gap:40px">'+
+          '<div>'+
+            '<div style="color:#B9975B;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Imóvel</div>'+
+            '<div style="color:#fff;font-size:13px;font-weight:600">'+nomeImovel+'</div>'+
+          '</div>'+
+          (nomeProp ? '<div>'+
+            '<div style="color:#B9975B;font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Proprietário</div>'+
+            '<div style="color:#fff;font-size:13px;font-weight:600">'+nomeProp+'</div>'+
+          '</div>' : '')+
+        '</div>'+
+      '</div>'+
+
+      // RODAPÉ VERMELHO
+      '<div style="background:#D42028;padding:16px 40px;display:flex;justify-content:space-between;align-items:center">'+
+        '<div style="color:#fff;font-size:11px;font-weight:600">RE/MAX Space · A maior rede imobiliária do mundo</div>'+
+        '<div style="color:rgba(255,255,255,0.7);font-size:10px">Gerado em '+new Date().toLocaleDateString('pt-BR')+'</div>'+
+      '</div>'+
+
+    '</div>';
   var PG2 = [
     '<div class="pg2">',
       '<div class="sep">',
