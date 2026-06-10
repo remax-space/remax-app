@@ -3822,9 +3822,34 @@ function gerarExtratoPDF(prop, mesParam, anoParam){
     '<script>window.onload=function(){window.print();}<\/script>'+
     '</body></html>';
 
-  var w = window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
+  // Gerar PDF via html2pdf para download direto
+  var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var mesNomePDF = meses[(mesParam !== undefined) ? mesParam : new Date().getMonth()];
+  var anoPDF = (anoParam !== undefined) ? anoParam : new Date().getFullYear();
+  var nomeArq = 'Extrato_'+prop.replace(/\s+/g,'_')+'_'+mesNomePDF+anoPDF+'.pdf';
+
+  if(typeof html2pdf !== 'undefined'){
+    var container = document.createElement('div');
+    container.innerHTML = html;
+    document.body.appendChild(container);
+    html2pdf().set({
+      margin: 0,
+      filename: nomeArq,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all','css','legacy'] }
+    }).from(container).save().then(function(){
+      document.body.removeChild(container);
+      registrarLog('Extrato PDF', 'Extrato de '+prop+' — '+mesNomePDF+'/'+anoPDF+' gerado');
+    });
+  } else {
+    // Fallback: abrir para imprimir se html2pdf não carregou
+    var w = window.open('','_blank');
+    w.document.write(html);
+    w.document.close();
+    console.warn('html2pdf não disponível — usando window.print como fallback');
+  }
 }
 
 
