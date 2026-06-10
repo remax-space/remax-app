@@ -1135,6 +1135,33 @@ function imprimirContrato(){
     '<div style="white-space:pre-wrap">'+txt+'</div>'+
     '</body></html>');
   w.document.close();
+  // Injeta banner de assinatura digital no topo do PDF
+  setTimeout(function(){
+    try {
+      var banner = w.document.createElement('div');
+      banner.id = 'sign-banner';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#1351B4;color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;font-family:Arial,sans-serif;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.3);print-color-adjust:exact;-webkit-print-color-adjust:exact';
+      banner.innerHTML =
+        '<div style="display:flex;align-items:center;gap:12px">'+
+          '<span style="font-size:20px">✍️</span>'+
+          '<div>'+
+            '<div style="font-weight:700">Assinatura Digital disponível</div>'+
+            '<div style="font-size:11px;opacity:.85">Suba este PDF em uma plataforma para coletar assinaturas eletrônicas</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<a href="https://assinador.iti.br" target="_blank" style="background:#fff;color:#1351B4;padding:6px 12px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:700">🇧🇷 Gov.br</a>'+
+          '<a href="https://app.d4sign.com.br" target="_blank" style="background:#4f46e5;color:#fff;padding:6px 12px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:700">D4Sign</a>'+
+          '<a href="https://app.clicksign.com" target="_blank" style="background:#00b894;color:#fff;padding:6px 12px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:700">ClickSign</a>'+
+          '<a href="https://www.autentique.com.br" target="_blank" style="background:#0f1a35;color:#fff;padding:6px 12px;border-radius:6px;text-decoration:none;font-size:12px;font-weight:700">Autentique</a>'+
+          '<button onclick="window._hideBannerAndPrint()" style="background:#D42028;color:#fff;padding:6px 14px;border-radius:6px;border:none;font-size:12px;font-weight:700;cursor:pointer">🖨️ Imprimir/PDF</button>'+
+        '</div>';
+      w.document.body.insertBefore(banner, w.document.body.firstChild);
+      // Add top margin to body so content isn't hidden under banner
+      w.document.body.style.marginTop = '70px';
+      w._hideBannerAndPrint = function(){ var b=w.document.getElementById('sign-banner'); if(b) b.style.display='none'; w.print(); };
+    } catch(e){}
+  }, 300);
 }
 
 
