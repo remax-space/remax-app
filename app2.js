@@ -577,7 +577,7 @@ function fichaImovel(i){
     '.ck-item{font-size:12px;color:#475569;padding:4px 0;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:6px}'+
     '.badge-ok{background:#dcfce7;color:#166534;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700}'+
     '.badge-no{background:#fee2e2;color:#991b1b;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:700}'+
-    '@media print{.no-print{display:none!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
+    '@media print{.no-print{display:none!important}.btn-copiar-pix{display:none!important}.pix-copiado-ok{display:none!important}.pix-codigo{border:1px solid #003DA5!important;max-height:none!important;overflow:visible!important}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
     '</style></head><body>'+
     '<div class="header">'+
       '<div class="logo">IMÓVEIS RE/<em>MAX</em><div style="font-size:11px;opacity:.6;font-weight:400">Space — Caldas Novas GO</div></div>'+
@@ -3256,7 +3256,8 @@ function imprimirBoleto(i){
       '.pix-info{flex:1}'+
       '.pix-info h3{font-size:13px;color:#0f1a35;margin:0 0 8px;font-weight:800}'+
       '.pix-info p{font-size:11px;color:#6b7280;margin:0 0 8px;line-height:1.5}'+
-      '.pix-codigo{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px;font-size:9px;font-family:monospace;word-break:break-all;color:#374151;max-height:50px;overflow:hidden}'+
+      '.pix-codigo{background:#fff;border:2px dashed #003DA5;border-radius:8px;padding:10px;font-size:8px;font-family:monospace;word-break:break-all;color:#1e293b;line-height:1.6;cursor:pointer}'+
+      '.pix-label-print{font-size:10px;font-weight:700;color:#1e293b;margin:12px 0 4px;display:block}'+
       '.rodape{text-align:center;margin-top:20px;font-size:10px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:12px}'+
       '.btn-copiar-pix{display:block;width:100%;background:linear-gradient(135deg,#003DA5,#0050cc);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px;letter-spacing:.3px}'+
       '.btn-copiar-pix:active{background:#002a7a}'+
@@ -3297,10 +3298,10 @@ function imprimirBoleto(i){
         '<div class="pix-info">'+
           '<h3>Pagamento via PIX</h3>'+
           '<p>Chave PIX (Itaú):<br><b>+55 11 96919-7881</b></p>'+
-          '<p style="font-size:10px;font-weight:700;color:#1e293b;margin-bottom:4px">Código PIX (clique para copiar):</p>'+
-          '<div class="pix-codigo" onclick="copiarCodigoPix(this)" title="Clique para copiar">'+payload+'</div>'+
-          '<button class="btn-copiar-pix no-print" onclick="copiarCodigoPix(null)">📋 COPIAR CÓDIGO PIX</button>'+
-          '<div class="pix-copiado-ok" id="pix-ok">✅ Código copiado! Abra seu banco e cole.</div>'+
+          '<span class="pix-label-print">Pix Copia e Cola:</span>'+
+          '<div class="pix-codigo" onclick="copiarCodigoPix()" title="Clique para copiar">'+payload+'</div>'+
+          '<button class="btn-copiar-pix no-print" onclick="copiarCodigoPix()">📋 COPIAR CÓDIGO PIX</button>'+
+          '<div class="pix-copiado-ok no-print" id="pix-ok">✅ Código copiado! Abra seu banco e cole.</div>'+
         '</div>'+
       '</div>'+
       '<div class="rodape">'+
