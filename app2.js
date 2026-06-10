@@ -1601,7 +1601,7 @@ function pIV(){
     r+='<td>'+(iv.ilist?'<span class="badge bg">OK</span>':'<span class="badge br">N</span>')+'</td>';
     r+='<td>'+(iv.gestao?'<span class="badge bt">OK</span>':'<span class="badge bgr">-</span>')+'</td>';
     r+='<td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--lm)">'+iv.sit+'</td>';
-    r+='<td style="display:flex;gap:3px"><button class="btn btn-sm" onclick="eIV('+i+')">Editar</button><button class="btn btn-sm" style="background:#E1306C;color:#fff;border-color:#E1306C" onclick="gerarPost('+i+')">📸 Post</button><button class="btn btn-sm" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none" onclick="gerarLegendaIA('+i+')">🤖 IA</button><button class="btn btn-sm" style="background:#059669;color:#fff;border-color:#059669" onclick="fichaImovel('+i+')">📄 Ficha</button><button class="btn btn-sm btn-gray" onclick="if(confirm(\'Excluir imovel #'+iv.id+'?\')){ivD.splice('+i+',1);pIV();}">Del</button></td>';
+    r+='<td style="display:flex;gap:3px;flex-wrap:wrap"><button class="btn btn-sm" onclick="eIV('+i+')">Editar</button><button class="btn btn-sm" style="background:#E1306C;color:#fff;border-color:#E1306C" onclick="gerarPost('+i+')">📸 Post</button><button class="btn btn-sm" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none" onclick="gerarLegendaIA('+i+')">🤖 IA</button><button class="btn btn-sm" style="background:#059669;color:#fff;border-color:#059669" onclick="fichaImovel('+i+')">📄 Ficha</button><button class="btn btn-sm" style="background:#e8f5e9;color:#1b5e20;border:1px solid #a5d6a7;font-size:10px" onclick="pubPortais('+i+')">🌐 Portais</button><button class="btn btn-sm btn-gray" onclick="if(confirm(\'Excluir imovel #'+iv.id+'?\')){ivD.splice('+i+',1);pIV();}">Del</button></td>';
     r+='</tr>';
   });
   var cors='<option value="">Todos</option>'; var cl=[];
@@ -3828,6 +3828,148 @@ function gerarExtratoPDF(prop, mesParam, anoParam){
 }
 
 
+// ===== PUBLICAÇÃO EM PORTAIS =====
+function pubPortais(i){
+  var iv = ivD[i];
+  if(!iv){ return; }
+
+  var val = iv.valor ? 'R$ '+iv.valor.toLocaleString('pt-BR') : 'A consultar';
+  var titulo = iv.tipo+' à '+iv.vva+' — '+iv.end;
+  var desc = encodeURIComponent(titulo+' | '+val+' | Corretor: '+iv.corretor+' | RE/MAX Space Caldas Novas | (64) 9 9914-5346');
+  var tituloEnc = encodeURIComponent(titulo);
+
+  // URLs de publicação dos portais
+  var portais = [
+    {
+      nome: 'ZAP Imóveis',
+      cor: '#ff6b00',
+      icon: '🏠',
+      url: 'https://www.zapimoveis.com.br/anuncie/',
+      obs: 'Acesse o painel do ZAP e crie o anúncio com os dados abaixo'
+    },
+    {
+      nome: 'OLX',
+      cor: '#6e0ad6',
+      icon: '🟣',
+      url: 'https://www.olx.com.br/anunciar/imoveis',
+      obs: 'Clique em "Publicar anúncio" no OLX e use os dados abaixo'
+    },
+    {
+      nome: 'VivaReal',
+      cor: '#00a550',
+      icon: '🟢',
+      url: 'https://vivareal.com.br/anuncie/',
+      obs: 'Acesse o painel VivaReal e crie o anúncio'
+    },
+    {
+      nome: 'Chaves na Mão',
+      cor: '#0057b8',
+      icon: '🔑',
+      url: 'https://admin.chavesnamao.com.br/anuncios/novo',
+      obs: 'Acesse o painel Chaves na Mão e publique'
+    },
+    {
+      nome: 'Imovelweb',
+      cor: '#e30613',
+      icon: '🔴',
+      url: 'https://www.imovelweb.com.br/noticias/anuncie/',
+      obs: 'Acesse o painel Imovelweb e publique'
+    }
+  ];
+
+  var btns = portais.map(function(p){
+    return '<a href="'+p.url+'" target="_blank" style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none">'+
+      '<span style="font-size:22px">'+p.icon+'</span>'+
+      '<div>'+
+        '<div style="font-weight:700;color:'+p.cor+';font-size:13px">'+p.nome+'</div>'+
+        '<div style="font-size:11px;color:#64748b">'+p.obs+'</div>'+
+      '</div>'+
+      '<span style="margin-left:auto;color:'+p.cor+'">→</span>'+
+    '</a>';
+  }).join('');
+
+  // Dados prontos para copiar
+  var dados =
+    '<div style="background:#0f1a35;color:#fff;border-radius:10px;padding:14px;font-size:12px;font-family:monospace;margin-bottom:14px;position:relative">'+
+    '<button onclick="copiarDadosPortal()" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">📋 Copiar</button>'+
+    '<div id="dados-portal-txt">'+
+    'Título: '+titulo+'\n'+
+    'Tipo: '+iv.tipo+'\n'+
+    'Finalidade: '+iv.vva+'\n'+
+    'Endereço: '+iv.end+'\n'+
+    'Valor: '+val+'\n'+
+    'Corretor: '+iv.corretor+'\n'+
+    'Contato: (64) 9 9914-5346\n'+
+    'Imobiliária: RE/MAX Space — Caldas Novas GO\n'+
+    'CRECI: 41.377-J'+
+    '</div></div>';
+
+  oM('🌐 Publicar em Portais — '+iv.tipo+' #'+iv.id,
+    dados+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+btns+'</div>',
+    null, null
+  );
+}
+window.pubPortais = pubPortais;
+
+function copiarDadosPortal(){
+  var txt = document.getElementById('dados-portal-txt');
+  if(!txt) return;
+  var t = txt.innerText || txt.textContent;
+  navigator.clipboard.writeText(t).then(function(){
+    var btn = document.querySelector('[onclick="copiarDadosPortal()"]');
+    if(btn){ btn.textContent = '✓ Copiado!'; setTimeout(function(){ btn.textContent = '📋 Copiar'; }, 2000); }
+  });
+}
+window.copiarDadosPortal = copiarDadosPortal;
+
+// ===== ASSINATURA DIGITAL D4SIGN =====
+function assinarD4Sign(i){
+  var c = ctContratos[i];
+  if(!c){ return; }
+
+  var d4Key = localStorage.getItem('d4sign_key') || '';
+  var d4Crypt = localStorage.getItem('d4sign_crypt') || '';
+
+  oM('✍️ Assinatura Digital — D4Sign',
+    '<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px">'+
+      '<div style="font-weight:700;color:#0369a1;margin-bottom:6px">📋 Contrato #'+(i+1)+' — '+(c.prop1_nome||'Proprietário')+'</div>'+
+      '<div style="color:#475569">Imóvel: '+(c.im_tipo||'')+' '+(c.im_end||'')+'</div>'+
+      '<div style="color:#475569">Valor: R$ '+(c.comissao||'—')+'%</div>'+
+    '</div>'+
+    '<div style="margin-bottom:14px">'+
+      '<div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Credenciais D4Sign</div>'+
+      '<div class="fg"><label>Token API</label><input id="d4-key" value="'+d4Key+'" placeholder="Sua API Key do D4Sign"></div>'+
+      '<div class="fg"><label>Crypt Key</label><input id="d4-crypt" value="'+d4Crypt+'" placeholder="Sua Cryptkey do D4Sign"></div>'+
+    '</div>'+
+    '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px;font-size:12px;color:#92400e;margin-bottom:14px">'+
+      '⚠️ <strong>Como funciona:</strong><br>'+
+      '1. Gere o PDF do contrato (botão PDF)<br>'+
+      '2. Suba o PDF no D4Sign manualmente (ou via API abaixo)<br>'+
+      '3. Adicione os signatários e envie para assinatura<br>'+
+      '4. As partes assinam pelo link que recebem por e-mail/WhatsApp'+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<a href="https://app.d4sign.com.br" target="_blank" class="btn btn-primary" style="text-align:center;text-decoration:none">🔗 Abrir D4Sign</a>'+
+      '<a href="https://app.clicksign.com" target="_blank" class="btn btn-sm" style="background:#00b894;color:#fff;border:none;text-align:center;text-decoration:none">🔗 Abrir ClickSign (alternativa)</a>'+
+      '<button class="btn btn-sm btn-outline" onclick="salvarCredsD4Sign()">💾 Salvar credenciais</button>'+
+    '</div>',
+    null, null
+  );
+}
+window.assinarD4Sign = assinarD4Sign;
+
+function salvarCredsD4Sign(){
+  var key = document.getElementById('d4-key');
+  var crypt = document.getElementById('d4-crypt');
+  if(key) localStorage.setItem('d4sign_key', key.value);
+  if(crypt) localStorage.setItem('d4sign_crypt', crypt.value);
+  var btn = document.querySelector('[onclick="salvarCredsD4Sign()"]');
+  if(btn){ btn.textContent = '✓ Salvo!'; setTimeout(function(){ btn.textContent = '💾 Salvar credenciais'; }, 2000); }
+}
+window.salvarCredsD4Sign = salvarCredsD4Sign;
+
+
 // ===== ORDENS DE SERVIÇO =====
 function pOS(){
   document.getElementById('pa').innerHTML =
@@ -4322,6 +4464,7 @@ function pContratos(){
       '<button class="btn btn-xs btn-blue" onclick="editCT('+i+')">Editar</button>'+
       '<button class="btn btn-xs btn-green" onclick="pdfCT('+i+',false)">PDF</button>'+
       '<button class="btn btn-xs" style="background:#7c3aed;color:#fff" onclick="pdfCT('+i+',true)">PDF s/capa</button>'+
+      '<button class="btn btn-xs" style="background:#7c3aed;color:#fff" onclick="assinarD4Sign('+i+')">✍️ Assinar</button>'+
       '<button class="btn btn-xs" style="background:#fee2e2;color:#b91c1c" onclick="if(confirm(\'Excluir?\'))ctContratos.splice('+i+',1),pContratos()">Del</button>'+
       '</td></tr>';
   });
