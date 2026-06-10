@@ -3258,6 +3258,10 @@ function imprimirBoleto(i){
       '.pix-info p{font-size:11px;color:#6b7280;margin:0 0 8px;line-height:1.5}'+
       '.pix-codigo{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px;font-size:9px;font-family:monospace;word-break:break-all;color:#374151;max-height:50px;overflow:hidden}'+
       '.rodape{text-align:center;margin-top:20px;font-size:10px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:12px}'+
+      '.btn-copiar-pix{display:block;width:100%;background:linear-gradient(135deg,#003DA5,#0050cc);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px;letter-spacing:.3px}'+
+      '.btn-copiar-pix:active{background:#002a7a}'+
+      '.pix-copiado-ok{display:none;text-align:center;margin-top:10px;color:#059669;font-weight:700;font-size:14px;padding:10px;background:#f0fdf4;border-radius:8px}'+
+      '.pix-codigo{background:#fff;border:2px dashed #003DA5;border-radius:8px;padding:10px;font-size:9px;font-family:monospace;word-break:break-all;color:#374151;line-height:1.6;cursor:pointer}'+
       '@media print{body{padding:10px}.no-print{display:none!important}}'+
     '</style></head><body>'+
     '<div class="topo">'+
@@ -3293,8 +3297,10 @@ function imprimirBoleto(i){
         '<div class="pix-info">'+
           '<h3>Pagamento via PIX</h3>'+
           '<p>Chave PIX (Itaú):<br><b>+55 11 96919-7881</b></p>'+
-          '<p style="font-size:10px;font-weight:700;color:#374151">Pix Copia e Cola:</p>'+
-          '<div class="pix-codigo">'+payload+'</div>'+
+          '<p style="font-size:10px;font-weight:700;color:#1e293b;margin-bottom:4px">Código PIX (clique para copiar):</p>'+
+          '<div class="pix-codigo" onclick="copiarCodigoPix(this)" title="Clique para copiar">'+payload+'</div>'+
+          '<button class="btn-copiar-pix no-print" onclick="copiarCodigoPix(null)">📋 COPIAR CÓDIGO PIX</button>'+
+          '<div class="pix-copiado-ok" id="pix-ok">✅ Código copiado! Abra seu banco e cole.</div>'+
         '</div>'+
       '</div>'+
       '<div class="rodape">'+
@@ -3302,9 +3308,19 @@ function imprimirBoleto(i){
         'Este documento é uma cobrança de aluguel emitida pela administradora do imóvel.'+
       '</div>'+
     '</div>'+
-    '<div class="no-print" style="text-align:center;margin-top:16px">'+
-      '<button onclick="window.print()" style="background:#0f1a35;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'+
+    '<div class="no-print" style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">'+
+      '<button onclick="window.print()" style="background:#0f1a35;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'+
     '</div>'+
+    '<script>'+
+    'var _pc="'+payload.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'";'+
+    'function copiarCodigoPix(){'+
+      'var ok=document.getElementById("pix-ok");'+
+      'var btn=document.querySelector(".btn-copiar-pix");'+
+      'function _ok(){if(ok)ok.style.display="block";if(btn){btn.style.background="#059669";btn.textContent="✅ COPIADO! Cole no seu banco";}setTimeout(function(){if(btn){btn.style.background="";btn.textContent="📋 COPIAR CÓDIGO PIX";}},4000);}'+
+      'if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(_pc).then(_ok).catch(function(){_fb();});}else{_fb();}'+
+      'function _fb(){var ta=document.createElement("textarea");ta.value=_pc;ta.style.cssText="position:fixed;opacity:0";document.body.appendChild(ta);ta.focus();ta.select();document.execCommand("copy");document.body.removeChild(ta);_ok();}'+
+    '}'+
+    '<\/script>'+
     '</body></html>');
   w.document.close();
 }
