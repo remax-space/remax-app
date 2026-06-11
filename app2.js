@@ -3273,8 +3273,9 @@ function imprimirBoleto(i){
         '<div style="flex:1">'+
           '<div style="font-size:13px;color:#0f1a35;font-weight:800;margin-bottom:8px">Pagamento via PIX</div>'+
           '<div style="font-size:11px;color:#6b7280;margin-bottom:10px">Chave PIX (Itaú):<br><b>+55 11 96919-7881</b></div>'+
-          '<div style="font-size:10px;font-weight:700;color:#1e293b;margin-bottom:6px">Pix Copia e Cola:</div>'+
-          '<div style="background:#fff;border:2px dashed #003DA5;border-radius:8px;padding:10px;font-size:8px;font-family:monospace;word-break:break-all;color:#1e293b;line-height:1.6">'+payload+'</div>'+
+          '<div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:6px">📋 Pix Copia e Cola — selecione o código abaixo e copie:</div>'+
+          '<div style="background:#fff;border:2px solid #003DA5;border-radius:8px;padding:12px;font-size:10px;font-family:monospace;word-break:break-all;color:#000;line-height:1.8;user-select:all;-webkit-user-select:all">'+payload+'</div>'+
+          '<div style="font-size:9px;color:#6b7280;margin-top:4px;font-style:italic">Toque e segure no código acima para selecionar e copiar, depois cole no seu banco.</div>'+
           // Botão copiar - NÃO aparece no print
           '<button onclick="copiarPixBoleto()" id="btn-pix-boleto" style="display:block;width:100%;background:linear-gradient(135deg,#003DA5,#0050cc);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;margin-top:10px">📋 COPIAR CÓDIGO PIX</button>'+
           '<div id="pix-boleto-ok" style="display:none;text-align:center;margin-top:8px;color:#059669;font-weight:700;font-size:13px;padding:8px;background:#f0fdf4;border-radius:8px">✅ Código copiado! Abra seu banco e cole.</div>'+
