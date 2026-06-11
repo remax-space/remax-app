@@ -4869,6 +4869,62 @@ function relatorioContratos(){
 
   oM('📋 Relatório de Contratos', html, null, null, true);
 }
+function editCT(i){
+  var c = ctD[i];
+  var corrOpts = USERS.filter(function(u){return u.role!='master'||true;}).map(function(u){
+    return '<option value="'+u.nome+'"'+(c.corretor===u.nome?' selected':'')+'>'+u.nome+'</option>';
+  }).join('');
+  oM('Editar Contrato — '+c.id,
+    '<div class="fg2">'+
+      '<div class="fg"><label>Proprietário</label><input id="ec-p" value="'+c.prop+'"></div>'+
+      '<div class="fg"><label>Inquilino</label><input id="ec-i" value="'+c.inq+'"></div>'+
+    '</div>'+
+    '<div class="fg2">'+
+      '<div class="fg"><label>Tipo</label>'+
+        '<select id="ec-t">'+
+          ['Kitnet','Casa','Chalé','Apartamento','Sala Comercial','Flat/Apart-Hotel','Loja','Galpão'].map(function(t){
+            return '<option value="'+t+'"'+(c.tipo===t?' selected':'')+'>'+t+'</option>';
+          }).join('')+
+        '</select>'+
+      '</div>'+
+      '<div class="fg"><label>Endereço</label><input id="ec-e" value="'+c.end+'"></div>'+
+    '</div>'+
+    '<div class="fg2">'+
+      '<div class="fg"><label>Valor (R$)</label><input id="ec-v" type="number" value="'+c.valor+'"></div>'+
+      '<div class="fg"><label>Vencimento (dia)</label><input id="ec-ve" type="number" min="1" max="31" value="'+c.venc+'"></div>'+
+    '</div>'+
+    '<div class="fg2">'+
+      '<div class="fg"><label>Início</label><input id="ec-in" type="date" value="'+c.inicio+'"></div>'+
+      '<div class="fg"><label>Fim</label><input id="ec-fi" type="date" value="'+c.fim+'"></div>'+
+    '</div>'+
+    '<div class="fg2">'+
+      '<div class="fg"><label>Corretor</label><select id="ec-c">'+corrOpts+'</select></div>'+
+      '<div class="fg"><label>Status</label>'+
+        '<select id="ec-s">'+
+          ['Ativa','Encerrada','Suspensa'].map(function(s){
+            return '<option value="'+s+'"'+(c.status===s?' selected':'')+'>'+s+'</option>';
+          }).join('')+
+        '</select>'+
+      '</div>'+
+    '</div>'+
+    '<div class="fg"><label>Observações</label><input id="ec-obs" value="'+(c.obs||'')+'"></div>',
+    function(){
+      c.prop    = document.getElementById('ec-p').value.trim();
+      c.inq     = document.getElementById('ec-i').value.trim();
+      c.tipo    = document.getElementById('ec-t').value;
+      c.end     = document.getElementById('ec-e').value.trim();
+      c.valor   = parseFloat(document.getElementById('ec-v').value)||0;
+      c.venc    = parseInt(document.getElementById('ec-ve').value)||10;
+      c.inicio  = document.getElementById('ec-in').value;
+      c.fim     = document.getElementById('ec-fi').value;
+      c.corretor= document.getElementById('ec-c').value;
+      c.status  = document.getElementById('ec-s').value;
+      c.obs     = document.getElementById('ec-obs').value.trim();
+      registrarLog('Editar Contrato', c.id+' — '+c.prop+'/'+c.inq);
+      cM(); salvarTudo(); pLC();
+    }, 'Salvar');
+}
+
 function pLC(){
   var pa = document.getElementById('pa');
   pa.innerHTML = '';
