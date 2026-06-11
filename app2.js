@@ -3933,7 +3933,6 @@ function gerarExtratoPDF(prop, mesParam, anoParam){
         '</div>'+
       '</div>'+
     '</div>'+
-    '<script>window.onload=function(){window.print();}<\/script>'+
     '</body></html>';
 
   // Gerar PDF via html2pdf para download direto
