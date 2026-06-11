@@ -3234,96 +3234,103 @@ function imprimirBoleto(i){
   var payload = b.pixCopiaECola || gerarPixPayload(valorTotal, txid, 'Aluguel');
   var qrUrl = b.pixQrCode || gerarQrCodePix(valorTotal, txid, 'Aluguel');
   var vencFormatado = 'Dia '+b.venc+' de '+b.mes;
-  var w = window.open('','_blank','width=800,height=900');
-  w.document.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">'+
-    '<title>Boleto '+b.ctId+'</title>'+
-    '<style>'+
-      'body{font-family:Arial,sans-serif;font-size:12px;color:#1a1a1a;margin:0;padding:20px;background:#fff}'+
-      '.topo{background:#0f1a35;color:#fff;padding:14px 20px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center}'+
-      '.topo h1{font-size:18px;margin:0;letter-spacing:1px}'+
-      '.topo span{font-size:11px;opacity:.8}'+
-      '.corpo{border:1px solid #ddd;border-top:none;padding:20px;border-radius:0 0 8px 8px}'+
-      '.linha{display:flex;gap:20px;margin-bottom:14px}'+
-      '.campo{flex:1}'+
-      '.campo label{font-size:10px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px}'+
-      '.campo span{font-size:13px;font-weight:600;color:#1a1a1a}'+
-      '.valor-box{background:#f0fdf4;border:2px solid #059669;border-radius:8px;padding:12px 20px;text-align:center;margin:16px 0}'+
-      '.valor-box .label{font-size:11px;color:#6b7280;font-weight:700}'+
-      '.valor-box .valor{font-size:28px;font-weight:900;color:#059669}'+
-      '.divider{border:none;border-top:1px dashed #ddd;margin:16px 0}'+
-      '.pix-section{display:flex;gap:20px;align-items:flex-start;background:#f9fafb;border-radius:8px;padding:16px;margin-top:16px}'+
-      '.pix-qr img{width:130px;height:130px;border:1px solid #e5e7eb;border-radius:6px}'+
-      '.pix-info{flex:1}'+
-      '.pix-info h3{font-size:13px;color:#0f1a35;margin:0 0 8px;font-weight:800}'+
-      '.pix-info p{font-size:11px;color:#6b7280;margin:0 0 8px;line-height:1.5}'+
-      '.pix-codigo{background:#fff;border:2px dashed #003DA5;border-radius:8px;padding:10px;font-size:8px;font-family:monospace;word-break:break-all;color:#1e293b;line-height:1.6;cursor:pointer}'+
-      '.pix-label-print{font-size:10px;font-weight:700;color:#1e293b;margin:12px 0 4px;display:block}'+
-      '.rodape{text-align:center;margin-top:20px;font-size:10px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:12px}'+
-      '.btn-copiar-pix{display:block;width:100%;background:linear-gradient(135deg,#003DA5,#0050cc);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px;letter-spacing:.3px}'+
-      '.btn-copiar-pix:active{background:#002a7a}'+
-      '.pix-copiado-ok{display:none;text-align:center;margin-top:10px;color:#059669;font-weight:700;font-size:14px;padding:10px;background:#f0fdf4;border-radius:8px}'+
-      '.pix-codigo{background:#fff;border:2px dashed #003DA5;border-radius:8px;padding:10px;font-size:9px;font-family:monospace;word-break:break-all;color:#374151;line-height:1.6;cursor:pointer}'+
-      '@media print{body{padding:10px}.no-print{display:none!important}}'+
-    '</style></head><body>'+
-    '<div class="topo">'+
-      '<div><h1>RE/MAX Space</h1><span>Caldas Novas — GO</span></div>'+
-      '<div style="text-align:right"><span style="font-size:13px;font-weight:700">COBRANÇA DE ALUGUEL</span><br><span>'+b.ctId+'</span></div>'+
+  var gerado = new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR');
+  var encHtml = enc.diasAtraso>0
+    ? '<div style="margin-top:8px;font-size:11px;color:#b91c1c"><b>⚠️ '+enc.diasAtraso+' dia(s) de atraso</b><br>Multa (10%): + '+fmt(enc.multa)+' &nbsp;|&nbsp; Juros (1%a.m.): + '+fmt(enc.juros)+'<br><span style="font-size:14px;font-weight:900">Total com encargos: '+fmt(enc.total)+'</span></div>'
+    : '<div style="font-size:10px;color:#6b7280;margin-top:6px">Após o vencimento: multa de 10% + juros de 1% a.m.</div>';
+
+  // Guardar payload globalmente para o botão copiar
+  window._pixBoletoPayload = payload;
+
+  var html =
+    '<div id="boleto-inner" style="font-family:Arial,sans-serif;font-size:12px;color:#1a1a1a;max-width:720px;margin:0 auto">'+
+    // Topo
+    '<div style="background:#0f1a35;color:#fff;padding:14px 20px;border-radius:8px 8px 0 0;display:flex;justify-content:space-between;align-items:center">'+
+      '<div><div style="font-size:18px;font-weight:900;letter-spacing:1px">RE/MAX Space</div><div style="font-size:11px;opacity:.8">Caldas Novas — GO</div></div>'+
+      '<div style="text-align:right"><div style="font-size:13px;font-weight:700">COBRANÇA DE ALUGUEL</div><div style="font-size:11px;opacity:.8">'+b.ctId+'</div></div>'+
     '</div>'+
-    '<div class="corpo">'+
-      '<div class="linha">'+
-        '<div class="campo"><label>Proprietário</label><span>'+b.prop+'</span></div>'+
-        '<div class="campo"><label>Inquilino</label><span>'+b.inq+'</span></div>'+
+    // Corpo
+    '<div style="border:1px solid #ddd;border-top:none;padding:20px;border-radius:0 0 8px 8px">'+
+      '<div style="display:flex;gap:20px;margin-bottom:14px">'+
+        '<div style="flex:1"><div style="font-size:10px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:3px">Proprietário</div><div style="font-size:13px;font-weight:600">'+b.prop+'</div></div>'+
+        '<div style="flex:1"><div style="font-size:10px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:3px">Inquilino</div><div style="font-size:13px;font-weight:600">'+b.inq+'</div></div>'+
       '</div>'+
-      '<div class="linha">'+
-        '<div class="campo"><label>Mês de Referência</label><span>'+b.mes+'</span></div>'+
-        '<div class="campo"><label>Vencimento</label><span>'+vencFormatado+'</span></div>'+
-        '<div class="campo"><label>Contrato</label><span>'+b.ctId+'</span></div>'+
+      '<div style="display:flex;gap:20px;margin-bottom:14px">'+
+        '<div style="flex:1"><div style="font-size:10px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:3px">Mês de Referência</div><div style="font-size:13px;font-weight:600">'+b.mes+'</div></div>'+
+        '<div style="flex:1"><div style="font-size:10px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:3px">Vencimento</div><div style="font-size:13px;font-weight:600">'+vencFormatado+'</div></div>'+
+        '<div style="flex:1"><div style="font-size:10px;color:#888;font-weight:700;text-transform:uppercase;margin-bottom:3px">Contrato</div><div style="font-size:13px;font-weight:600">'+b.ctId+'</div></div>'+
       '</div>'+
-      '<div class="valor-box">'+
-        '<div class="label">VALOR DO ALUGUEL</div>'+
-        '<div class="valor">'+fmt(b.valor)+'</div>'+
-        (enc.diasAtraso>0?
-          '<div style="margin-top:8px;font-size:11px;color:#b91c1c">'+
-            '<b>⚠️ '+enc.diasAtraso+' dia(s) de atraso</b><br>'+
-            'Multa (10%): + '+fmt(enc.multa)+' &nbsp;|&nbsp; Juros (1%a.m.): + '+fmt(enc.juros)+'<br>'+
-            '<span style="font-size:14px;font-weight:900">Total com encargos: '+fmt(enc.total)+'</span>'+
-          '</div>'
-        :
-          '<div style="font-size:10px;color:#6b7280;margin-top:6px">Após o vencimento: multa de 10% + juros de 1% a.m.</div>'
-        )+
+      // Valor
+      '<div style="background:#f0fdf4;border:2px solid #059669;border-radius:8px;padding:12px 20px;text-align:center;margin:16px 0">'+
+        '<div style="font-size:11px;color:#6b7280;font-weight:700">VALOR DO ALUGUEL</div>'+
+        '<div style="font-size:28px;font-weight:900;color:#059669">'+fmt(b.valor)+'</div>'+
+        encHtml+
       '</div>'+
-      '<hr class="divider">'+
-      '<div class="pix-section">'+
-        '<div class="pix-qr"><img src="'+qrUrl+'"><div style="text-align:center;font-size:9px;color:#9ca3af;margin-top:4px">Escaneie para pagar</div></div>'+
-        '<div class="pix-info">'+
-          '<h3>Pagamento via PIX</h3>'+
-          '<p>Chave PIX (Itaú):<br><b>+55 11 96919-7881</b></p>'+
-          '<span class="pix-label-print">Pix Copia e Cola:</span>'+
-          '<div class="pix-codigo" onclick="copiarCodigoPix()" title="Clique para copiar">'+payload+'</div>'+
-          '<button class="btn-copiar-pix no-print" onclick="copiarCodigoPix()">📋 COPIAR CÓDIGO PIX</button>'+
-          '<div class="pix-copiado-ok no-print" id="pix-ok">✅ Código copiado! Abra seu banco e cole.</div>'+
+      '<hr style="border:none;border-top:1px dashed #ddd;margin:16px 0">'+
+      // PIX section
+      '<div style="display:flex;gap:20px;align-items:flex-start;background:#f9fafb;border-radius:8px;padding:16px;margin-top:16px">'+
+        '<div><img src="'+qrUrl+'" style="width:130px;height:130px;border:1px solid #e5e7eb;border-radius:6px;display:block"><div style="text-align:center;font-size:9px;color:#9ca3af;margin-top:4px">Escaneie para pagar</div></div>'+
+        '<div style="flex:1">'+
+          '<div style="font-size:13px;color:#0f1a35;font-weight:800;margin-bottom:8px">Pagamento via PIX</div>'+
+          '<div style="font-size:11px;color:#6b7280;margin-bottom:10px">Chave PIX (Itaú):<br><b>+55 11 96919-7881</b></div>'+
+          '<div style="font-size:10px;font-weight:700;color:#1e293b;margin-bottom:6px">Pix Copia e Cola:</div>'+
+          '<div style="background:#fff;border:2px dashed #003DA5;border-radius:8px;padding:10px;font-size:8px;font-family:monospace;word-break:break-all;color:#1e293b;line-height:1.6">'+payload+'</div>'+
+          // Botão copiar - NÃO aparece no print
+          '<button onclick="copiarPixBoleto()" id="btn-pix-boleto" style="display:block;width:100%;background:linear-gradient(135deg,#003DA5,#0050cc);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;margin-top:10px">📋 COPIAR CÓDIGO PIX</button>'+
+          '<div id="pix-boleto-ok" style="display:none;text-align:center;margin-top:8px;color:#059669;font-weight:700;font-size:13px;padding:8px;background:#f0fdf4;border-radius:8px">✅ Código copiado! Abra seu banco e cole.</div>'+
         '</div>'+
       '</div>'+
-      '<div class="rodape">'+
+      // Rodapé
+      '<div style="text-align:center;margin-top:20px;font-size:10px;color:#9ca3af;border-top:1px solid #f3f4f6;padding-top:12px">'+
         'RE/MAX Space Consultoria Imobiliária • Caldas Novas — GO • (64) 9 9999-9999<br>'+
         'Este documento é uma cobrança de aluguel emitida pela administradora do imóvel.'+
       '</div>'+
     '</div>'+
-    '<div class="no-print" style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center">'+
-      '<button onclick="window.print()" style="background:#0f1a35;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'+
     '</div>'+
-    '<script>'+
-    'var _pc="'+payload.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'";'+
-    'function copiarCodigoPix(){'+
-      'var ok=document.getElementById("pix-ok");'+
-      'var btn=document.querySelector(".btn-copiar-pix");'+
-      'function _ok(){if(ok)ok.style.display="block";if(btn){btn.style.background="#059669";btn.textContent="✅ COPIADO! Cole no seu banco";}setTimeout(function(){if(btn){btn.style.background="";btn.textContent="📋 COPIAR CÓDIGO PIX";}},4000);}'+
-      'if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(_pc).then(_ok).catch(function(){_fb();});}else{_fb();}'+
-      'function _fb(){var ta=document.createElement("textarea");ta.value=_pc;ta.style.cssText="position:fixed;opacity:0";document.body.appendChild(ta);ta.focus();ta.select();document.execCommand("copy");document.body.removeChild(ta);_ok();}'+
-    '}'+
-    '<\/script>'+
-    '</body></html>');
-  w.document.close();
+    // Botões de ação (fora do boleto, não aparecem no print)
+    '<div id="boleto-acoes" style="display:flex;gap:10px;margin-top:16px;justify-content:center">'+
+      '<button onclick="imprimirBoletoModal()" style="background:#0f1a35;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir / Salvar PDF</button>'+
+    '</div>';
+
+  oM('Boleto — '+b.ctId+' | '+b.inq, html, null, 'Fechar');
+}
+
+function copiarPixBoleto(){
+  var payload = window._pixBoletoPayload;
+  if(!payload) return;
+  var btn = document.getElementById('btn-pix-boleto');
+  var ok = document.getElementById('pix-boleto-ok');
+  function _ok(){
+    if(btn){btn.style.background='#059669';btn.textContent='✅ COPIADO! Cole no seu banco';}
+    if(ok){ok.style.display='block';}
+    setTimeout(function(){if(btn){btn.style.background='';btn.textContent='📋 COPIAR CÓDIGO PIX';}},4000);
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(payload).then(_ok).catch(function(){_fb();});
+  } else { _fb(); }
+  function _fb(){
+    var ta=document.createElement('textarea');ta.value=payload;
+    ta.style.cssText='position:fixed;opacity:0;top:0;left:0';
+    document.body.appendChild(ta);ta.focus();ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);_ok();
+  }
+}
+
+function imprimirBoletoModal(){
+  var inner = document.getElementById('boleto-inner');
+  var acoes = document.getElementById('boleto-acoes');
+  var btnPix = document.getElementById('btn-pix-boleto');
+  var pixOk = document.getElementById('pix-boleto-ok');
+  // Esconder elementos que não devem aparecer no print
+  if(acoes) acoes.style.display='none';
+  if(btnPix) btnPix.style.display='none';
+  if(pixOk) pixOk.style.display='none';
+  window.print();
+  // Restaurar após impressão
+  setTimeout(function(){
+    if(acoes) acoes.style.display='flex';
+    if(btnPix) btnPix.style.display='block';
+  }, 1000);
 }
 
 
