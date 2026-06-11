@@ -4871,7 +4871,7 @@ function relatorioContratos(){
 }
 function editCtLocacao(i){
   var c = ctD[i];
-  var corrOpts = USERS.filter(function(u){return u.role!='master'||true;}).map(function(u){
+  var corrOpts = COR.map(function(u){
     return '<option value="'+u.nome+'"'+(c.corretor===u.nome?' selected':'')+'>'+u.nome+'</option>';
   }).join('');
   oM('Editar Contrato — '+c.id,
