@@ -4907,6 +4907,10 @@ function editCtLocacao(i){
         '</select>'+
       '</div>'+
     '</div>'+
+    '<div class="fg2">'+
+    '<div class="fg"><label>CPF do Inquilino</label><input id="ec-cpf" value="'+(c.cpf_inq||'')+'"></div>'+
+    '<div class="fg"><label>Data Nascimento Inquilino</label><input id="ec-nasc" type="date" value="'+(c.nasc_inq||'')+'"></div>'+
+    '</div>'+
     '<div class="fg"><label>Observações</label><input id="ec-obs" value="'+(c.obs||'')+'"></div>',
     function(){
       c.prop    = document.getElementById('ec-p').value.trim();
@@ -4919,6 +4923,8 @@ function editCtLocacao(i){
       c.fim     = document.getElementById('ec-fi').value;
       c.corretor= document.getElementById('ec-c').value;
       c.status  = document.getElementById('ec-s').value;
+      c.cpf_inq = document.getElementById('ec-cpf').value.trim();
+      c.nasc_inq= document.getElementById('ec-nasc').value;
       c.obs     = document.getElementById('ec-obs').value.trim();
       registrarLog('Editar Contrato', c.id+' — '+c.prop+'/'+c.inq);
       cM(); salvarTudo(); pLC();
@@ -5185,8 +5191,8 @@ function relatorioContratos(){
   oM('📋 Relatório de Contratos', html, null, null, true);
 }
 function nCT(){
-  oM('Novo Contrato','<div class="fg2"><div class="fg"><label>Proprietario</label><input id="nc-p"></div><div class="fg"><label>Inquilino</label><input id="nc-i"></div></div><div class="fg"><label>Endereco</label><input id="nc-e"></div><div class="fg3"><div class="fg"><label>Tipo</label><select id="nc-t"><option>Casa</option><option>Apartamento</option><option>Kitnet</option><option>Sala Comercial</option><option>Chale</option></select></div><div class="fg"><label>Valor R$</label><input id="nc-v" type="number"></div><div class="fg"><label>Venc dia</label><input id="nc-ve" type="number" value="10"></div></div><div class="fg2"><div class="fg"><label>Inicio</label><input type="date" id="nc-in"></div><div class="fg"><label>Fim</label><input type="date" id="nc-fi"></div></div><div class="fg"><label>Corretor</label><select id="nc-c">'+corrSel()+'</select></div>',
-  function(){var nid='CT-0'+String(ctD.length+1).padStart(2,'0');registrarLog('Novo Contrato','Contrato '+nid+' criado');ctD.push({id:nid,prop:document.getElementById('nc-p').value,inq:document.getElementById('nc-i').value,tipo:document.getElementById('nc-t').value,end:document.getElementById('nc-e').value,valor:parseFloat(document.getElementById('nc-v').value)||0,venc:parseInt(document.getElementById('nc-ve').value)||10,inicio:document.getElementById('nc-in').value,fim:document.getElementById('nc-fi').value,corretor:document.getElementById('nc-c').value,status:'Ativa',rs:Array(12).fill('N'),forma:'PIX',banco:'',obs:''});cM();salvarTudo();pLC();});
+  oM('Novo Contrato','<div class="fg2"><div class="fg"><label>Proprietário</label><input id="nc-p"></div><div class="fg"><label>Inquilino</label><input id="nc-i"></div></div><div class="fg2"><div class="fg"><label>CPF do Inquilino</label><input id="nc-cpf" placeholder="000.000.000-00"></div><div class="fg"><label>Data de Nascimento (Inquilino)</label><input id="nc-nasc" type="date"></div></div><div class="fg"><label>Endereco</label><input id="nc-e"></div><div class="fg3"><div class="fg"><label>Tipo</label><select id="nc-t"><option>Casa</option><option>Apartamento</option><option>Kitnet</option><option>Sala Comercial</option><option>Chale</option></select></div><div class="fg"><label>Valor R$</label><input id="nc-v" type="number"></div><div class="fg"><label>Venc dia</label><input id="nc-ve" type="number" value="10"></div></div><div class="fg2"><div class="fg"><label>Inicio</label><input type="date" id="nc-in"></div><div class="fg"><label>Fim</label><input type="date" id="nc-fi"></div></div><div class="fg"><label>Corretor</label><select id="nc-c">'+corrSel()+'</select></div>',
+  function(){var nid='CT-0'+String(ctD.length+1).padStart(2,'0');registrarLog('Novo Contrato','Contrato '+nid+' criado');ctD.push({id:nid,prop:document.getElementById('nc-p').value,inq:document.getElementById('nc-i').value,cpf_inq:document.getElementById('nc-cpf').value.trim(),nasc_inq:document.getElementById('nc-nasc').value,tipo:document.getElementById('nc-t').value,end:document.getElementById('nc-e').value,valor:parseFloat(document.getElementById('nc-v').value)||0,venc:parseInt(document.getElementById('nc-ve').value)||10,inicio:document.getElementById('nc-in').value,fim:document.getElementById('nc-fi').value,corretor:document.getElementById('nc-c').value,status:'Ativa',rs:Array(12).fill('N'),forma:'PIX',banco:'',obs:''});cM();salvarTudo();pLC();});
 }
 
 // ===== REPASSES =====
