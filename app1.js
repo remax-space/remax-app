@@ -2511,8 +2511,9 @@ function pCadInq(){
   pa.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'+
       '<h2 style="font-size:18px;color:var(--nv)">Clientes - Inquilinos</h2>'+
-      '<div style="display:flex;gap:8px">'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
         '<button class="btn" style="background:#10b981;color:#fff" onclick="novoInquilinoCad()">+ Novo</button>'+
+        '<button class="btn" style="background:#16a34a;color:#fff" onclick="dispararWAmassa(\'inq\')">WhatsApp em Massa</button>'+
         '<button class="btn" style="background:#0f1a35;color:#fff" onclick="gerarListaClientes(\'inq\')">Exportar Lista</button>'+
       '</div>'+
     '</div>'+
@@ -2534,39 +2535,73 @@ function pCadInq(){
 // ============================================================
 // CADASTRO DE CLIENTES - Proprietarios
 // ============================================================
-function pCadProp(){
+function pCadProp(filtro){
+  filtro = filtro || 'todos';
   var pa = document.getElementById('pa');
 
-  var rows = propCad.map(function(p,i){
+  var listaFiltrada = propCad.filter(function(p){
+    var st = p.statusCad || 'Ativo';
+    if(filtro==='ativos') return st==='Ativo';
+    if(filtro==='inativos') return st==='Inativo';
+    return true;
+  });
+
+  var rows = listaFiltrada.map(function(p){
+    var i = propCad.indexOf(p);
     var qtdContratos = ctD.filter(function(c){return c.prop===p.nome;}).length;
-    return '<tr>'+
+    var st = p.statusCad || 'Ativo';
+    var tagSt = st==='Ativo'
+      ? '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#dcfce7;color:#166534">Ativo</span>'
+      : '<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:#f3f4f6;color:#6b7280">Inativo</span>';
+    return '<tr style="'+(st==='Inativo'?'opacity:.55':'')+'">'+
       '<td style="font-weight:700">'+p.nome+'</td>'+
       '<td>'+(p.cpf||'<span style="color:#d1d5db">-</span>')+'</td>'+
       '<td>'+(p.nasc?formatarDataBR(p.nasc):'<span style="color:#d1d5db">-</span>')+'</td>'+
       '<td>'+(p.tel||'<span style="color:#d1d5db">-</span>')+'</td>'+
       '<td>'+(p.email||'<span style="color:#d1d5db">-</span>')+'</td>'+
       '<td style="text-align:center">'+qtdContratos+'</td>'+
-      '<td><button class="btn btn-sm" onclick="editCliente(\'prop\','+i+')">Editar</button></td>'+
+      '<td>'+tagSt+'</td>'+
+      '<td style="white-space:nowrap">'+
+        '<button class="btn btn-sm" onclick="editCliente(\'prop\','+i+')">Editar</button> '+
+        '<button class="btn btn-sm" style="background:'+(st==='Ativo'?'#fef9c3;color:#92400e':'#dcfce7;color:#166534')+'" onclick="toggleStatusProp('+i+')">'+(st==='Ativo'?'Inativar':'Reativar')+'</button>'+
+      '</td>'+
     '</tr>';
   }).join('');
+
+  var btnTab = function(id,lbl){
+    return '<button class="btn btn-sm" style="'+(filtro===id?'background:#003DA5;color:#fff':'background:#f1f5f9;color:#374151')+'" onclick="pCadProp(\''+id+'\')">'+lbl+'</button>';
+  };
 
   pa.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'+
       '<h2 style="font-size:18px;color:var(--nv)">Clientes - Proprietarios</h2>'+
-      '<div style="display:flex;gap:8px">'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
         '<button class="btn" style="background:#10b981;color:#fff" onclick="novoProprietarioCad()">+ Novo</button>'+
+        '<button class="btn" style="background:#16a34a;color:#fff" onclick="dispararWAmassa(\'prop\')">WhatsApp em Massa</button>'+
         '<button class="btn" style="background:#0f1a35;color:#fff" onclick="gerarListaClientes(\'prop\')">Exportar Lista</button>'+
       '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:6px;margin-bottom:12px">'+
+      btnTab('todos','Todos ('+propCad.length+')')+
+      btnTab('ativos','Ativos ('+propCad.filter(function(p){return (p.statusCad||'Ativo')==='Ativo';}).length+')')+
+      btnTab('inativos','Inativos ('+propCad.filter(function(p){return p.statusCad==='Inativo';}).length+')')+
     '</div>'+
     '<div style="overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.04)">'+
       '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
         '<thead><tr style="background:#f8fafc;text-align:left">'+
           '<th style="padding:10px 12px">Nome</th><th style="padding:10px 12px">CPF</th><th style="padding:10px 12px">Nascimento</th>'+
-          '<th style="padding:10px 12px">Telefone</th><th style="padding:10px 12px">Email</th><th style="padding:10px 12px">Contratos</th><th style="padding:10px 12px">Acoes</th>'+
+          '<th style="padding:10px 12px">Telefone</th><th style="padding:10px 12px">Email</th><th style="padding:10px 12px">Contratos</th><th style="padding:10px 12px">Status</th><th style="padding:10px 12px">Acoes</th>'+
         '</tr></thead>'+
-        '<tbody>'+rows+'</tbody>'+
+        '<tbody>'+(rows||'<tr><td colspan="8" style="text-align:center;padding:20px;color:#9ca3af">Nenhum registro</td></tr>')+'</tbody>'+
       '</table>'+
     '</div>';
+}
+
+function toggleStatusProp(i){
+  var p = propCad[i];
+  p.statusCad = (p.statusCad||'Ativo')==='Ativo' ? 'Inativo' : 'Ativo';
+  registrarLog('Status Proprietario', p.nome+' -> '+p.statusCad);
+  salvarTudo(); pCadProp();
 }
 
 function novoProprietarioCad(){
@@ -2713,6 +2748,59 @@ function gerarListaClientes(tipo){
     document.body.removeChild(container);
     alert('Erro: html2pdf nao carregado.');
   }
+}
+
+function dispararWAmassa(tipo){
+  var contatos;
+  if(tipo === 'inq'){
+    contatos = ctD.filter(function(c){return c.tel_inq;}).map(function(c){
+      return {nome:c.inq, tel:c.tel_inq, ref:c.id};
+    });
+    inqCadManual.filter(function(m){return m.tel;}).forEach(function(m){
+      contatos.push({nome:m.nome, tel:m.tel, ref:'-'});
+    });
+  } else {
+    contatos = propCad.filter(function(p){return p.tel && (p.statusCad||'Ativo')==='Ativo';}).map(function(p){
+      var qtd = ctD.filter(function(c){return c.prop===p.nome;}).length;
+      return {nome:p.nome, tel:p.tel, ref:qtd+' imovel(eis)'};
+    });
+  }
+
+  if(contatos.length === 0){
+    alert('Nenhum contato com telefone cadastrado.');
+    return;
+  }
+
+  window._waMassaContatos = contatos;
+  window._waMassaTipo = tipo;
+
+  var msgPadrao = tipo === 'inq'
+    ? 'Ola {nome}! Aqui e a RE/MAX Space. Tudo bem?'
+    : 'Ola {nome}! Aqui e a RE/MAX Space. Tudo bem?';
+
+  var listaHtml = contatos.map(function(c,i){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:12px">'+
+      '<div><b>'+c.nome+'</b><br><span style="color:#9ca3af">'+c.tel+' - '+c.ref+'</span></div>'+
+      '<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="abrirWAIndividual('+i+')">Enviar</button>'+
+    '</div>';
+  }).join('');
+
+  oM('WhatsApp em Massa - '+(tipo==='inq'?'Inquilinos':'Proprietarios'),
+    '<div style="background:#eff6ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#1e40af;margin-bottom:12px">'+
+      'Use {nome} no texto para personalizar automaticamente. '+contatos.length+' contato(s) encontrado(s). Clique em Enviar ao lado de cada nome para abrir o WhatsApp.'+
+    '</div>'+
+    '<div class="fg"><label>Mensagem</label><textarea id="wa-massa-msg" style="width:100%;min-height:90px;padding:10px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px">'+msgPadrao+'</textarea></div>'+
+    '<div style="max-height:280px;overflow-y:auto;margin-top:10px">'+listaHtml+'</div>',
+    null, 'Fechar', true);
+}
+
+function abrirWAIndividual(i){
+  var c = window._waMassaContatos[i];
+  var msg = document.getElementById('wa-massa-msg').value;
+  msg = msg.replace(/\{nome\}/g, c.nome.split(' ')[0]);
+  var tel = (c.tel||'').replace(/[^0-9]/g,'');
+  if(tel.length <= 11) tel = '55'+tel;
+  window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg), '_blank');
 }
 
 function formatarDataBR(d){
