@@ -3431,7 +3431,7 @@ function togglePerm(userId, modulo, val){
 }
 
 function gP(id){
-  closeMobileMenu();
+  if(window.innerWidth<=768) closeMobileMenu();
   document.querySelectorAll('.ni').forEach(function(e){e.classList.remove('active');});
   var n=document.getElementById('n-'+id); if(n) n.classList.add('active');
   document.getElementById('pt').textContent = TITLES[id]||id;
