@@ -76,7 +76,7 @@ function salvarTudo(){
       }
       var estado = JSON.stringify({
         ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
-        cp:cpD, mc:mcmvD, vs:vsD, iq:inqCad,
+        cp:cpD, mc:mcmvD, vs:vsD, iq:inqCadManual,
         pc:propCad, cc:corCad, sn:senhas,
         ll:(typeof llD!=='undefined'?llD:[]),
         rc:(typeof recrutD!=='undefined'?recrutD:[]),
@@ -134,7 +134,7 @@ async function carregarDados(){
       if(e.hi) histD = e.hi;
       if(e.mt) metasD = e.mt;
       if(e.dc) docsD = e.dc;
-      if(e.iq && e.iq.length > 0) inqCad = e.iq;
+      if(e.iq && e.iq.length > 0) inqCadManual = e.iq;
       if(e.pc && e.pc.length > 0) propCad = e.pc;
       if(e.cc && e.cc.length > 0) corCad = e.cc;
       if(e.sn) Object.assign(senhas, e.sn);
@@ -545,6 +545,7 @@ var corCad = [
   {id:7,nome:'Lucas Basile',cpf:'789.012.345-66',rg:'7890123',nasc:'2000-06-18',tel:'(64)9 9789-0123',email:'lucas@remax.com',end:'Rua das Flores 100',bairro:'Centro',cidade:'Caldas Novas GO',creci:'GO-78901',banco:'Nubank',agencia:'0001',conta:'34567-8',pix:'(64)9 9789-0123',cargo:'Corretor/Marketing',status:'Ativo',cor:'#0F766E',ini:'LB'},
   {id:8,nome:'Dubem',cpf:'890.123.456-77',rg:'8901234',nasc:'1988-02-25',tel:'(64)9 9890-1234',email:'dubem@remax.com',end:'Av. Olimpiadas 700',bairro:'Mansoes',cidade:'Caldas Novas GO',creci:'GO-89012',banco:'Bradesco',agencia:'6789',conta:'45678-9',pix:'(64)9 9890-1234',cargo:'Corretor',status:'Ativo',cor:'#854F0B',ini:'DU'}
 ];
+var inqCadManual = [];
 var propCad = [
   {id:1,nome:'Glaucia Sueko',cpf:'111.222.333-44',tel:'(61)9 9306-3377',email:'',end:'SQN 410 Bloco B',cidade:'Brasilia DF',banco:'Bradesco',agencia:'1001',conta:'11111-1',pix:'111.222.333-44',obs:'4 contratos ativos'},
   {id:2,nome:'Luciene',cpf:'222.333.444-55',tel:'(64)9 9000-1111',email:'',end:'Rua Joao Pessoa 200',cidade:'Caldas Novas GO',banco:'Caixa',agencia:'2002',conta:'22222-2',pix:'(64)9 9000-1111',obs:'5 kitnets'},
@@ -2486,7 +2487,11 @@ async function salvarSenhaUser(usuario){
 function pCadInq(){
   var pa = document.getElementById('pa');
   var lista = ctD.map(function(c,i){
-    return {idx:i, ct:c.id, nome:c.inq, cpf:c.cpf_inq||'', nasc:c.nasc_inq||'', tel:c.tel_inq||'', email:c.email_inq||'', status:c.status, imovel:c.end};
+    return {tipo:'ct', idx:i, ct:c.id, nome:c.inq, cpf:c.cpf_inq||'', nasc:c.nasc_inq||'', tel:c.tel_inq||'', email:c.email_inq||'', status:c.status, imovel:c.end};
+  });
+  // Adicionar inquilinos cadastrados manualmente (sem contrato ainda)
+  inqCadManual.forEach(function(m,i){
+    lista.push({tipo:'manual', idx:i, ct:'-', nome:m.nome, cpf:m.cpf||'', nasc:m.nasc||'', tel:m.tel||'', email:m.email||'', status:'Sem contrato', imovel:'-'});
   });
 
   var rows = lista.map(function(x){
@@ -2499,7 +2504,7 @@ function pCadInq(){
       '<td>'+(x.tel||'<span style="color:#d1d5db">-</span>')+'</td>'+
       '<td>'+(x.email||'<span style="color:#d1d5db">-</span>')+'</td>'+
       '<td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:'+(x.status==='Ativa'?'#dcfce7;color:#166534':'#fef9c3;color:#92400e')+'">'+x.status+'</span></td>'+
-      '<td><button class="btn btn-sm" onclick="editCliente(\'inq\','+x.idx+')">Editar</button></td>'+
+      '<td><button class="btn btn-sm" onclick="editCliente(\'inq\','+x.idx+',\''+x.tipo+'\')">Editar</button>'+(x.tipo==='manual'?' <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="excluirInquilinoManual('+x.idx+')">Excluir</button>':'')+'</td>'+
     '</tr>';
   }).join('');
 
@@ -2507,6 +2512,7 @@ function pCadInq(){
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'+
       '<h2 style="font-size:18px;color:var(--nv)">Clientes - Inquilinos</h2>'+
       '<div style="display:flex;gap:8px">'+
+        '<button class="btn" style="background:#10b981;color:#fff" onclick="novoInquilinoCad()">+ Novo</button>'+
         '<button class="btn" style="background:#0f1a35;color:#fff" onclick="gerarListaClientes(\'inq\')">Exportar Lista</button>'+
       '</div>'+
     '</div>'+
@@ -2584,8 +2590,52 @@ function novoProprietarioCad(){
     }, 'Salvar');
 }
 
-function editCliente(tipo, idx){
-  if(tipo === 'inq'){
+function excluirInquilinoManual(idx){
+  var m = inqCadManual[idx];
+  if(!confirm('Remover o cadastro de '+m.nome+'?')) return;
+  inqCadManual.splice(idx,1);
+  registrarLog('Excluir Inquilino (manual)', m.nome);
+  salvarTudo(); pCadInq();
+}
+
+function novoInquilinoCad(){
+  oM('Novo Inquilino (sem contrato)',
+    '<div class="fg"><label>Nome</label><input id="ni-nome"></div>'+
+    '<div class="fg2"><div class="fg"><label>CPF</label><input id="ni-cpf" placeholder="000.000.000-00"></div><div class="fg"><label>Data Nascimento</label><input id="ni-nasc" type="date"></div></div>'+
+    '<div class="fg2"><div class="fg"><label>Telefone</label><input id="ni-tel" placeholder="(64) 9 0000-0000"></div><div class="fg"><label>Email</label><input id="ni-email" type="email"></div></div>'+
+    '<div style="background:#fef9c3;border-radius:8px;padding:10px 12px;font-size:11px;color:#92400e;margin-top:8px">Este cadastro fica disponivel para vincular a um contrato depois. Quando o contrato for criado, os dados podem ser copiados para ele.</div>',
+    function(){
+      var nome = document.getElementById('ni-nome').value.trim();
+      if(!nome) return;
+      inqCadManual.push({
+        nome: nome,
+        cpf: document.getElementById('ni-cpf').value.trim(),
+        nasc: document.getElementById('ni-nasc').value,
+        tel: document.getElementById('ni-tel').value.trim(),
+        email: document.getElementById('ni-email').value.trim()
+      });
+      registrarLog('Novo Inquilino (cadastro)', nome);
+      cM(); salvarTudo(); pCadInq();
+    }, 'Salvar');
+}
+
+function editCliente(tipo, idx, subtipo){
+  if(tipo === 'inq' && subtipo === 'manual'){
+    var m = inqCadManual[idx];
+    oM('Editar Inquilino (sem contrato)',
+      '<div class="fg"><label>Nome</label><input id="cl-nome" value="'+m.nome+'"></div>'+
+      '<div class="fg2"><div class="fg"><label>CPF</label><input id="cl-cpf" value="'+(m.cpf||'')+'" placeholder="000.000.000-00"></div><div class="fg"><label>Data Nascimento</label><input id="cl-nasc" type="date" value="'+(m.nasc||'')+'"></div></div>'+
+      '<div class="fg2"><div class="fg"><label>Telefone</label><input id="cl-tel" value="'+(m.tel||'')+'" placeholder="(64) 9 0000-0000"></div><div class="fg"><label>Email</label><input id="cl-email" type="email" value="'+(m.email||'')+'"></div></div>',
+      function(){
+        m.nome = document.getElementById('cl-nome').value.trim();
+        m.cpf = document.getElementById('cl-cpf').value.trim();
+        m.nasc = document.getElementById('cl-nasc').value;
+        m.tel = document.getElementById('cl-tel').value.trim();
+        m.email = document.getElementById('cl-email').value.trim();
+        registrarLog('Editar Cliente (Inquilino manual)', m.nome);
+        cM(); salvarTudo(); pCadInq();
+      }, 'Salvar');
+  } else if(tipo === 'inq'){
     var c = ctD[idx];
     oM('Editar Inquilino - '+c.id,
       '<div class="fg"><label>Nome</label><input id="cl-nome" value="'+c.inq+'"></div>'+
