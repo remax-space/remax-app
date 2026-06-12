@@ -2728,12 +2728,12 @@ function renderRepTab2(){
     '<td id="frpb2-'+i+'">'+( c.banco||'-')+'</td>'+
     '<td id="frppix2-'+i+'">'+( c.pix||'-')+'</td>'+
     '<td id="frpobs2-'+i+'" style="font-size:10px;color:var(--lm);cursor:pointer;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+( c.obs||'-')+'</td>'+
-    '<td style="white-space:nowrap">'+
-    (!rec?'<button class="btn btn-xs btn-green" style="display:block;margin-bottom:3px" onclick="marcarRecebidoRep('+i+');renderRepTab2()">✓ Recebido</button>':'')+
-    (rec?'<button class="btn btn-xs" style="display:block;background:#dcfce7;color:#166534;margin-bottom:3px" onclick="mFRP('+i+')">💸 Repassar</button>'+
-         '<button class="btn btn-xs" style="display:block;background:#fee2e2;color:#991b1b;font-size:10px" onclick="desmarcarRep('+i+');renderRepTab2()">Desfazer</button>':'')+
-    '<button class="btn btn-xs" style="display:block;background:#fef9c3;color:#92400e;font-size:10px;margin-top:3px" onclick="inativarCT('+i+')">Inativar</button>'+
-    '</td></tr>';
+    '<td style="white-space:nowrap;min-width:130px"><div style="display:flex;flex-direction:column;gap:4px">'+
+    (!rec?'<button class="btn btn-xs btn-green" style="width:100%;text-align:center" onclick="marcarRecebidoRep('+i+');renderRepTab2()">\u2713 Marcar Recebido</button>':'')+
+    (rec?'<button class="btn btn-xs" style="width:100%;text-align:center;background:#dcfce7;color:#166534;font-weight:700" onclick="mFRP('+i+')">\uD83D\uDCB8 Repassar</button>'+
+         '<button class="btn btn-xs" style="width:100%;text-align:center;background:#fee2e2;color:#991b1b" onclick="desmarcarRep('+i+');renderRepTab2()">Desfazer</button>':'')+
+    '<button class="btn btn-xs" style="width:100%;text-align:center;background:#fef9c3;color:#92400e" onclick="inativarCT('+i+')">Inativar</button>'+
+    '</div></td></tr>';
   });
   r+='<tr class="sum-row"><td colspan="2">TOTAL</td><td>'+fmt(tot)+'</td><td>'+fmt(tot*.1)+'</td><td>'+fmt(tot*.9)+'</td><td colspan="7"></td></tr>';
   var panel=document.getElementById('rep-panel-2');
