@@ -2568,7 +2568,7 @@ var inqCad = [
   {id:9,ct:'CT-009',nome:'Pamela Cristina De Oliveira',cpf:'',rg:'',nasc:'',tel:'(64)9 8000-9999',email:'',end:'Lago Sul',fianca:'',obs:''},
   {id:10,ct:'CT-010',nome:'Jose Antonio De Faria Junior',cpf:'',rg:'',nasc:'',tel:'(64)9 8001-0000',email:'',end:'Pirapitinga',fianca:'',obs:'Pagamento parcial fev/26'}
 ];
-function pCadInq(){
+function pCadInqOld(){
   document.getElementById('pa').innerHTML='<button class="btn btn-red" onclick="nCadInq()">+ Novo Inquilino</button>';
   var r=''; inqCad.forEach(function(q,i){
     var ct=ctD.find(function(c){return c.id===q.ct;})||{};
