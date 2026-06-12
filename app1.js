@@ -2286,15 +2286,26 @@ function gerarHTML(titulo, conteudo){
 function relContratosLocacao(){
   var rows=ctD.map(function(c){
     var st=c.rs&&c.rs[new Date().getMonth()]==='R'?'<span class="badge bg">Recebido</span>':'<span class="badge br">Pendente</span>';
+    var g = c.garantia;
+    var garHtml;
+    if(!g || !g.tipo || g.tipo==='Sem Garantia'){
+      garHtml = '<span class="badge br">Sem garantia</span>';
+    } else {
+      var totalPago = (g.parcelasPagas||[]).filter(function(p){return p.status==='Pago';}).reduce(function(s,p){return s+(p.valor||0);},0);
+      var totalGeral = g.valorTotal||0;
+      var pct = totalGeral>0 ? Math.round(totalPago/totalGeral*100) : 0;
+      var completo = totalGeral>0 && totalPago>=totalGeral;
+      garHtml = '<span class="badge '+(completo?'bg':'br')+'">'+g.tipo+' '+pct+'%</span>';
+    }
     return '<tr><td>'+c.id+'</td><td>'+c.prop+'</td><td>'+c.inq+'</td><td>'+c.tipo+'</td><td>'+c.end+'</td>'+
     '<td style="text-align:right;font-weight:600">R$ '+c.valor.toFixed(2)+'</td><td>Dia '+c.venc+'</td>'+
-    '<td>'+c.inicio+'</td><td>'+c.fim+'</td><td>'+st+'</td><td>'+(c.status||'Ativa')+'</td></tr>';
+    '<td>'+c.inicio+'</td><td>'+c.fim+'</td><td>'+garHtml+'</td><td>'+st+'</td><td>'+(c.status||'Ativa')+'</td></tr>';
   }).join('');
   var tot=ctD.reduce(function(s,c){return s+c.valor;},0);
-  rows+='<tr class="sum"><td colspan="5">TOTAL ('+ctD.length+' contratos)</td><td style="text-align:right">R$ '+tot.toFixed(2)+'</td><td colspan="5"></td></tr>';
+  rows+='<tr class="sum"><td colspan="5">TOTAL ('+ctD.length+' contratos)</td><td style="text-align:right">R$ '+tot.toFixed(2)+'</td><td colspan="6"></td></tr>';
   gerarHTML('Relatório de Contratos de Locação',
     '<h2>Contratos de Locação</h2>'+
-    '<table><thead><tr><th>ID</th><th>Proprietário</th><th>Inquilino</th><th>Tipo</th><th>Endereço</th><th>Valor</th><th>Venc</th><th>Início</th><th>Fim</th><th>Status Maio</th><th>Situação</th></tr></thead><tbody>'+rows+'</tbody></table>');
+    '<table><thead><tr><th>ID</th><th>Proprietário</th><th>Inquilino</th><th>Tipo</th><th>Endereço</th><th>Valor</th><th>Venc</th><th>Início</th><th>Fim</th><th>Garantia</th><th>Status Maio</th><th>Situação</th></tr></thead><tbody>'+rows+'</tbody></table>');
 }
 
 function relRepasses(){
@@ -5681,6 +5692,17 @@ function relatorioContratos(){
     var fim = c.fim ? new Date(c.fim) : null;
     var dias = fim ? Math.round((fim-new Date())/(1000*60*60*24)) : null;
     var cor = dias===null?'#555':dias<0?'#b91c1c':dias<60?'#d97706':'#059669';
+    var g = c.garantia;
+    var garHtml;
+    if(!g || !g.tipo || g.tipo==='Sem Garantia'){
+      garHtml = '<span style="color:#9ca3af">Sem garantia</span>';
+    } else {
+      var totalPago = (g.parcelasPagas||[]).filter(function(p){return p.status==='Pago';}).reduce(function(s,p){return s+(p.valor||0);},0);
+      var totalGeral = g.valorTotal||0;
+      var pct = totalGeral>0 ? Math.round(totalPago/totalGeral*100) : 0;
+      var completo = totalGeral>0 && totalPago>=totalGeral;
+      garHtml = '<span style="color:'+(completo?'#059669':'#d97706')+';font-weight:700">'+g.tipo+' ('+pct+'%)</span>';
+    }
     return '<tr style="border-bottom:1px solid #f0f0f0">'+
       '<td style="padding:6px 8px;font-weight:700;color:#003DA5;font-size:11px">'+c.id+'</td>'+
       '<td style="padding:6px 8px;font-size:11px">'+c.prop+'</td>'+
@@ -5690,6 +5712,7 @@ function relatorioContratos(){
       '<td style="padding:6px 8px;font-size:10px;text-align:center">Dia '+(c.venc||10)+'</td>'+
       '<td style="padding:6px 8px;font-size:10px">'+(c.fim||'-')+'</td>'+
       '<td style="padding:6px 8px;font-size:10px;color:'+cor+';font-weight:700">'+(dias!==null?(dias<0?'Vencido '+ Math.abs(dias)+'d':dias+'d'):'-')+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px">'+garHtml+'</td>'+
     '</tr>';
   }
 
@@ -5719,6 +5742,7 @@ function relatorioContratos(){
         '<th style="padding:8px;text-align:center">Venc.</th>'+
         '<th style="padding:8px;text-align:left">Fim</th>'+
         '<th style="padding:8px;text-align:center">Prazo</th>'+
+        '<th style="padding:8px;text-align:left">Garantia</th>'+
       '</tr></thead>'+
       '<tbody>'+rows+'</tbody>'+
     '</table></div>'+
@@ -6123,6 +6147,17 @@ function relatorioContratos(){
     var fim = c.fim ? new Date(c.fim) : null;
     var dias = fim ? Math.round((fim-new Date())/(1000*60*60*24)) : null;
     var cor = dias===null?'#555':dias<0?'#b91c1c':dias<60?'#d97706':'#059669';
+    var g = c.garantia;
+    var garHtml;
+    if(!g || !g.tipo || g.tipo==='Sem Garantia'){
+      garHtml = '<span style="color:#9ca3af">Sem garantia</span>';
+    } else {
+      var totalPago = (g.parcelasPagas||[]).filter(function(p){return p.status==='Pago';}).reduce(function(s,p){return s+(p.valor||0);},0);
+      var totalGeral = g.valorTotal||0;
+      var pct = totalGeral>0 ? Math.round(totalPago/totalGeral*100) : 0;
+      var completo = totalGeral>0 && totalPago>=totalGeral;
+      garHtml = '<span style="color:'+(completo?'#059669':'#d97706')+';font-weight:700">'+g.tipo+' ('+pct+'%)</span>';
+    }
     return '<tr style="border-bottom:1px solid #f0f0f0">'+
       '<td style="padding:6px 8px;font-weight:700;color:#003DA5;font-size:11px">'+c.id+'</td>'+
       '<td style="padding:6px 8px;font-size:11px">'+c.prop+'</td>'+
@@ -6132,6 +6167,7 @@ function relatorioContratos(){
       '<td style="padding:6px 8px;font-size:10px;text-align:center">Dia '+(c.venc||10)+'</td>'+
       '<td style="padding:6px 8px;font-size:10px">'+(c.fim||'-')+'</td>'+
       '<td style="padding:6px 8px;font-size:10px;color:'+cor+';font-weight:700">'+(dias!==null?(dias<0?'Vencido '+ Math.abs(dias)+'d':dias+'d'):'-')+'</td>'+
+      '<td style="padding:6px 8px;font-size:10px">'+garHtml+'</td>'+
     '</tr>';
   }
 
@@ -6161,6 +6197,7 @@ function relatorioContratos(){
         '<th style="padding:8px;text-align:center">Venc.</th>'+
         '<th style="padding:8px;text-align:left">Fim</th>'+
         '<th style="padding:8px;text-align:center">Prazo</th>'+
+        '<th style="padding:8px;text-align:left">Garantia</th>'+
       '</tr></thead>'+
       '<tbody>'+rows+'</tbody>'+
     '</table></div>'+
