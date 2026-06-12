@@ -4869,6 +4869,15 @@ function relatorioContratos(){
 
   oM('📋 Relatório de Contratos', html, null, null, true);
 }
+function _getPropCpf(nome){
+  var p = propCad.find(function(x){return x.nome===nome;});
+  return (p && p.cpf) || '';
+}
+function _getPropNasc(nome){
+  var p = propCad.find(function(x){return x.nome===nome;});
+  return (p && p.nasc) || '';
+}
+
 function editCtLocacao(i){
   var c = ctD[i];
   var corrOpts = COR.map(function(u){
@@ -4911,6 +4920,10 @@ function editCtLocacao(i){
     '<div class="fg"><label>CPF do Inquilino</label><input id="ec-cpf" value="'+(c.cpf_inq||'')+'"></div>'+
     '<div class="fg"><label>Data Nascimento Inquilino</label><input id="ec-nasc" type="date" value="'+(c.nasc_inq||'')+'"></div>'+
     '</div>'+
+    '<div class="fg2">'+
+    '<div class="fg"><label>CPF do Proprietário (Portal)</label><input id="ec-cpf-prop" value="'+_getPropCpf(c.prop)+'" placeholder="000.000.000-00"></div>'+
+    '<div class="fg"><label>Data Nascimento Proprietário</label><input id="ec-nasc-prop" type="date" value="'+_getPropNasc(c.prop)+'"></div>'+
+    '</div>'+
     '<div class="fg"><label>Observações</label><input id="ec-obs" value="'+(c.obs||'')+'"></div>',
     function(){
       c.prop    = document.getElementById('ec-p').value.trim();
@@ -4925,6 +4938,12 @@ function editCtLocacao(i){
       c.status  = document.getElementById('ec-s').value;
       c.cpf_inq = document.getElementById('ec-cpf').value.trim();
       c.nasc_inq= document.getElementById('ec-nasc').value;
+      // Salvar CPF e nascimento do proprietário no cadastro propCad
+      var _pcpf = document.getElementById('ec-cpf-prop').value.trim();
+      var _pnasc = document.getElementById('ec-nasc-prop').value;
+      var _propObj = propCad.find(function(p){return p.nome===c.prop;});
+      if(_propObj){ _propObj.cpf=_pcpf; _propObj.nasc=_pnasc; }
+      else if(_pcpf||_pnasc){ propCad.push({id:propCad.length+1,nome:c.prop,cpf:_pcpf,nasc:_pnasc,tel:'',email:'',end:'',cidade:'',banco:'',agencia:'',conta:'',pix:'',obs:''}); }
       c.obs     = document.getElementById('ec-obs').value.trim();
       registrarLog('Editar Contrato', c.id+' — '+c.prop+'/'+c.inq);
       cM(); salvarTudo(); pLC();
