@@ -5738,7 +5738,68 @@ function _getPropNasc(nome){
   return (p && p.nasc) || '';
 }
 
+function renderParcelasGarantiaHtml(c){
+  var g = c.garantia;
+  if(!g || !g.parcelasPagas) return '';
+  var rows = g.parcelasPagas.map(function(p,idx){
+    var pago = p.status==='Pago';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid '+(pago?'#bbf7d0':'#e5e7eb')+';background:'+(pago?'#f0fdf4':'#fff')+';border-radius:8px;margin-bottom:6px">'+
+      '<div style="font-size:12px"><b>Parcela '+p.numero+'/'+g.parcelas+'</b> - R$ '+(p.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})+
+        (pago ? ' <span style="color:#16a34a;font-weight:700">- Pago em '+(p.dataPagamento?formatarDataBR(p.dataPagamento):'-')+'</span>' : ' <span style="color:#b45309;font-weight:700">- Pendente</span>')+
+      '</div>'+
+      '<button type="button" class="btn btn-sm" style="background:'+(pago?'#fee2e2;color:#991b1b':'#dcfce7;color:#166534')+'" onclick="toggleParcelaGarantia('+window._ecParcelasCtIdx+','+idx+')">'+(pago?'Desfazer':'Dar Baixa')+'</button>'+
+    '</div>';
+  }).join('');
+
+  var totalPago = g.parcelasPagas.filter(function(p){return p.status==='Pago';}).reduce(function(s,p){return s+(p.valor||0);},0);
+  var totalGeral = g.valorTotal||0;
+  var pctPago = totalGeral>0 ? Math.round(totalPago/totalGeral*100) : 0;
+
+  return '<div style="margin-top:10px">'+
+    '<div style="background:#eff6ff;border-radius:8px;padding:8px 12px;font-size:11px;color:#1e40af;margin-bottom:8px">'+
+      'Pago: R$ '+totalPago.toLocaleString('pt-BR',{minimumFractionDigits:2})+' de R$ '+totalGeral.toLocaleString('pt-BR',{minimumFractionDigits:2})+' ('+pctPago+'%)'+
+    '</div>'+
+    rows+
+  '</div>';
+}
+
+function toggleParcelaGarantia(ctIdx, parcelaIdx){
+  var c = ctD[ctIdx];
+  var p = c.garantia.parcelasPagas[parcelaIdx];
+  if(p.status==='Pago'){
+    p.status = 'Pendente';
+    p.dataPagamento = '';
+  } else {
+    p.status = 'Pago';
+    p.dataPagamento = new Date().toISOString().slice(0,10);
+  }
+  registrarLog('Baixa Garantia', c.id+' - Parcela '+p.numero+' -> '+p.status);
+  salvarTudo();
+  // Re-renderizar so o bloco de parcelas dentro do modal
+  var container = document.getElementById('mb');
+  if(container){
+    var blocos = container.querySelectorAll('div');
+    // Reabrir o modal de edicao para refletir o novo estado
+    editCtLocacao(ctIdx);
+  }
+}
+
+function badgeGarantia(c){
+  if(!c.garantia || !c.garantia.tipo || c.garantia.tipo==='Sem Garantia'){
+    return '<span style="background:#f3f4f6;color:#9ca3af;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px">Sem garantia</span>';
+  }
+  var g = c.garantia;
+  var totalPago = (g.parcelasPagas||[]).filter(function(p){return p.status==='Pago';}).reduce(function(s,p){return s+(p.valor||0);},0);
+  var totalGeral = g.valorTotal||0;
+  var completo = totalGeral>0 && totalPago>=totalGeral;
+  var cor = completo ? '#1a6e3a' : '#b45309';
+  var bg = completo ? '#f0fdf4' : '#fef9c3';
+  var pct = totalGeral>0 ? Math.round(totalPago/totalGeral*100) : 0;
+  return '<span style="background:'+bg+';color:'+cor+';font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap" title="'+g.tipo+' - R$ '+totalGeral.toLocaleString('pt-BR',{minimumFractionDigits:2})+'">'+g.tipo+' '+pct+'%</span>';
+}
+
 function editCtLocacao(i){
+  window._ecParcelasCtIdx = i;
   var c = ctD[i];
   var corrOpts = COR.map(function(u){
     return '<option value="'+u.nome+'"'+(c.corretor===u.nome?' selected':'')+'>'+u.nome+'</option>';
@@ -5784,7 +5845,24 @@ function editCtLocacao(i){
     '<div class="fg"><label>CPF do Proprietário (Portal)</label><input id="ec-cpf-prop" value="'+_getPropCpf(c.prop)+'" placeholder="000.000.000-00"></div>'+
     '<div class="fg"><label>Data Nascimento Proprietário</label><input id="ec-nasc-prop" type="date" value="'+_getPropNasc(c.prop)+'"></div>'+
     '</div>'+
-    '<div class="fg"><label>Observações</label><input id="ec-obs" value="'+(c.obs||'')+'"></div>',
+    '<div class="fg"><label>Observações</label><input id="ec-obs" value="'+(c.obs||'')+'"></div>'+
+    '<div style="margin-top:14px;padding-top:14px;border-top:1px solid #e5e7eb">'+
+      '<div style="font-size:11px;font-weight:800;color:#0d1f4e;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">Garantia Locaticia</div>'+
+      '<div class="fg2">'+
+        '<div class="fg"><label>Tipo de Garantia</label><select id="ec-gar-tipo">'+
+          ['Sem Garantia','Caucao','Fiador','Seguro Fianca','Loft','FianTec','Titulo de Capitalizacao','Carta Fianca Bancaria'].map(function(t){
+            return '<option value="'+t+'"'+((c.garantia&&c.garantia.tipo)===t?' selected':'')+'>'+t+'</option>';
+          }).join('')+
+        '</select></div>'+
+        '<div class="fg"><label>Valor Total (R$)</label><input id="ec-gar-valor" type="number" step="0.01" value="'+(c.garantia&&c.garantia.valorTotal||'')+'"></div>'+
+      '</div>'+
+      '<div class="fg2">'+
+        '<div class="fg"><label>Numero de Parcelas</label><input id="ec-gar-parc" type="number" min="1" value="'+(c.garantia&&c.garantia.parcelas||1)+'"></div>'+
+        '<div class="fg"><label>Apolice/Referencia Externa</label><input id="ec-gar-ref" value="'+(c.garantia&&c.garantia.ref||'')+'" placeholder="numero da apolice, contrato Loft, etc"></div>'+
+      '</div>'+
+      '<div class="fg"><label>Observacoes da Garantia</label><input id="ec-gar-obs" value="'+(c.garantia&&c.garantia.obs||'')+'"></div>'+
+      (c.garantia && c.garantia.tipo && c.garantia.tipo!=='Sem Garantia' ? renderParcelasGarantiaHtml(c) : '<div style="font-size:11px;color:#9ca3af;margin-top:6px">Salve o contrato com um tipo de garantia para gerenciar as parcelas.</div>')+
+    '</div>',
     function(){
       c.prop    = document.getElementById('ec-p').value.trim();
       c.inq     = document.getElementById('ec-i').value.trim();
@@ -5805,6 +5883,29 @@ function editCtLocacao(i){
       if(_propObj){ _propObj.cpf=_pcpf; _propObj.nasc=_pnasc; }
       else if(_pcpf||_pnasc){ propCad.push({id:propCad.length+1,nome:c.prop,cpf:_pcpf,nasc:_pnasc,tel:'',email:'',end:'',cidade:'',banco:'',agencia:'',conta:'',pix:'',obs:''}); }
       c.obs     = document.getElementById('ec-obs').value.trim();
+      var _garTipo = document.getElementById('ec-gar-tipo').value;
+      var _garValor = parseFloat(document.getElementById('ec-gar-valor').value)||0;
+      var _garParc = parseInt(document.getElementById('ec-gar-parc').value)||1;
+      var _garRef = document.getElementById('ec-gar-ref').value.trim();
+      var _garObs = document.getElementById('ec-gar-obs').value.trim();
+      if(!c.garantia) c.garantia = {};
+      c.garantia.tipo = _garTipo;
+      c.garantia.valorTotal = _garValor;
+      c.garantia.ref = _garRef;
+      c.garantia.obs = _garObs;
+      // Ajustar array de parcelas se mudou o numero
+      if(!c.garantia.parcelasPagas || c.garantia.parcelasPagas.length !== _garParc){
+        var antigas = c.garantia.parcelasPagas || [];
+        var novasParcelas = [];
+        for(var _gp=0; _gp<_garParc; _gp++){
+          novasParcelas.push(antigas[_gp] || {numero:_gp+1, valor:_garValor/_garParc, dataPagamento:'', status:'Pendente'});
+        }
+        c.garantia.parcelasPagas = novasParcelas;
+      } else {
+        // Recalcular valor de cada parcela se valor total/parcelas nao mudou de qtd
+        c.garantia.parcelasPagas.forEach(function(p){ if(!p.valorManual) p.valor = _garValor/_garParc; });
+      }
+      c.garantia.parcelas = _garParc;
       registrarLog('Editar Contrato', c.id+' — '+c.prop+'/'+c.inq);
       cM(); salvarTudo(); pLC();
     }, 'Salvar');
@@ -5932,7 +6033,7 @@ function pLC(){
   var thead = document.createElement('thead');
   var headRow = document.createElement('tr');
   headRow.style.background = '#fafbfd';
-  ['ID','Proprietário','Inquilino','Tipo','Endereço','Valor','Venc.','Início','Fim','Corretor','Status','Ações'].forEach(function(h){
+  ['ID','Proprietário','Inquilino','Tipo','Endereço','Valor','Garantia','Venc.','Início','Fim','Corretor','Status','Ações'].forEach(function(h){
     var th = document.createElement('th');
     th.style.cssText = 'padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7;white-space:nowrap';
     th.textContent = h;
@@ -5972,6 +6073,7 @@ function pLC(){
     tr.appendChild(addTd('<span style="background:#f1f5f9;color:#334155;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">'+c.tipo+'</span>'));
     tr.appendChild(addTd(c.end,'font-size:11px;color:#4a5568;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'));
     tr.appendChild(addTd('<b>'+fmt(c.valor)+'</b>','white-space:nowrap'));
+    tr.appendChild(addTd(badgeGarantia(c)));
     tr.appendChild(addTd('dia '+c.venc,'font-size:11px;white-space:nowrap'));
     tr.appendChild(addTd(c.inicio||'-','font-size:11px;white-space:nowrap'));
     tr.appendChild(addTd(c.fim||'-','font-size:11px;white-space:nowrap'));
