@@ -424,7 +424,7 @@ var PERMS = {
     dashboard:1, leads:1, prosp:1, agenda:1, visitas:1,
     acm:1, docs:1, acoes:1, mcmv:1,
     'loc-l':1, captacao:1, vitrine:1, iv:1,
-    rank:1, metas:1, mkt:1, wpp:1
+    rank:1, metas:1, mkt:1, wpp:1, 'extrato-cor':1
     // SEM: contratos, repasses, extrato, boletos, financeiro, cadastros, clientes
   }
 };
@@ -932,7 +932,7 @@ var NAV = [
   {s:'Marketing'},{id:'mkt',l:'🎨 Marketing'},{s:'Admin'},{id:'usuarios',l:'👥 Usuários',a:true},{id:'senhas',l:'🔐 Senhas',a:true},{id:'permissoes',l:'🛡️ Permissões',a:true},
   {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},
   {s:'Clientes',a:true},{id:'cad-prop',l:'👥 Proprietários',a:true},{id:'cad-inq',l:'👥 Inquilinos',a:true},{id:'cad-cor',l:'Corretores',a:true},
-  {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
+  {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'extrato-cor',l:'💰 Extrato Corretor',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
   {s:'Sistema',a:true},{id:'auditoria',l:'📋 Log de Auditoria',a:true},{id:'alertas',l:'🔔 Alertas & Avisos',a:true},
 ];
 
@@ -2484,13 +2484,313 @@ async function salvarSenhaUser(usuario){
 // ============================================================
 // CADASTRO DE CLIENTES - Inquilinos
 // ============================================================
+function pExtratoCor(corretorParam, mesParam, anoParam){
+  var hoje = new Date();
+  var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  // Determinar corretor selecionado
+  var souCorretor = !isA() && U && U.role!=='adm' && U.role_key!=='adm';
+  var corSelecionado = corretorParam || (souCorretor ? U.nome : '__todos__');
+  var mesAtual = (mesParam!==undefined) ? mesParam : hoje.getMonth();
+  var anoAtual = (anoParam!==undefined) ? anoParam : hoje.getFullYear();
+
+  window._extCorState = {cor:corSelecionado, mes:mesAtual, ano:anoAtual};
+
+  var pa = document.getElementById('pa');
+  pa.innerHTML = '';
+
+  if(!souCorretor){
+    var corSel = document.createElement('select');
+    corSel.style.cssText = 'padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:700;color:#0d1f4e;margin-right:6px';
+    corSel.innerHTML = '<option value="__todos__">Todos os Corretores</option>'+
+      COR.map(function(c){return '<option value="'+c.nome+'"'+(corSelecionado===c.nome?' selected':'')+'>'+c.nome+'</option>';}).join('');
+    corSel.value = corSelecionado;
+    corSel.onchange = function(){ pExtratoCor(this.value, mesAtual, anoAtual); };
+    pa.appendChild(corSel);
+  }
+
+  var mesSel = document.createElement('select');
+  mesSel.style.cssText = 'padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:700;color:#0d1f4e;margin-right:6px';
+  mesSel.innerHTML = meses.map(function(m,i){return '<option value="'+i+'"'+(i===mesAtual?' selected':'')+'>'+m+'</option>';}).join('');
+  mesSel.onchange = function(){ pExtratoCor(corSelecionado, parseInt(this.value), anoAtual); };
+  pa.appendChild(mesSel);
+
+  var anoSel = document.createElement('select');
+  anoSel.style.cssText = 'padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:700;color:#0d1f4e;margin-right:6px';
+  var anoAgora = new Date().getFullYear();
+  var anosOpt = [anoAgora-1, anoAgora, anoAgora+1];
+  anoSel.innerHTML = anosOpt.map(function(a){return '<option value="'+a+'"'+(a===anoAtual?' selected':'')+'>'+a+'</option>';}).join('');
+  anoSel.onchange = function(){ pExtratoCor(corSelecionado, mesAtual, parseInt(this.value)); };
+  pa.appendChild(anoSel);
+
+  if(corSelecionado !== '__todos__'){
+    var btnPdf = document.createElement('button');
+    btnPdf.textContent = '\uD83D\uDDD2\uFE0F Gerar PDF';
+    btnPdf.style.cssText = 'background:#0d1f4e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px';
+    btnPdf.onclick = function(){ gerarExtratoCorPDF(corSelecionado, mesAtual, anoAtual); };
+    pa.appendChild(btnPdf);
+
+    var btnWA = document.createElement('button');
+    btnWA.textContent = '\uD83D\uDCF1 Enviar WhatsApp';
+    btnWA.style.cssText = 'background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer';
+    btnWA.onclick = function(){ enviarExtratoCorWA(corSelecionado, mesAtual, anoAtual); };
+    pa.appendChild(btnWA);
+  }
+
+  // ===== Filtrar comissoes do mes/ano/corretor =====
+  function noMes(c){
+    if(!c.dt) return false;
+    var d = new Date(c.dt+'T00:00:00');
+    return d.getMonth()===mesAtual && d.getFullYear()===anoAtual;
+  }
+
+  var todasDoMes = COMISSOES.filter(noMes);
+  var lista = corSelecionado==='__todos__' ? todasDoMes : todasDoMes.filter(function(c){return c.corretor===corSelecionado;});
+
+  var totalGeral = lista.reduce(function(s,c){return s+(c.comissao||0);},0);
+  var totalPago = lista.filter(function(c){return c.status==='Pago';}).reduce(function(s,c){return s+(c.comissao||0);},0);
+  var totalAPagar = totalGeral - totalPago;
+  var totalLoc = lista.filter(function(c){return c.tipo==='LOCACAO';}).reduce(function(s,c){return s+(c.comissao||0);},0);
+  var totalVenda = lista.filter(function(c){return c.tipo==='VENDA';}).reduce(function(s,c){return s+(c.comissao||0);},0);
+  var totalOutros = totalGeral - totalLoc - totalVenda;
+
+  var pc = document.getElementById('pc');
+  pc.innerHTML = '';
+
+  // HEADER
+  var nomeExibido = corSelecionado==='__todos__' ? 'Todos os Corretores' : corSelecionado;
+  var h = document.createElement('div');
+  h.style.cssText = 'background:#0d1f4e;border-radius:12px;padding:24px 28px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px';
+  var corObj = COR.find(function(c){return c.nome===corSelecionado;});
+  var inicial = corObj ? corObj.initials : '\uD83D\uDCBC';
+  var corCor = corObj ? corObj.cor : '#D42028';
+  h.innerHTML = '<div style="display:flex;align-items:center;gap:16px">'+
+    '<div style="width:52px;height:52px;border-radius:12px;background:'+corCor+';display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0">'+inicial+'</div>'+
+    '<div><div style="font-size:9px;color:rgba(255,255,255,.35);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px">Extrato de Comissoes</div>'+
+    '<div style="font-size:18px;font-weight:700;color:#fff">'+nomeExibido+'</div>'+
+    '<div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">'+meses[mesAtual]+' / '+anoAtual+'</div></div></div>'+
+    '<div style="text-align:right"><div style="font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Total do Mes</div>'+
+    '<div style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-1px">R$ '+totalGeral.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>';
+  pc.appendChild(h);
+
+  // KPIs
+  var kpis = [
+    {l:'Total Comissoes',v:totalGeral,s:lista.length+' lancamento(s)',c:'#0d1f4e'},
+    {l:'Ja Recebido',v:totalPago,s:'pago',c:'#1a6e3a'},
+    {l:'A Receber',v:totalAPagar,s:'pendente',c:'#b45309'},
+    {l:'Locacao + Venda',v:totalLoc, v2:totalVenda, s:'loc / venda',c:'#1d4ed8'}
+  ];
+  var kpiRow = document.createElement('div');
+  kpiRow.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px';
+  kpis.forEach(function(k){
+    var d = document.createElement('div');
+    d.style.cssText = 'background:#fff;border-radius:12px;padding:20px 22px;border:1px solid #e8edf2;border-top:3px solid '+k.c;
+    var valHtml;
+    if(k.v2!==undefined){
+      valHtml = '<div style="font-size:20px;font-weight:900;color:'+k.c+';letter-spacing:-1px">R$ '+k.v.toLocaleString('pt-BR',{minimumFractionDigits:0})+' <span style="font-size:14px;color:#94a3b8">/ R$ '+k.v2.toLocaleString('pt-BR',{minimumFractionDigits:0})+'</span></div>';
+    } else {
+      valHtml = '<div style="font-size:26px;font-weight:900;color:'+k.c+';letter-spacing:-1px">R$ '+k.v.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div>';
+    }
+    d.innerHTML = '<div style="font-size:9px;font-weight:800;color:#4a5568;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">'+k.l+'</div>'+
+      valHtml+
+      '<div style="font-size:11px;color:#64748b;margin-top:4px">'+k.s+'</div>';
+    kpiRow.appendChild(d);
+  });
+  pc.appendChild(kpiRow);
+
+  // TABELA
+  var tableCard = document.createElement('div');
+  tableCard.style.cssText = 'background:#fff;border-radius:12px;border:1px solid #e8edf2;overflow:hidden';
+  var titleBar = document.createElement('div');
+  titleBar.style.cssText = 'padding:14px 20px;border-bottom:1px solid #edf2f7;background:#fafbfd;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1.5px;text-transform:uppercase';
+  titleBar.textContent = 'Lancamentos do Periodo';
+  tableCard.appendChild(titleBar);
+
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'overflow-x:auto';
+  var table = document.createElement('table');
+  table.style.cssText = 'width:100%;border-collapse:collapse';
+  var thead = document.createElement('thead');
+  var headRow = document.createElement('tr');
+  headRow.style.background = '#fafbfd';
+  var cols = corSelecionado==='__todos__'
+    ? ['Data','Corretor','Tipo','Valor Negocio','%','Comissao','Status']
+    : ['Data','Tipo','Valor Negocio','%','Comissao','Status'];
+  cols.forEach(function(h2){
+    var th = document.createElement('th');
+    th.style.cssText = 'padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7;white-space:nowrap';
+    th.textContent = h2;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  var listaOrdenada = lista.slice().sort(function(a,b){return (a.dt||'').localeCompare(b.dt||'');});
+
+  var tipoCores = {VENDA:'#1d4ed8',LOCACAO:'#1a6e3a',CAPTACAO:'#b45309',RENOVACAO:'#7c3aed'};
+
+  listaOrdenada.forEach(function(c){
+    var tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #f4f6f8';
+    function addTd(html,css){
+      var td=document.createElement('td');
+      td.style.cssText='padding:10px 12px;font-size:12px;'+(css||'');
+      td.innerHTML=html;
+      return td;
+    }
+    var dataFmt = c.dt ? formatarDataBR(c.dt) : '-';
+    tr.appendChild(addTd(dataFmt));
+    if(corSelecionado==='__todos__'){
+      tr.appendChild(addTd('<b>'+c.corretor+'</b>'));
+    }
+    tr.appendChild(addTd('<span style="background:'+(tipoCores[c.tipo]||'#64748b')+'1A;color:'+(tipoCores[c.tipo]||'#64748b')+';font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px">'+c.tipo+'</span>'));
+    tr.appendChild(addTd('R$ '+(c.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})));
+    tr.appendChild(addTd(Math.round((c.pct||0)*100)+'%'));
+    tr.appendChild(addTd('<b style="color:#1a6e3a">R$ '+(c.comissao||0).toLocaleString('pt-BR',{minimumFractionDigits:2})+'</b>'));
+    var stCor = c.status==='Pago' ? '#1a6e3a':'#b45309';
+    var stBg = c.status==='Pago' ? '#f0fdf4':'#fef9c3';
+    tr.appendChild(addTd('<span style="background:'+stBg+';color:'+stCor+';font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">'+(c.status||'A pagar')+'</span>'));
+    tbody.appendChild(tr);
+  });
+
+  if(listaOrdenada.length===0){
+    var trEmpty = document.createElement('tr');
+    trEmpty.innerHTML = '<td colspan="'+cols.length+'" style="text-align:center;padding:30px;color:#9ca3af;font-size:13px">Nenhuma comissao lancada em '+meses[mesAtual]+'/'+anoAtual+'</td>';
+    tbody.appendChild(trEmpty);
+  }
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  tableCard.appendChild(wrap);
+  pc.appendChild(tableCard);
+
+  // Resumo por corretor (apenas se "Todos")
+  if(corSelecionado==='__todos__' && lista.length>0){
+    var porCor = {};
+    lista.forEach(function(c){
+      if(!porCor[c.corretor]) porCor[c.corretor]={total:0,pago:0};
+      porCor[c.corretor].total += c.comissao||0;
+      if(c.status==='Pago') porCor[c.corretor].pago += c.comissao||0;
+    });
+    var resumoCard = document.createElement('div');
+    resumoCard.style.cssText = 'background:#fff;border-radius:12px;border:1px solid #e8edf2;overflow:hidden;margin-top:14px';
+    var resumoTitle = document.createElement('div');
+    resumoTitle.style.cssText = 'padding:14px 20px;border-bottom:1px solid #edf2f7;background:#fafbfd;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1.5px;text-transform:uppercase';
+    resumoTitle.textContent = 'Resumo por Corretor';
+    resumoCard.appendChild(resumoTitle);
+    var resumoBody = document.createElement('div');
+    resumoBody.style.cssText = 'padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px';
+    Object.keys(porCor).forEach(function(nome){
+      var d = porCor[nome];
+      var pct = d.total>0 ? Math.round(d.pago/d.total*100) : 0;
+      var item = document.createElement('div');
+      item.style.cssText = 'border:1px solid #edf2f7;border-radius:10px;padding:12px;cursor:pointer';
+      item.onclick = function(){ pExtratoCor(nome, mesAtual, anoAtual); };
+      item.innerHTML = '<div style="font-size:12px;font-weight:800;color:#0d1829;margin-bottom:6px">'+nome+'</div>'+
+        '<div style="font-size:18px;font-weight:900;color:#0d1f4e">R$ '+d.total.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div>'+
+        '<div style="font-size:10px;color:#94a3b8;margin-top:4px">'+pct+'% recebido</div>';
+      resumoBody.appendChild(item);
+    });
+    resumoCard.appendChild(resumoBody);
+    pc.appendChild(resumoCard);
+  }
+}
+
+function gerarExtratoCorPDF(corretor, mes, ano){
+  var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function noMes(c){
+    if(!c.dt) return false;
+    var d = new Date(c.dt+'T00:00:00');
+    return d.getMonth()===mes && d.getFullYear()===ano;
+  }
+  var lista = COMISSOES.filter(noMes).filter(function(c){return c.corretor===corretor;});
+  var total = lista.reduce(function(s,c){return s+(c.comissao||0);},0);
+  var totalPago = lista.filter(function(c){return c.status==='Pago';}).reduce(function(s,c){return s+(c.comissao||0);},0);
+
+  var rowsHtml = lista.slice().sort(function(a,b){return (a.dt||'').localeCompare(b.dt||'');}).map(function(c){
+    return '<tr><td>'+formatarDataBR(c.dt)+'</td><td>'+c.tipo+'</td><td>R$ '+(c.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})+'</td>'+
+      '<td>'+Math.round((c.pct||0)*100)+'%</td><td>R$ '+(c.comissao||0).toLocaleString('pt-BR',{minimumFractionDigits:2})+'</td><td>'+(c.status||'A pagar')+'</td></tr>';
+  }).join('');
+
+  var html = '<div style="font-family:Arial,sans-serif;padding:10px">'+
+    '<div style="background:#0d1f4e;color:#fff;padding:20px;border-radius:8px;margin-bottom:16px">'+
+    '<div style="font-size:20px;font-weight:800">RE/MAX Space</div>'+
+    '<div style="font-size:14px;margin-top:4px">Extrato de Comissoes - '+corretor+'</div>'+
+    '<div style="font-size:12px;opacity:.7">'+meses[mes]+' / '+ano+'</div></div>'+
+    '<div style="display:flex;gap:12px;margin-bottom:16px">'+
+      '<div style="flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:12px"><div style="font-size:10px;color:#64748b;text-transform:uppercase">Total do Mes</div><div style="font-size:22px;font-weight:900;color:#0d1f4e">R$ '+total.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>'+
+      '<div style="flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:12px"><div style="font-size:10px;color:#64748b;text-transform:uppercase">Ja Recebido</div><div style="font-size:22px;font-weight:900;color:#1a6e3a">R$ '+totalPago.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>'+
+      '<div style="flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:12px"><div style="font-size:10px;color:#64748b;text-transform:uppercase">A Receber</div><div style="font-size:22px;font-weight:900;color:#b45309">R$ '+(total-totalPago).toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>'+
+    '</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:11px">'+
+    '<thead><tr style="background:#f1f5f9;text-align:left"><th style="padding:6px">Data</th><th style="padding:6px">Tipo</th><th style="padding:6px">Valor Negocio</th><th style="padding:6px">%</th><th style="padding:6px">Comissao</th><th style="padding:6px">Status</th></tr></thead>'+
+    '<tbody>'+(rowsHtml||'<tr><td colspan="6" style="text-align:center;padding:12px;color:#9ca3af">Nenhum lancamento</td></tr>')+'</tbody>'+
+    '</table>'+
+    '<div style="margin-top:20px;font-size:10px;color:#94a3b8;text-align:center">Gerado em '+new Date().toLocaleDateString('pt-BR')+' - RE/MAX Space Caldas Novas GO</div>'+
+    '</div>';
+
+  var container = document.createElement('div');
+  container.style.padding='10px';
+  container.innerHTML = html;
+  document.body.appendChild(container);
+  var nomeArq = 'Extrato_Comissao_'+corretor.replace(/[^a-zA-Z0-9]/g,'_')+'_'+meses[mes]+ano+'.pdf';
+  if(typeof html2pdf !== 'undefined'){
+    html2pdf().set({margin:10,filename:nomeArq,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(container).save().then(function(){
+      document.body.removeChild(container);
+      registrarLog('Extrato Comissao PDF', corretor+' - '+meses[mes]+'/'+ano);
+    });
+  } else {
+    document.body.removeChild(container);
+    alert('Erro: html2pdf nao carregado.');
+  }
+}
+
+function enviarExtratoCorWA(corretor, mes, ano){
+  var meses = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function noMes(c){
+    if(!c.dt) return false;
+    var d = new Date(c.dt+'T00:00:00');
+    return d.getMonth()===mes && d.getFullYear()===ano;
+  }
+  var lista = COMISSOES.filter(noMes).filter(function(c){return c.corretor===corretor;});
+  var total = lista.reduce(function(s,c){return s+(c.comissao||0);},0);
+  var totalPago = lista.filter(function(c){return c.status==='Pago';}).reduce(function(s,c){return s+(c.comissao||0);},0);
+  var totalAPagar = total - totalPago;
+
+  var corObj = COR.find(function(c){return c.nome===corretor;});
+  var tel = corObj ? (corObj.tel||'') : '';
+
+  var linhas = lista.map(function(c){
+    return '- '+c.tipo+': R$ '+(c.comissao||0).toLocaleString('pt-BR',{minimumFractionDigits:2})+' ('+(c.status||'A pagar')+')';
+  }).join('\n');
+
+  var msg = 'Ola '+corretor.split(' ')[0]+'! Aqui esta o resumo das suas comissoes de '+meses[mes]+'/'+ano+':\n\n'+
+    'Total do mes: R$ '+total.toLocaleString('pt-BR',{minimumFractionDigits:2})+'\n'+
+    'Ja recebido: R$ '+totalPago.toLocaleString('pt-BR',{minimumFractionDigits:2})+'\n'+
+    'A receber: R$ '+totalAPagar.toLocaleString('pt-BR',{minimumFractionDigits:2})+'\n\n'+
+    (linhas?'Detalhes:\n'+linhas+'\n\n':'')+
+    'Qualquer duvida, fala comigo!\n\nRE/MAX Space';
+
+  var telLimpo = tel.replace(/[^0-9]/g,'');
+  if(telLimpo.length<=11 && telLimpo) telLimpo = '55'+telLimpo;
+  if(!telLimpo){
+    alert('Telefone do corretor nao cadastrado. A mensagem foi copiada, cole no WhatsApp manualmente.');
+    if(navigator.clipboard) navigator.clipboard.writeText(msg);
+    return;
+  }
+  window.open('https://wa.me/'+telLimpo+'?text='+encodeURIComponent(msg), '_blank');
+  registrarLog('Extrato Comissao WhatsApp', corretor+' - '+meses[mes]+'/'+ano);
+}
+
 function pCadCor(){
   var pa = document.getElementById('pa');
   pa.innerHTML = '<h2 style="font-size:18px;margin-bottom:16px">Corretores</h2>'+
     '<div style="overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.04)">'+
     '<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f8fafc;text-align:left">'+
-    '<th style="padding:10px 12px">Nome</th><th style="padding:10px 12px">Status</th></tr></thead><tbody>'+
-    COR.map(function(c){return '<tr><td style="padding:10px 12px;font-weight:700">'+c.nome+'</td><td style="padding:10px 12px">'+(c.status||'Ativo')+'</td></tr>';}).join('')+
+    '<th style="padding:10px 12px">Nome</th><th style="padding:10px 12px">Status</th><th style="padding:10px 12px">Acoes</th></tr></thead><tbody>'+
+    COR.map(function(c){return '<tr><td style="padding:10px 12px;font-weight:700">'+c.nome+'</td><td style="padding:10px 12px">'+(c.status||'Ativo')+'</td>'+
+      '<td style="padding:10px 12px"><button class="btn btn-sm" style="background:#eff6ff;color:#0d1f4e;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer" onclick="pExtratoCor(\''+c.nome+'\')">Ver Extrato</button></td></tr>';}).join('')+
     '</tbody></table></div>';
 }
 
@@ -3143,7 +3443,7 @@ function gP(id){
     'loc-c':pLC, 'loc-r':pLR, 'repasses':pRepasses, 'loc-l':pLL, 'loc-v':pLV, 'boletos':pBoletos, 'extrato':pExtrato, 'os':pOS,
     iv:pIV, prop:pProp, vitrine:pVitrine, usuarios:pUsuarios, senhas:pGerenciarSenhas, permissoes:pPermissoes, captacao:function(){if(typeof pCaptacao!=='undefined')pCaptacao();else{document.getElementById('pc').innerHTML='<div style="padding:40px;text-align:center;color:#9ca3af">Carregando...</div>';setTimeout(function(){pCaptacao();},500);}}, mkt:pMkt,
     fd:pFD, dre:pDRE, fr:pFR, fp:pFP,
-    'cad-cor':pCadCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq,
+    'cad-cor':pCadCor, 'extrato-cor':pExtratoCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq,
     rank:pRank, metas:pMetas, historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
     relat:pRelat, modelos:pModelos, 'modelos-cor':pModeloRepresentacao,
     auditoria:pAuditoria, alertas:pAlertas
@@ -3235,19 +3535,29 @@ function pDashCorretor(){
   pc.appendChild(h);
 
   // KPIs
+  var hojeM=new Date();
+  var minhasComissoes=COMISSOES.filter(function(c){
+    if(c.corretor!==nome || !c.dt) return false;
+    var d=new Date(c.dt+'T00:00:00');
+    return d.getMonth()===hojeM.getMonth() && d.getFullYear()===hojeM.getFullYear();
+  });
+  var totalComissaoMes=minhasComissoes.reduce(function(s,c){return s+(c.comissao||0);},0);
+
   var kpis=[
     {l:'Captações',v:minhasCapt.length,s:'imóveis captados',c:'#0d1f4e',fn:'iv'},
     {l:'Leads',v:meusLeads.length,s:leadsQuentes.length+' quentes',c:'#b91c1c',fn:'leads'},
     {l:'Visitas',v:minhasVis.length,s:'realizadas',c:'#1a6e3a',fn:'visitas'},
-    {l:'Fechamentos',v:fechados,s:'negócios fechados',c:'#b45309',fn:''}
+    {l:'Fechamentos',v:fechados,s:'negócios fechados',c:'#b45309',fn:''},
+    {l:'Comissão do Mês',v:'R$ '+totalComissaoMes.toLocaleString('pt-BR',{minimumFractionDigits:2}),s:minhasComissoes.length+' lançamento(s)',c:'#1d4ed8',fn:'extrato-cor',big:true}
   ];
   var kpiRow=document.createElement('div');
-  kpiRow.style.cssText='display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px';
+  kpiRow.style.cssText='display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px';
   kpis.forEach(function(k){
     var d=document.createElement('div');
     d.style.cssText='background:#fff;border-radius:12px;padding:20px 22px;border:1px solid #e8edf2;border-top:3px solid '+k.c+(k.fn?';cursor:pointer':'');
     if(k.fn) d.onclick=function(){gP(k.fn);};
-    d.innerHTML='<div style="font-size:9px;font-weight:800;color:#4a5568;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">'+k.l+'</div><div style="font-size:34px;font-weight:900;color:#0d1829;letter-spacing:-1.5px;line-height:1;margin-bottom:4px">'+k.v+'</div><div style="font-size:11px;color:#4a5568">'+k.s+'</div>';
+    var fontSize = k.big ? '22px' : '34px';
+    d.innerHTML='<div style="font-size:9px;font-weight:800;color:#4a5568;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">'+k.l+'</div><div style="font-size:'+fontSize+';font-weight:900;color:#0d1829;letter-spacing:-1.5px;line-height:1;margin-bottom:4px">'+k.v+'</div><div style="font-size:11px;color:#4a5568">'+k.s+'</div>';
     kpiRow.appendChild(d);
   });
   pc.appendChild(kpiRow);
