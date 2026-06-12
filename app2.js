@@ -3800,9 +3800,8 @@ function gerarExtratoPDF(prop, mesParam, anoParam){
   var totalRec = recebidos.reduce(function(s,c){ return s+c.valor*.9; }, 0);
 
   // Descontos do mês
-  var descKey = prop+'_'+mesAtual+'_'+anoAtual;
-  var descs = (typeof descontosExtra!=='undefined' && descontosExtra[descKey]) ? descontosExtra[descKey] : [];
-  var totalDesc = descs.reduce(function(s,d){ return s+d.valor; }, 0);
+  var descs = getDescontos(prop, mesAtual, anoAtual);
+  var totalDesc = descs.reduce(function(s,d){ return s+(d.valor||0); }, 0);
   var totalFinal = totalLiq - totalDesc;
 
   // Rows de contratos
