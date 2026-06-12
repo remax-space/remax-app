@@ -2505,7 +2505,7 @@ function eCadCor(i){
 }
 function nCadCor(){corCad.push({id:corCad.length+1,nome:'Novo Corretor',cpf:'',rg:'',nasc:'',tel:'',email:'',end:'',bairro:'',cidade:'Caldas Novas GO',creci:'',banco:'Bradesco',agencia:'',conta:'',pix:'',cargo:'Corretor',status:'Ativo',cor:'#6b7280',ini:'NC'});eCadCor(corCad.length-1);}
 
-function pCadProp(){
+function pCadPropFinanceiroOld(){
   document.getElementById('pa').innerHTML='<button class="btn btn-red" onclick="nCadProp()">+ Novo Proprietario</button>';
   var totAll=ctD.reduce(function(s,c){return s+c.valor;},0);
   var totalCard='<div style="background:#0f1a35;color:#fff;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">'+
