@@ -2544,39 +2544,217 @@ function pCadInq(){
 // ============================================================
 // CADASTRO DE CLIENTES - Proprietarios
 // ============================================================
-function pCadProp(){
+function pCadProp(filtro){
+  filtro = filtro || 'todos';
   var pa = document.getElementById('pa');
+  pa.innerHTML = '';
 
-  var rows = propCad.map(function(p,i){
+  var btnNovo = document.createElement('button');
+  btnNovo.textContent = '+ Novo Proprietario';
+  btnNovo.style.cssText = 'background:#D42028;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px';
+  btnNovo.onclick = novoProprietarioCad;
+  var btnWA = document.createElement('button');
+  btnWA.textContent = '\uD83D\uDCF1 WhatsApp em Massa';
+  btnWA.style.cssText = 'background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px';
+  btnWA.onclick = function(){ dispararWAmassa('prop'); };
+  var btnExp = document.createElement('button');
+  btnExp.textContent = '\uD83D\uDDD2\uFE0F Exportar Lista';
+  btnExp.style.cssText = 'background:#0d1f4e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer';
+  btnExp.onclick = function(){ gerarListaClientes('prop'); };
+  [btnNovo,btnWA,btnExp].forEach(function(b){pa.appendChild(b);});
+
+  var ativos = propCad.filter(function(p){return (p.statusCad||'Ativo')==='Ativo';});
+  var inativos = propCad.filter(function(p){return p.statusCad==='Inativo';});
+
+  var listaFiltrada = propCad.filter(function(p){
+    var st = p.statusCad || 'Ativo';
+    if(filtro==='ativos') return st==='Ativo';
+    if(filtro==='inativos') return st==='Inativo';
+    return true;
+  });
+
+  var pc = document.getElementById('pc');
+  pc.innerHTML = '';
+
+  var kpiGrid = document.createElement('div');
+  kpiGrid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px';
+  [
+    {l:'Total Cadastrados',v:propCad.length,s:'proprietarios',c:'#0d1f4e'},
+    {l:'Ativos',v:ativos.length,s:'em operacao',c:'#1a6e3a'},
+    {l:'Inativos',v:inativos.length,s:'sem operacao',c:'#64748b'},
+    {l:'Com CPF',v:propCad.filter(function(p){return p.cpf;}).length,s:'prontos p/ portal',c:'#b45309'}
+  ].forEach(function(k){
+    var d = document.createElement('div');
+    d.style.cssText = 'background:#fff;border-radius:12px;padding:20px 22px;border:1px solid #e8edf2;border-top:3px solid '+k.c;
+    d.innerHTML = '<div style="font-size:9px;font-weight:800;color:#4a5568;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">'+k.l+'</div>'+
+      '<div style="font-size:30px;font-weight:900;color:'+k.c+';letter-spacing:-1px;margin-bottom:4px">'+k.v+'</div>'+
+      '<div style="font-size:11px;color:#64748b">'+k.s+'</div>';
+    kpiGrid.appendChild(d);
+  });
+  pc.appendChild(kpiGrid);
+
+  var tableCard = document.createElement('div');
+  tableCard.style.cssText = 'background:#fff;border-radius:12px;border:1px solid #e8edf2;overflow:hidden';
+
+  var filterBar = document.createElement('div');
+  filterBar.style.cssText = 'padding:12px 16px;border-bottom:1px solid #edf2f7;background:#fafbfd;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+
+  var busca = document.createElement('input');
+  busca.placeholder = 'Buscar nome, CPF, telefone...';
+  busca.style.cssText = 'padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;flex:1;min-width:160px';
+  filterBar.appendChild(busca);
+
+  [{id:'todos',l:'Todos',n:propCad.length},{id:'ativos',l:'Ativos',n:ativos.length},{id:'inativos',l:'Inativos',n:inativos.length}].forEach(function(f){
+    var btn = document.createElement('button');
+    var ativo = filtro===f.id;
+    btn.innerHTML = f.l+' <span style="background:'+(ativo?'rgba(255,255,255,.2)':'#f1f5f9')+';color:'+(ativo?'#fff':'#64748b')+';font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:4px">'+f.n+'</span>';
+    btn.style.cssText = 'background:'+(ativo?'#0d1f4e':'#fff')+';color:'+(ativo?'#fff':'#0d1f4e')+
+      ';border:1px solid '+(ativo?'#0d1f4e':'#e2e8f0')+';border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer';
+    btn.onclick = (function(id){return function(){pCadProp(id);};})(f.id);
+    filterBar.appendChild(btn);
+  });
+  tableCard.appendChild(filterBar);
+
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'overflow-x:auto';
+  var table = document.createElement('table');
+  table.style.cssText = 'width:100%;border-collapse:collapse';
+  var thead = document.createElement('thead');
+  var headRow = document.createElement('tr');
+  headRow.style.background = '#fafbfd';
+  ['Nome','CPF','Nascimento','Telefone','Email','Contratos','Status','Acoes'].forEach(function(h){
+    var th = document.createElement('th');
+    th.style.cssText = 'padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7;white-space:nowrap';
+    th.textContent = h;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  tbody.id = 'cp-b';
+
+  listaFiltrada.forEach(function(p){
+    var i = propCad.indexOf(p);
     var qtdContratos = ctD.filter(function(c){return c.prop===p.nome;}).length;
-    return '<tr>'+
-      '<td style="font-weight:700">'+p.nome+'</td>'+
-      '<td>'+(p.cpf||'<span style="color:#d1d5db">-</span>')+'</td>'+
-      '<td>'+(p.nasc?formatarDataBR(p.nasc):'<span style="color:#d1d5db">-</span>')+'</td>'+
-      '<td>'+(p.tel||'<span style="color:#d1d5db">-</span>')+'</td>'+
-      '<td>'+(p.email||'<span style="color:#d1d5db">-</span>')+'</td>'+
-      '<td style="text-align:center">'+qtdContratos+'</td>'+
-      '<td><button class="btn btn-sm" onclick="editCliente(\'prop\','+i+')">Editar</button></td>'+
-    '</tr>';
+    var st = p.statusCad || 'Ativo';
+    var stCor = st==='Ativo' ? '#1a6e3a' : '#64748b';
+    var stBg = st==='Ativo' ? '#f0fdf4' : '#f8fafc';
+
+    var tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #f4f6f8';
+    tr.style.opacity = st==='Inativo' ? '.55' : '1';
+    tr.dataset.sr = (p.nome+' '+(p.cpf||'')+' '+(p.tel||'')).toLowerCase();
+
+    function addTd(html,css){
+      var td=document.createElement('td');
+      td.style.cssText='padding:10px 12px;'+(css||'');
+      td.innerHTML=html;
+      return td;
+    }
+
+    tr.appendChild(addTd('<b style="color:#0d1829;font-size:13px">'+p.nome+'</b>'));
+    tr.appendChild(addTd(p.cpf||'<span style="color:#d1d5db">-</span>','font-size:12px'));
+    tr.appendChild(addTd(p.nasc?formatarDataBR(p.nasc):'<span style="color:#d1d5db">-</span>','font-size:12px'));
+    tr.appendChild(addTd(p.tel?'<a href="tel:'+p.tel+'" style="color:#0d1f4e;text-decoration:none;font-weight:600">'+p.tel+'</a>':'<span style="color:#d1d5db">-</span>','font-size:12px'));
+    tr.appendChild(addTd(p.email||'<span style="color:#d1d5db">-</span>','font-size:12px'));
+    tr.appendChild(addTd('<span style="background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:800;padding:2px 10px;border-radius:20px">'+qtdContratos+'</span>','text-align:center'));
+    tr.appendChild(addTd('<span style="background:'+stBg+';color:'+stCor+';font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">'+st+'</span>'));
+
+    var acTd = document.createElement('td');
+    acTd.style.padding = '10px 12px';
+    var acDiv = document.createElement('div');
+    acDiv.style.cssText = 'display:flex;gap:4px';
+    var bE = document.createElement('button');
+    bE.textContent = 'Editar';
+    bE.style.cssText = 'background:#eff6ff;color:#0d1f4e;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer';
+    bE.onclick = (function(idx){return function(){editCliente('prop',idx);};})(i);
+    var bT = document.createElement('button');
+    bT.textContent = st==='Ativo' ? 'Inativar' : 'Reativar';
+    bT.style.cssText = 'background:'+(st==='Ativo'?'#fef9c3;color:#92400e':'#dcfce7;color:#166534')+';border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer';
+    bT.onclick = (function(idx){return function(){toggleStatusProp(idx);};})(i);
+    acDiv.appendChild(bE);
+    acDiv.appendChild(bT);
+    acTd.appendChild(acDiv);
+    tr.appendChild(acTd);
+    tbody.appendChild(tr);
+  });
+
+  if(listaFiltrada.length===0){
+    var trEmpty = document.createElement('tr');
+    trEmpty.innerHTML = '<td colspan="8" style="text-align:center;padding:30px;color:#9ca3af;font-size:13px">Nenhum proprietario encontrado</td>';
+    tbody.appendChild(trEmpty);
+  }
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  tableCard.appendChild(wrap);
+  pc.appendChild(tableCard);
+
+  busca.oninput = function(){
+    var q = this.value.toLowerCase();
+    tbody.querySelectorAll('tr').forEach(function(row){
+      row.style.display = (row.dataset.sr||'').indexOf(q)>=0 ? '' : 'none';
+    });
+  };
+}
+
+function toggleStatusProp(i){
+  var p = propCad[i];
+  p.statusCad = (p.statusCad||'Ativo')==='Ativo' ? 'Inativo' : 'Ativo';
+  registrarLog('Status Proprietario', p.nome+' -> '+p.statusCad);
+  salvarTudo(); pCadProp();
+}
+
+function dispararWAmassa(tipo){
+  var contatos;
+  if(tipo === 'inq'){
+    contatos = ctD.filter(function(c){return c.tel_inq;}).map(function(c){
+      return {nome:c.inq, tel:c.tel_inq, ref:c.id};
+    });
+    inqCadManual.filter(function(m){return m.tel;}).forEach(function(m){
+      contatos.push({nome:m.nome, tel:m.tel, ref:'-'});
+    });
+  } else {
+    contatos = propCad.filter(function(p){return p.tel && (p.statusCad||'Ativo')==='Ativo';}).map(function(p){
+      var qtd = ctD.filter(function(c){return c.prop===p.nome;}).length;
+      return {nome:p.nome, tel:p.tel, ref:qtd+' imovel(eis)'};
+    });
+  }
+
+  if(contatos.length === 0){
+    alert('Nenhum contato com telefone cadastrado.');
+    return;
+  }
+
+  window._waMassaContatos = contatos;
+  window._waMassaTipo = tipo;
+
+  var msgPadrao = 'Ola {nome}! Aqui e a RE/MAX Space. Tudo bem?';
+
+  var listaHtml = contatos.map(function(c,i){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:12px">'+
+      '<div><b>'+c.nome+'</b><br><span style="color:#9ca3af">'+c.tel+' - '+c.ref+'</span></div>'+
+      '<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="abrirWAIndividual('+i+')">Enviar</button>'+
+    '</div>';
   }).join('');
 
-  pa.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'+
-      '<h2 style="font-size:18px;color:var(--nv)">Clientes - Proprietarios</h2>'+
-      '<div style="display:flex;gap:8px">'+
-        '<button class="btn" style="background:#10b981;color:#fff" onclick="novoProprietarioCad()">+ Novo</button>'+
-        '<button class="btn" style="background:#0f1a35;color:#fff" onclick="gerarListaClientes(\'prop\')">Exportar Lista</button>'+
-      '</div>'+
+  oM('WhatsApp em Massa - '+(tipo==='inq'?'Inquilinos':'Proprietarios'),
+    '<div style="background:#eff6ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#1e40af;margin-bottom:12px">'+
+      'Use {nome} no texto para personalizar automaticamente. '+contatos.length+' contato(s) encontrado(s). Clique em Enviar ao lado de cada nome para abrir o WhatsApp.'+
     '</div>'+
-    '<div style="overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.04)">'+
-      '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
-        '<thead><tr style="background:#f8fafc;text-align:left">'+
-          '<th style="padding:10px 12px">Nome</th><th style="padding:10px 12px">CPF</th><th style="padding:10px 12px">Nascimento</th>'+
-          '<th style="padding:10px 12px">Telefone</th><th style="padding:10px 12px">Email</th><th style="padding:10px 12px">Contratos</th><th style="padding:10px 12px">Acoes</th>'+
-        '</tr></thead>'+
-        '<tbody>'+rows+'</tbody>'+
-      '</table>'+
-    '</div>';
+    '<div class="fg"><label>Mensagem</label><textarea id="wa-massa-msg" style="width:100%;min-height:90px;padding:10px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px">'+msgPadrao+'</textarea></div>'+
+    '<div style="max-height:280px;overflow-y:auto;margin-top:10px">'+listaHtml+'</div>',
+    null, 'Fechar', true);
+}
+
+function abrirWAIndividual(i){
+  var c = window._waMassaContatos[i];
+  var msg = document.getElementById('wa-massa-msg').value;
+  msg = msg.replace(/\{nome\}/g, c.nome.split(' ')[0]);
+  var tel = (c.tel||'').replace(/[^0-9]/g,'');
+  if(tel.length <= 11) tel = '55'+tel;
+  window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(msg), '_blank');
 }
 
 function novoProprietarioCad(){
