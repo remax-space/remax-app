@@ -930,7 +930,7 @@ var NAV = [
   {s:'Portfólio'},{id:'captacao',l:'🔑 Captação Locação'},{id:'vitrine',l:'🏠 Vitrine Imóveis'},{id:'iv',l:'Imóveis Venda'},{id:'prop',l:'Proprietários'},
   {s:'Marketing'},{id:'mkt',l:'🎨 Marketing'},{s:'Admin'},{id:'usuarios',l:'👥 Usuários',a:true},{id:'senhas',l:'🔐 Senhas',a:true},{id:'permissoes',l:'🛡️ Permissões',a:true},
   {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},
-  {s:'Cadastros',a:true},{id:'cad-cor',l:'Corretores',a:true},{id:'cad-prop',l:'Proprietários Cad.',a:true},{id:'cad-inq',l:'Inquilinos',a:true},
+  {s:'Clientes',a:true},{id:'cad-prop',l:'👥 Proprietários',a:true},{id:'cad-inq',l:'👥 Inquilinos',a:true},{id:'cad-cor',l:'Corretores',a:true},
   {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
   {s:'Sistema',a:true},{id:'auditoria',l:'📋 Log de Auditoria',a:true},{id:'alertas',l:'🔔 Alertas & Avisos',a:true},
 ];
@@ -2478,6 +2478,199 @@ async function salvarSenhaUser(usuario){
   salvarTudo();
 }
 
+
+
+// ============================================================
+// CADASTRO DE CLIENTES - Inquilinos
+// ============================================================
+function pCadInq(){
+  var pa = document.getElementById('pa');
+  var lista = ctD.map(function(c,i){
+    return {idx:i, ct:c.id, nome:c.inq, cpf:c.cpf_inq||'', nasc:c.nasc_inq||'', tel:c.tel_inq||'', email:c.email_inq||'', status:c.status, imovel:c.end};
+  });
+
+  var rows = lista.map(function(x){
+    return '<tr>'+
+      '<td style="font-weight:700">'+x.ct+'</td>'+
+      '<td>'+x.nome+'</td>'+
+      '<td style="font-size:11px;color:#6b7280">'+x.imovel+'</td>'+
+      '<td>'+(x.cpf||'<span style="color:#d1d5db">-</span>')+'</td>'+
+      '<td>'+(x.nasc?formatarDataBR(x.nasc):'<span style="color:#d1d5db">-</span>')+'</td>'+
+      '<td>'+(x.tel||'<span style="color:#d1d5db">-</span>')+'</td>'+
+      '<td>'+(x.email||'<span style="color:#d1d5db">-</span>')+'</td>'+
+      '<td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:'+(x.status==='Ativa'?'#dcfce7;color:#166534':'#fef9c3;color:#92400e')+'">'+x.status+'</span></td>'+
+      '<td><button class="btn btn-sm" onclick="editCliente(\'inq\','+x.idx+')">Editar</button></td>'+
+    '</tr>';
+  }).join('');
+
+  pa.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'+
+      '<h2 style="font-size:18px;color:var(--nv)">Clientes - Inquilinos</h2>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn" style="background:#0f1a35;color:#fff" onclick="gerarListaClientes(\'inq\')">Exportar Lista</button>'+
+      '</div>'+
+    '</div>'+
+    '<div style="background:#eff6ff;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e40af">'+
+      'Estes dados sao preenchidos ao editar o contrato de locacao correspondente (Locacao -> Contratos Ativos -> Editar).'+
+    '</div>'+
+    '<div style="overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.04)">'+
+      '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
+        '<thead><tr style="background:#f8fafc;text-align:left">'+
+          '<th style="padding:10px 12px">Contrato</th><th style="padding:10px 12px">Nome</th><th style="padding:10px 12px">Imovel</th>'+
+          '<th style="padding:10px 12px">CPF</th><th style="padding:10px 12px">Nascimento</th><th style="padding:10px 12px">Telefone</th>'+
+          '<th style="padding:10px 12px">Email</th><th style="padding:10px 12px">Status</th><th style="padding:10px 12px">Acoes</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table>'+
+    '</div>';
+}
+
+// ============================================================
+// CADASTRO DE CLIENTES - Proprietarios
+// ============================================================
+function pCadProp(){
+  var pa = document.getElementById('pa');
+
+  var rows = propCad.map(function(p,i){
+    var qtdContratos = ctD.filter(function(c){return c.prop===p.nome;}).length;
+    return '<tr>'+
+      '<td style="font-weight:700">'+p.nome+'</td>'+
+      '<td>'+(p.cpf||'<span style="color:#d1d5db">-</span>')+'</td>'+
+      '<td>'+(p.nasc?formatarDataBR(p.nasc):'<span style="color:#d1d5db">-</span>')+'</td>'+
+      '<td>'+(p.tel||'<span style="color:#d1d5db">-</span>')+'</td>'+
+      '<td>'+(p.email||'<span style="color:#d1d5db">-</span>')+'</td>'+
+      '<td style="text-align:center">'+qtdContratos+'</td>'+
+      '<td><button class="btn btn-sm" onclick="editCliente(\'prop\','+i+')">Editar</button></td>'+
+    '</tr>';
+  }).join('');
+
+  pa.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'+
+      '<h2 style="font-size:18px;color:var(--nv)">Clientes - Proprietarios</h2>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn" style="background:#10b981;color:#fff" onclick="novoProprietarioCad()">+ Novo</button>'+
+        '<button class="btn" style="background:#0f1a35;color:#fff" onclick="gerarListaClientes(\'prop\')">Exportar Lista</button>'+
+      '</div>'+
+    '</div>'+
+    '<div style="overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.04)">'+
+      '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
+        '<thead><tr style="background:#f8fafc;text-align:left">'+
+          '<th style="padding:10px 12px">Nome</th><th style="padding:10px 12px">CPF</th><th style="padding:10px 12px">Nascimento</th>'+
+          '<th style="padding:10px 12px">Telefone</th><th style="padding:10px 12px">Email</th><th style="padding:10px 12px">Contratos</th><th style="padding:10px 12px">Acoes</th>'+
+        '</tr></thead>'+
+        '<tbody>'+rows+'</tbody>'+
+      '</table>'+
+    '</div>';
+}
+
+function novoProprietarioCad(){
+  oM('Novo Proprietario',
+    '<div class="fg"><label>Nome</label><input id="np-nome"></div>'+
+    '<div class="fg2"><div class="fg"><label>CPF</label><input id="np-cpf" placeholder="000.000.000-00"></div><div class="fg"><label>Data Nascimento</label><input id="np-nasc" type="date"></div></div>'+
+    '<div class="fg2"><div class="fg"><label>Telefone</label><input id="np-tel" placeholder="(64) 9 0000-0000"></div><div class="fg"><label>Email</label><input id="np-email" type="email"></div></div>',
+    function(){
+      var nome = document.getElementById('np-nome').value.trim();
+      if(!nome) return;
+      propCad.push({
+        id: propCad.length+1, nome: nome,
+        cpf: document.getElementById('np-cpf').value.trim(),
+        nasc: document.getElementById('np-nasc').value,
+        tel: document.getElementById('np-tel').value.trim(),
+        email: document.getElementById('np-email').value.trim(),
+        end:'',cidade:'',banco:'',agencia:'',conta:'',pix:'',obs:''
+      });
+      registrarLog('Novo Proprietario', nome);
+      cM(); salvarTudo(); pCadProp();
+    }, 'Salvar');
+}
+
+function editCliente(tipo, idx){
+  if(tipo === 'inq'){
+    var c = ctD[idx];
+    oM('Editar Inquilino - '+c.id,
+      '<div class="fg"><label>Nome</label><input id="cl-nome" value="'+c.inq+'"></div>'+
+      '<div class="fg2"><div class="fg"><label>CPF</label><input id="cl-cpf" value="'+(c.cpf_inq||'')+'" placeholder="000.000.000-00"></div><div class="fg"><label>Data Nascimento</label><input id="cl-nasc" type="date" value="'+(c.nasc_inq||'')+'"></div></div>'+
+      '<div class="fg2"><div class="fg"><label>Telefone</label><input id="cl-tel" value="'+(c.tel_inq||'')+'" placeholder="(64) 9 0000-0000"></div><div class="fg"><label>Email</label><input id="cl-email" type="email" value="'+(c.email_inq||'')+'"></div></div>',
+      function(){
+        c.inq = document.getElementById('cl-nome').value.trim();
+        c.cpf_inq = document.getElementById('cl-cpf').value.trim();
+        c.nasc_inq = document.getElementById('cl-nasc').value;
+        c.tel_inq = document.getElementById('cl-tel').value.trim();
+        c.email_inq = document.getElementById('cl-email').value.trim();
+        registrarLog('Editar Cliente (Inquilino)', c.id+' - '+c.inq);
+        cM(); salvarTudo(); pCadInq();
+      }, 'Salvar');
+  } else {
+    var p = propCad[idx];
+    oM('Editar Proprietario - '+p.nome,
+      '<div class="fg"><label>Nome</label><input id="cl-nome" value="'+p.nome+'"></div>'+
+      '<div class="fg2"><div class="fg"><label>CPF</label><input id="cl-cpf" value="'+(p.cpf||'')+'" placeholder="000.000.000-00"></div><div class="fg"><label>Data Nascimento</label><input id="cl-nasc" type="date" value="'+(p.nasc||'')+'"></div></div>'+
+      '<div class="fg2"><div class="fg"><label>Telefone</label><input id="cl-tel" value="'+(p.tel||'')+'" placeholder="(64) 9 0000-0000"></div><div class="fg"><label>Email</label><input id="cl-email" type="email" value="'+(p.email||'')+'"></div></div>',
+      function(){
+        var nomeAntigo = p.nome;
+        p.nome = document.getElementById('cl-nome').value.trim();
+        p.cpf = document.getElementById('cl-cpf').value.trim();
+        p.nasc = document.getElementById('cl-nasc').value;
+        p.tel = document.getElementById('cl-tel').value.trim();
+        p.email = document.getElementById('cl-email').value.trim();
+        if(nomeAntigo !== p.nome){
+          ctD.forEach(function(c){ if(c.prop===nomeAntigo) c.prop = p.nome; });
+        }
+        registrarLog('Editar Cliente (Proprietario)', p.nome);
+        cM(); salvarTudo(); pCadProp();
+      }, 'Salvar');
+  }
+}
+
+function gerarListaClientes(tipo){
+  var html;
+  if(tipo === 'inq'){
+    var lista = ctD.map(function(c){
+      return {ct:c.id, nome:c.inq, cpf:c.cpf_inq||'-', nasc:c.nasc_inq?formatarDataBR(c.nasc_inq):'-', tel:c.tel_inq||'-', email:c.email_inq||'-', imovel:c.end, status:c.status};
+    });
+    var rowsHtml = lista.map(function(x){
+      return '<tr><td>'+x.ct+'</td><td>'+x.nome+'</td><td>'+x.cpf+'</td><td>'+x.nasc+'</td><td>'+x.tel+'</td><td>'+x.email+'</td><td>'+x.imovel+'</td><td>'+x.status+'</td></tr>';
+    }).join('');
+    html = '<h2 style="font-size:18px;margin-bottom:16px">Lista de Inquilinos - RE/MAX Space</h2>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#f1f5f9;text-align:left">'+
+      '<th style="padding:6px">Contrato</th><th style="padding:6px">Nome</th><th style="padding:6px">CPF</th><th style="padding:6px">Nascimento</th><th style="padding:6px">Telefone</th><th style="padding:6px">Email</th><th style="padding:6px">Imovel</th><th style="padding:6px">Status</th>'+
+      '</tr></thead><tbody>'+rowsHtml+'</tbody></table>';
+  } else {
+    var lista2 = propCad.map(function(p){
+      var qtd = ctD.filter(function(c){return c.prop===p.nome;}).length;
+      return {nome:p.nome, cpf:p.cpf||'-', nasc:p.nasc?formatarDataBR(p.nasc):'-', tel:p.tel||'-', email:p.email||'-', qtd:qtd};
+    });
+    var rowsHtml2 = lista2.map(function(x){
+      return '<tr><td>'+x.nome+'</td><td>'+x.cpf+'</td><td>'+x.nasc+'</td><td>'+x.tel+'</td><td>'+x.email+'</td><td style="text-align:center">'+x.qtd+'</td></tr>';
+    }).join('');
+    html = '<h2 style="font-size:18px;margin-bottom:16px">Lista de Proprietarios - RE/MAX Space</h2>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#f1f5f9;text-align:left">'+
+      '<th style="padding:6px">Nome</th><th style="padding:6px">CPF</th><th style="padding:6px">Nascimento</th><th style="padding:6px">Telefone</th><th style="padding:6px">Email</th><th style="padding:6px">Contratos</th>'+
+      '</tr></thead><tbody>'+rowsHtml2+'</tbody></table>';
+  }
+
+  var container = document.createElement('div');
+  container.style.padding = '20px';
+  container.innerHTML = html;
+  document.body.appendChild(container);
+  var nomeArq = (tipo==='inq'?'Lista_Inquilinos_':'Lista_Proprietarios_')+new Date().toISOString().slice(0,10)+'.pdf';
+  if(typeof html2pdf !== 'undefined'){
+    html2pdf().set({margin:10,filename:nomeArq,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'landscape'}}).from(container).save().then(function(){
+      document.body.removeChild(container);
+      registrarLog('Exportar Lista Clientes', tipo==='inq'?'Inquilinos':'Proprietarios');
+    });
+  } else {
+    document.body.removeChild(container);
+    alert('Erro: html2pdf nao carregado.');
+  }
+}
+
+function formatarDataBR(d){
+  if(!d) return '-';
+  var p = d.split('-');
+  if(p.length!==3) return d;
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
 
 function pUsuarios(){
   if(!U||U.role_key!=='master'){ alert('Apenas Master.'); return; }
