@@ -3231,8 +3231,8 @@ function imprimirBoleto(i){
   var txid = ('REMAX'+(b.ctId||'').replace(/[^A-Z0-9]/g,'')).slice(0,25);
   var enc = calcularEncargos(b.valor, b.venc, b.mes);
   var valorTotal = enc.total;
-  var payload = b.pixCopiaECola || gerarPixPayload(valorTotal, txid, 'Aluguel');
-  var qrUrl = b.pixQrCode || gerarQrCodePix(valorTotal, txid, 'Aluguel');
+  var payload = gerarPixPayload(valorTotal, txid, 'Aluguel');
+  var qrUrl = gerarQrCodePix(valorTotal, txid, 'Aluguel');
   var vencFormatado = 'Dia '+b.venc+' de '+b.mes;
   var gerado = new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR');
   var encHtml = enc.diasAtraso>0
