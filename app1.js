@@ -2494,51 +2494,170 @@ function pCadCor(){
     '</tbody></table></div>';
 }
 
-function pCadInq(){
+function pCadInq(filtro){
+  filtro = filtro || 'todos';
   var pa = document.getElementById('pa');
+  pa.innerHTML = '';
+
+  var btnNovo = document.createElement('button');
+  btnNovo.textContent = '+ Novo Inquilino';
+  btnNovo.style.cssText = 'background:#D42028;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px';
+  btnNovo.onclick = novoInquilinoCad;
+  var btnWA = document.createElement('button');
+  btnWA.textContent = '\uD83D\uDCF1 WhatsApp em Massa';
+  btnWA.style.cssText = 'background:#25D366;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-right:6px';
+  btnWA.onclick = function(){ dispararWAmassa('inq'); };
+  var btnExp = document.createElement('button');
+  btnExp.textContent = '\uD83D\uDDD2\uFE0F Exportar Lista';
+  btnExp.style.cssText = 'background:#0d1f4e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer';
+  btnExp.onclick = function(){ gerarListaClientes('inq'); };
+  [btnNovo,btnWA,btnExp].forEach(function(b){pa.appendChild(b);});
+
   var lista = ctD.map(function(c,i){
     return {tipo:'ct', idx:i, ct:c.id, nome:c.inq, cpf:c.cpf_inq||'', nasc:c.nasc_inq||'', tel:c.tel_inq||'', email:c.email_inq||'', status:c.status, imovel:c.end};
   });
-  // Adicionar inquilinos cadastrados manualmente (sem contrato ainda)
   inqCadManual.forEach(function(m,i){
     lista.push({tipo:'manual', idx:i, ct:'-', nome:m.nome, cpf:m.cpf||'', nasc:m.nasc||'', tel:m.tel||'', email:m.email||'', status:'Sem contrato', imovel:'-'});
   });
 
-  var rows = lista.map(function(x){
-    return '<tr>'+
-      '<td style="font-weight:700">'+x.ct+'</td>'+
-      '<td>'+x.nome+'</td>'+
-      '<td style="font-size:11px;color:#6b7280">'+x.imovel+'</td>'+
-      '<td>'+(x.cpf||'<span style="color:#d1d5db">-</span>')+'</td>'+
-      '<td>'+(x.nasc?formatarDataBR(x.nasc):'<span style="color:#d1d5db">-</span>')+'</td>'+
-      '<td>'+(x.tel||'<span style="color:#d1d5db">-</span>')+'</td>'+
-      '<td>'+(x.email||'<span style="color:#d1d5db">-</span>')+'</td>'+
-      '<td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;background:'+(x.status==='Ativa'?'#dcfce7;color:#166534':'#fef9c3;color:#92400e')+'">'+x.status+'</span></td>'+
-      '<td><button class="btn btn-sm" onclick="editCliente(\'inq\','+x.idx+',\''+x.tipo+'\')">Editar</button>'+(x.tipo==='manual'?' <button class="btn btn-sm" style="background:#fee2e2;color:#991b1b" onclick="excluirInquilinoManual('+x.idx+')">Excluir</button>':'')+'</td>'+
-    '</tr>';
-  }).join('');
+  var ativos = lista.filter(function(x){return x.status==='Ativa';});
+  var semContrato = lista.filter(function(x){return x.tipo==='manual';});
+  var comCpf = lista.filter(function(x){return x.cpf;});
 
-  pa.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">'+
-      '<h2 style="font-size:18px;color:var(--nv)">Clientes - Inquilinos</h2>'+
-      '<div style="display:flex;gap:8px">'+
-        '<button class="btn" style="background:#10b981;color:#fff" onclick="novoInquilinoCad()">+ Novo</button>'+
-        '<button class="btn" style="background:#0f1a35;color:#fff" onclick="gerarListaClientes(\'inq\')">Exportar Lista</button>'+
-      '</div>'+
-    '</div>'+
-    '<div style="background:#eff6ff;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e40af">'+
-      'Estes dados sao preenchidos ao editar o contrato de locacao correspondente (Locacao -> Contratos Ativos -> Editar).'+
-    '</div>'+
-    '<div style="overflow-x:auto;background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.04)">'+
-      '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
-        '<thead><tr style="background:#f8fafc;text-align:left">'+
-          '<th style="padding:10px 12px">Contrato</th><th style="padding:10px 12px">Nome</th><th style="padding:10px 12px">Imovel</th>'+
-          '<th style="padding:10px 12px">CPF</th><th style="padding:10px 12px">Nascimento</th><th style="padding:10px 12px">Telefone</th>'+
-          '<th style="padding:10px 12px">Email</th><th style="padding:10px 12px">Status</th><th style="padding:10px 12px">Acoes</th>'+
-        '</tr></thead>'+
-        '<tbody>'+rows+'</tbody>'+
-      '</table>'+
-    '</div>';
+  var listaFiltrada = lista.filter(function(x){
+    if(filtro==='ativos') return x.status==='Ativa';
+    if(filtro==='sem-contrato') return x.tipo==='manual';
+    return true;
+  });
+
+  var pc = document.getElementById('pc');
+  pc.innerHTML = '';
+
+  var kpiGrid = document.createElement('div');
+  kpiGrid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px';
+  [
+    {l:'Total Cadastrados',v:lista.length,s:'inquilinos',c:'#0d1f4e'},
+    {l:'Contratos Ativos',v:ativos.length,s:'em locacao',c:'#1a6e3a'},
+    {l:'Sem Contrato',v:semContrato.length,s:'cadastro avulso',c:'#64748b'},
+    {l:'Com CPF',v:comCpf.length,s:'prontos p/ portal',c:'#b45309'}
+  ].forEach(function(k){
+    var d = document.createElement('div');
+    d.style.cssText = 'background:#fff;border-radius:12px;padding:20px 22px;border:1px solid #e8edf2;border-top:3px solid '+k.c;
+    d.innerHTML = '<div style="font-size:9px;font-weight:800;color:#4a5568;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">'+k.l+'</div>'+
+      '<div style="font-size:30px;font-weight:900;color:'+k.c+';letter-spacing:-1px;margin-bottom:4px">'+k.v+'</div>'+
+      '<div style="font-size:11px;color:#64748b">'+k.s+'</div>';
+    kpiGrid.appendChild(d);
+  });
+  pc.appendChild(kpiGrid);
+
+  var infoDiv = document.createElement('div');
+  infoDiv.style.cssText = 'background:#eff6ff;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#1e40af';
+  infoDiv.textContent = 'Inquilinos com contrato sincronizam automaticamente com a Locacao. Cadastros sem contrato podem ser vinculados depois.';
+  pc.appendChild(infoDiv);
+
+  var tableCard = document.createElement('div');
+  tableCard.style.cssText = 'background:#fff;border-radius:12px;border:1px solid #e8edf2;overflow:hidden';
+
+  var filterBar = document.createElement('div');
+  filterBar.style.cssText = 'padding:12px 16px;border-bottom:1px solid #edf2f7;background:#fafbfd;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+
+  var busca = document.createElement('input');
+  busca.placeholder = 'Buscar nome, CPF, telefone, imovel...';
+  busca.style.cssText = 'padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;flex:1;min-width:160px';
+  filterBar.appendChild(busca);
+
+  [{id:'todos',l:'Todos',n:lista.length},{id:'ativos',l:'Ativos',n:ativos.length},{id:'sem-contrato',l:'Sem Contrato',n:semContrato.length}].forEach(function(f){
+    var btn = document.createElement('button');
+    var ativo = filtro===f.id;
+    btn.innerHTML = f.l+' <span style="background:'+(ativo?'rgba(255,255,255,.2)':'#f1f5f9')+';color:'+(ativo?'#fff':'#64748b')+';font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:4px">'+f.n+'</span>';
+    btn.style.cssText = 'background:'+(ativo?'#0d1f4e':'#fff')+';color:'+(ativo?'#fff':'#0d1f4e')+
+      ';border:1px solid '+(ativo?'#0d1f4e':'#e2e8f0')+';border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer';
+    btn.onclick = (function(id){return function(){pCadInq(id);};})(f.id);
+    filterBar.appendChild(btn);
+  });
+  tableCard.appendChild(filterBar);
+
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'overflow-x:auto';
+  var table = document.createElement('table');
+  table.style.cssText = 'width:100%;border-collapse:collapse';
+  var thead = document.createElement('thead');
+  var headRow = document.createElement('tr');
+  headRow.style.background = '#fafbfd';
+  ['Contrato','Nome','Imovel','CPF','Nascimento','Telefone','Email','Status','Acoes'].forEach(function(h){
+    var th = document.createElement('th');
+    th.style.cssText = 'padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7;white-space:nowrap';
+    th.textContent = h;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  tbody.id = 'ci-b';
+
+  listaFiltrada.forEach(function(x){
+    var stCor = x.status==='Ativa' ? '#1a6e3a' : x.status==='Sem contrato' ? '#64748b' : '#b45309';
+    var stBg = x.status==='Ativa' ? '#f0fdf4' : x.status==='Sem contrato' ? '#f8fafc' : '#fef9c3';
+
+    var tr = document.createElement('tr');
+    tr.style.borderBottom = '1px solid #f4f6f8';
+    tr.dataset.sr = (x.nome+' '+(x.cpf||'')+' '+(x.tel||'')+' '+(x.imovel||'')).toLowerCase();
+
+    function addTd(html,css){
+      var td=document.createElement('td');
+      td.style.cssText='padding:10px 12px;'+(css||'');
+      td.innerHTML=html;
+      return td;
+    }
+
+    tr.appendChild(addTd(x.ct==='-'?'<span style="color:#d1d5db">-</span>':'<b style="color:#003DA5;font-size:12px">'+x.ct+'</b>'));
+    tr.appendChild(addTd('<b style="color:#0d1829;font-size:13px">'+x.nome+'</b>'));
+    tr.appendChild(addTd(x.imovel==='-'?'<span style="color:#d1d5db">-</span>':x.imovel,'font-size:11px;color:#6b7280;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'));
+    tr.appendChild(addTd(x.cpf||'<span style="color:#d1d5db">-</span>','font-size:12px'));
+    tr.appendChild(addTd(x.nasc?formatarDataBR(x.nasc):'<span style="color:#d1d5db">-</span>','font-size:12px'));
+    tr.appendChild(addTd(x.tel?'<a href="tel:'+x.tel+'" style="color:#0d1f4e;text-decoration:none;font-weight:600">'+x.tel+'</a>':'<span style="color:#d1d5db">-</span>','font-size:12px'));
+    tr.appendChild(addTd(x.email||'<span style="color:#d1d5db">-</span>','font-size:12px'));
+    tr.appendChild(addTd('<span style="background:'+stBg+';color:'+stCor+';font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">'+x.status+'</span>'));
+
+    var acTd = document.createElement('td');
+    acTd.style.padding = '10px 12px';
+    var acDiv = document.createElement('div');
+    acDiv.style.cssText = 'display:flex;gap:4px';
+    var bE = document.createElement('button');
+    bE.textContent = 'Editar';
+    bE.style.cssText = 'background:#eff6ff;color:#0d1f4e;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer';
+    bE.onclick = (function(idx,tipo){return function(){editCliente('inq',idx,tipo);};})(x.idx,x.tipo);
+    acDiv.appendChild(bE);
+    if(x.tipo==='manual'){
+      var bX = document.createElement('button');
+      bX.textContent = 'Excluir';
+      bX.style.cssText = 'background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer';
+      bX.onclick = (function(idx){return function(){excluirInquilinoManual(idx);};})(x.idx);
+      acDiv.appendChild(bX);
+    }
+    acTd.appendChild(acDiv);
+    tr.appendChild(acTd);
+    tbody.appendChild(tr);
+  });
+
+  if(listaFiltrada.length===0){
+    var trEmpty = document.createElement('tr');
+    trEmpty.innerHTML = '<td colspan="9" style="text-align:center;padding:30px;color:#9ca3af;font-size:13px">Nenhum inquilino encontrado</td>';
+    tbody.appendChild(trEmpty);
+  }
+
+  table.appendChild(tbody);
+  wrap.appendChild(table);
+  tableCard.appendChild(wrap);
+  pc.appendChild(tableCard);
+
+  busca.oninput = function(){
+    var q = this.value.toLowerCase();
+    tbody.querySelectorAll('tr').forEach(function(row){
+      row.style.display = (row.dataset.sr||'').indexOf(q)>=0 ? '' : 'none';
+    });
+  };
 }
 
 // ============================================================
