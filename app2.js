@@ -1858,62 +1858,135 @@ function pDRE(){
     +'<div class="card"><div class="chd" style="display:flex;justify-content:space-between;align-items:center"><h3>Comissões dos Corretores</h3><span style="font-size:12px;color:var(--lm)">Total: '+fmt(comTotal)+' | Pago: '+fmt(comPago)+'</span></div>'
     +'<div class="tw"><table><thead><tr><th>Corretor</th><th>Negócios</th><th>Total</th><th>Pago</th><th>Status</th></tr></thead><tbody>'+comRows+'</tbody></table></div>'
     +'<div class="chd" style="border-top:1px solid var(--lb);margin-top:0"><h3 style="font-size:13px">Detalhamento</h3></div>'
-    +'<div class="tw"><table><thead><tr><th>Corretor</th><th>Tipo</th><th>Valor Negócio</th><th>%</th><th>Comissão</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody>'
+    +'<div class="tw"><table><thead><tr><th>Corretor</th><th>Tipo</th><th>Contrato</th><th style="text-align:right">Valor Base</th><th>%</th><th style="text-align:right">Comissão</th><th>Mês Ref.</th><th>Observação</th><th>Pagamento</th><th>Ações</th></tr></thead><tbody>'
     +COMISSOES.map(function(c,i){
-      return '<tr><td>'+c.corretor+'</td><td><span class="badge bb">'+c.tipo+'</span></td>'
-        +'<td>'+fmt(c.valor)+'</td><td>'+Math.round(c.pct*100)+'%</td>'
-        +'<td style="font-weight:700;color:var(--ok)">'+fmt(c.comissao)+'</td>'
-        +'<td>'+c.dt+'</td>'
-        +'<td><span class="badge '+(c.status==='Pago'?'bg':'by')+'">'+c.status+'</span></td>'
-        +'<td>'+(c.status!=='Pago'?'<button class="btn btn-xs btn-green" onclick="pagarComissao('+i+')">Pagar</button>':'')
+      var tipoCor={LOCACAO:'#166534',VENDA:'#1d4ed8',CAPTACAO:'#92400e',RENOVACAO:'#7c3aed',OUTRO:'#374151'};
+      var isPago=c.status==='Pago';
+      return '<tr style="'+(isPago?'opacity:.8;':'background:#fffbeb;')+'">'
+        +'<td style="font-weight:600">'+c.corretor+'</td>'
+        +'<td><span style="background:'+(tipoCor[c.tipo]||'#374151')+';color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px">'+c.tipo+'</span></td>'
+        +'<td style="font-size:11px;color:var(--lm)">'+(c.ct||'—')+'</td>'
+        +'<td style="text-align:right">'+fmt(c.valor)+'</td>'
+        +'<td style="text-align:center">'+Math.round(c.pct*100)+'%</td>'
+        +'<td style="text-align:right;font-weight:800;color:#166534">'+fmt(c.comissao)+'</td>'
+        +'<td style="font-size:11px">'+(c.mes||c.dt||'—')+'</td>'
+        +'<td style="font-size:11px;color:var(--lm);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.obs||'—')+'</td>'
+        +'<td>'+(isPago?'<span style="color:#166534;font-size:10px">✓ '+fmtD(c.dtPagamento)+(c.formaPag?' / '+c.formaPag:'')+'</span>':'')+'</td>'
+        +'<td style="white-space:nowrap">'
+        +(!isPago?'<button class="btn btn-xs btn-green" onclick="pagarComissao('+i+')">✓ Pagar</button> ':'')
+        +'<button class="btn btn-xs" style="background:#fff1f2;color:#be123c;font-size:9px" onclick="excluirComissao('+i+')">🗑</button>'
         +'</td></tr>';
-    }).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--lm);padding:20px">Nenhuma comissão lançada ainda</td></tr>'
+    }).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--lm);padding:20px">Nenhuma comissão lançada ainda</td></tr>'
     +'</tbody></table></div></div>';
 }
 
-function nComissao(){
-  var corOpts = COR.map(function(c){return '<option value="'+c.nome+'">'+c.nome+'</option>';}).join('');
-  oM('Lançar Comissão',
-    '<div class="fg3"><div class="fg"><label>Corretor</label><select id="com-cor">'+corOpts+'</select></div>'
-    +'<div class="fg"><label>Tipo</label><select id="com-tipo"><option>VENDA</option><option>LOCACAO</option><option>CAPTACAO</option><option>RENOVACAO</option></select></div></div>'
-    +'<div class="fg3"><div class="fg"><label>Valor do Negócio (R$)</label><input type="number" id="com-val" placeholder="0" oninput="calcComissaoPreview()"></div>'
-    +'<div class="fg"><label>% Comissão</label><input type="number" id="com-pct" value="30" oninput="calcComissaoPreview()"></div></div>'
-    +'<div id="com-preview" style="background:#f0fdf4;border-radius:8px;padding:12px;margin:10px 0;text-align:center;font-size:13px;display:none"></div>'
-    +'<div class="fg3"><div class="fg"><label>Data</label><input type="date" id="com-dt" value="'+new Date().toISOString().split('T')[0]+'"></div>'
-    +'<div class="fg"><label>Status</label><select id="com-st"><option>A pagar</option><option>Pago</option></select></div></div>'
-    +'<div class="fg"><label>Observação</label><input id="com-obs" placeholder="Ex: Venda Rua das Palmeiras 430"></div>',
+
+function nComissaoCard(idx){
+  var nome = corCad[idx] ? corCad[idx].nome : '';
+  nComissao(nome);
+}
+function nComissao(corretorPre){
+  var corOpts = corCad.map(function(c){
+    return '<option value="'+c.nome+'"'+(corretorPre&&c.nome===corretorPre?' selected':'')+'>'+c.nome+'</option>';
+  }).join('');
+  var ctOpts = '<option value="">— Sem vínculo —</option>'+
+    ctD.filter(function(c){return c.status!=='Inativo';}).map(function(c){
+      return '<option value="'+c.id+'">'+c.id+' — '+c.inq+' / '+c.prop+'</option>';
+    }).join('');
+  oM('💰 Lançar Comissão',
+    '<div class="fg3">'+
+    '<div class="fg"><label>Corretor *</label><select id="com-cor">'+corOpts+'</select></div>'+
+    '<div class="fg"><label>Tipo *</label><select id="com-tipo" onchange="calcComissaoPreview()">'+
+    '<option value="LOCACAO">Locação</option>'+
+    '<option value="VENDA">Venda</option>'+
+    '<option value="CAPTACAO">Captação</option>'+
+    '<option value="RENOVACAO">Renovação</option>'+
+    '<option value="OUTRO">Outro</option>'+
+    '</select></div>'+
+    '<div class="fg"><label>Contrato vinculado</label><select id="com-ct">'+ctOpts+'</select></div>'+
+    '</div>'+
+    '<div class="fg3">'+
+    '<div class="fg"><label>Valor base (R$) *</label><input type="number" id="com-val" step="0.01" placeholder="Ex: 900,00 = valor do aluguel" oninput="calcComissaoPreview()"></div>'+
+    '<div class="fg"><label>% Comissão</label><input type="number" id="com-pct" value="30" step="1" oninput="calcComissaoPreview()"></div>'+
+    '<div class="fg"><label>Mês referência</label><input type="month" id="com-mes" value="'+new Date().toISOString().slice(0,7)+'"></div>'+
+    '</div>'+
+    '<div id="com-preview" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:14px;margin:10px 0;text-align:center;display:none">'+
+    '<div style="font-size:11px;color:#166534;margin-bottom:4px">Comissão calculada</div>'+
+    '<div id="com-preview-val" style="font-size:22px;font-weight:900;color:#166534"></div>'+
+    '</div>'+
+    '<div class="fg3">'+
+    '<div class="fg"><label>Data lançamento</label><input type="date" id="com-dt" value="'+new Date().toISOString().split('T')[0]+'"></div>'+
+    '<div class="fg"><label>Status</label><select id="com-st"><option value="A pagar">A pagar</option><option value="Pago">Pago</option></select></div>'+
+    '<div class="fg"><label>Data pagamento</label><input type="date" id="com-dtpag"></div>'+
+    '</div>'+
+    '<div class="fg"><label>Observação</label><input id="com-obs" placeholder="Ex: Aluguel maio/26 CT-005, entrada venda Rua das Flores..."></div>',
     function(){
       var val = parseFloat(document.getElementById('com-val').value)||0;
       var pct = parseFloat(document.getElementById('com-pct').value)/100||0.30;
+      var st = document.getElementById('com-st').value;
+      var ctId = document.getElementById('com-ct').value;
+      if(!val){ alert('Informe o valor base.'); return; }
       COMISSOES.push({
-        corretor:document.getElementById('com-cor').value,
-        tipo:document.getElementById('com-tipo').value,
-        valor:val, pct:pct, comissao:val*pct,
-        dt:document.getElementById('com-dt').value,
-        status:document.getElementById('com-st').value,
-        obs:document.getElementById('com-obs').value
+        corretor: document.getElementById('com-cor').value,
+        tipo: document.getElementById('com-tipo').value,
+        ct: ctId,
+        valor: val,
+        pct: pct,
+        comissao: val * pct,
+        mes: document.getElementById('com-mes').value,
+        dt: document.getElementById('com-dt').value,
+        dtPagamento: st==='Pago' ? (document.getElementById('com-dtpag').value||document.getElementById('com-dt').value) : '',
+        status: st,
+        obs: document.getElementById('com-obs').value
       });
       registrarLog('COMISSÃO LANÇADA', document.getElementById('com-cor').value+' — '+fmt(val*pct));
       salvarTudo(); cM(); pDRE();
     });
-  setTimeout(calcComissaoPreview, 300);
+  setTimeout(calcComissaoPreview, 100);
 }
 
 function calcComissaoPreview(){
-  var val = parseFloat(document.getElementById('com-val')?document.getElementById('com-val').value:0)||0;
-  var pct = parseFloat(document.getElementById('com-pct')?document.getElementById('com-pct').value:30)/100||0.30;
+  var val = parseFloat((document.getElementById('com-val')||{}).value)||0;
+  var pct = parseFloat((document.getElementById('com-pct')||{}).value||30)/100;
   var prev = document.getElementById('com-preview');
-  if(prev&&val>0){
-    prev.style.display='block';
-    prev.innerHTML='Comissão: <b style="font-size:16px;color:var(--ok)">'+fmt(val*pct)+'</b>';
+  var prevVal = document.getElementById('com-preview-val');
+  if(prev && prevVal){
+    if(val > 0){
+      prev.style.display = 'block';
+      prevVal.textContent = fmt(val * pct);
+    } else {
+      prev.style.display = 'none';
+    }
   }
 }
 
 function pagarComissao(i){
-  if(!confirm('Marcar comissão de '+fmt(COMISSOES[i].comissao)+' para '+COMISSOES[i].corretor+' como PAGO?')) return;
-  COMISSOES[i].status='Pago';
-  COMISSOES[i].dtPagamento=new Date().toISOString().split('T')[0];
-  registrarLog('COMISSÃO PAGA', COMISSOES[i].corretor+' — '+fmt(COMISSOES[i].comissao));
+  var c = COMISSOES[i];
+  oM('✅ Confirmar Pagamento',
+    '<div style="background:#f0fdf4;border-radius:10px;padding:14px;margin-bottom:14px">'+
+    '<div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:6px">'+c.corretor+'</div>'+
+    '<div style="font-size:12px;color:#166534">'+c.tipo+(c.ct?' — '+c.ct:'')+'</div>'+
+    '<div style="font-size:20px;font-weight:900;color:#166534;margin-top:6px">'+fmt(c.comissao)+'</div>'+
+    (c.obs?'<div style="font-size:11px;color:#4b7c5a;margin-top:4px">'+c.obs+'</div>':'')+
+    '</div>'+
+    '<div class="fg2">'+
+    '<div class="fg"><label>Data pagamento</label><input type="date" id="pag-dt" value="'+new Date().toISOString().split('T')[0]+'"></div>'+
+    '<div class="fg"><label>Forma pagamento</label><select id="pag-forma"><option>PIX</option><option>TED</option><option>Dinheiro</option><option>Depósito</option></select></div>'+
+    '</div>'+
+    '<div class="fg"><label>Observação</label><input id="pag-obs" placeholder="Opcional..." value="'+(c.obs||'')+'"></div>',
+    function(){
+      COMISSOES[i].status = 'Pago';
+      COMISSOES[i].dtPagamento = document.getElementById('pag-dt').value;
+      COMISSOES[i].formaPag = document.getElementById('pag-forma').value;
+      COMISSOES[i].obs = document.getElementById('pag-obs').value || c.obs;
+      registrarLog('COMISSÃO PAGA', c.corretor+' — '+fmt(c.comissao));
+      salvarTudo(); cM(); pDRE();
+    });
+}
+
+function excluirComissao(i){
+  if(!confirm('Excluir comissão de '+fmt(COMISSOES[i].comissao)+' para '+COMISSOES[i].corretor+'?')) return;
+  COMISSOES.splice(i,1);
   salvarTudo(); pDRE();
 }
 
@@ -2665,7 +2738,9 @@ function pCadCor(){
     // Calcular contratos vinculados (pelo nome do corretor em ctD)
     var meusCts=ctD.filter(function(ct){return ct.corretor===c.nome||ct.corretor===c.ini;});
     var recMes=meusCts.reduce(function(s,ct){return s+ct.valor;},0);
-    var comissao=recMes*0.1;
+    var mesHoje=new Date().toISOString().slice(0,7);
+    var comissaoPaga=COMISSOES.filter(function(cm){return cm.corretor===c.nome&&(cm.mes||cm.dt||'').slice(0,7)===mesHoje&&cm.status==='Pago';}).reduce(function(s,cm){return s+(cm.comissao||0);},0);
+    var comissaoAPagar=COMISSOES.filter(function(cm){return cm.corretor===c.nome&&cm.status==='A pagar';}).reduce(function(s,cm){return s+(cm.comissao||0);},0);
 
     // Calcular idade
     var idade='';
@@ -2682,9 +2757,10 @@ function pCadCor(){
     '<div style="background:linear-gradient(135deg,'+c.cor+','+c.cor+'cc);padding:20px 20px 0;position:relative;min-height:90px">'+
 
     // Badge status
-    '<div style="position:absolute;top:12px;right:12px">'+
+    '<div style="position:absolute;top:12px;right:12px;display:flex;flex-direction:column;gap:3px;align-items:flex-end">'+
     '<span style="background:'+(isAtivo?'rgba(255,255,255,.25)':'rgba(0,0,0,.25)')+';color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px">'+
     (c.status||'Ativo')+'</span>'+
+    (comissaoAPagar>0?'<span style="background:#fbbf24;color:#78350f;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px">💰 '+fmt(comissaoAPagar)+' a pagar</span>':'')+
     '</div>'+
 
     // Avatar
@@ -2711,8 +2787,8 @@ function pCadCor(){
     '<div style="font-size:9px;color:var(--lm);text-transform:uppercase;letter-spacing:.4px">Cart./mês</div>'+
     '</div>'+
     '<div style="padding:10px;text-align:center">'+
-    '<div style="font-size:14px;font-weight:800;color:#7c3aed">'+fmt(comissao)+'</div>'+
-    '<div style="font-size:9px;color:var(--lm);text-transform:uppercase;letter-spacing:.4px">Comissão 10%</div>'+
+    '<div style="font-size:14px;font-weight:800;color:#7c3aed">'+fmt(comissaoPaga)+'</div>'+
+    '<div style="font-size:9px;color:var(--lm);text-transform:uppercase;letter-spacing:.4px">Com. pagas/mês</div>'+
     '</div>'+
     '</div>'+
 
@@ -2758,7 +2834,7 @@ function pCadCor(){
     // Botões
     '<div style="display:flex;gap:6px;margin-top:12px">'+
     '<button class="btn btn-sm" style="flex:1;background:#eff6ff;color:#1d4ed8;font-weight:600" onclick="eCadCor('+realIdx+')">✏ Editar</button>'+
-    '<button class="btn btn-sm" style="flex:1;background:#f0fdf4;color:#16a34a;font-weight:600" onclick="verPerfilCor('+realIdx+')">👤 Perfil</button>'+
+    +'<button class="btn btn-sm" style="flex:1;background:#f0fdf4;color:#16a34a;font-weight:600" onclick="verPerfilCor('+realIdx+')">\u{1F464} Perfil</button>'+'<button class="btn btn-sm" style="flex:1;background:#faf5ff;color:#7c3aed;font-weight:600" onclick="nComissaoCard('+realIdx+')">\u{1F4B0} Comiss\u00e3o</button>'+
     (isAtivo?
     '<button class="btn btn-sm" style="background:#fff1f2;color:#be123c;font-size:10px" onclick="inativarCor('+realIdx+')">Inativar</button>':
     '<button class="btn btn-sm btn-green" style="font-size:10px" onclick="reativarCor('+realIdx+')">Reativar</button>')+
