@@ -2065,97 +2065,261 @@ function exportarRelReceber(){
 }
 
 function pFP(){
-  document.getElementById('pa').innerHTML='<button class="btn btn-red" onclick="nPag()">+ Nova Despesa</button>';
+  var mesAtual=new Date().toISOString().slice(0,7);
+  var catFiltro=window._fpCat||'todas';
+  var mesFiltro=window._fpMes||mesAtual;
+  var stFiltro=window._fpSt||'todos';
+
+  // KPIs
   var tPago=cpD.filter(function(c){return c.st==='Pago';}).reduce(function(s,c){return s+c.val;},0);
   var tVenc=cpD.filter(function(c){return c.st==='Vencido';}).reduce(function(s,c){return s+c.val;},0);
   var tAven=cpD.filter(function(c){return c.st!=='Pago'&&c.st!=='Vencido';}).reduce(function(s,c){return s+c.val;},0);
   var tGer=cpD.reduce(function(s,c){return s+c.val;},0);
-  var r=''; cpD.forEach(function(c,i){
-    var statusBadge=stPag(c.st,c.venc);
+  var pct=tGer>0?Math.round(tPago/tGer*100):0;
+
+  // Categorias únicas
+  var cats=['Fixo','Marketing','Variavel','Manutencao','Impostos','Outros'];
+
+  // Filtrar lista
+  var lista=cpD.filter(function(c,i){c._idx=i; return true;}).map(function(c,i){c._idx=i;return c;});
+  if(stFiltro!=='todos') lista=lista.filter(function(c){return c.st===stFiltro;});
+  if(catFiltro!=='todas') lista=lista.filter(function(c){return c.cat===catFiltro;});
+  if(mesFiltro&&mesFiltro!=='todos') lista=lista.filter(function(c){return (c.venc||'').slice(0,7)===mesFiltro;});
+
+  // Linhas da tabela
+  var r=''; lista.forEach(function(c){
+    var i=c._idx;
     var isPago=c.st==='Pago';
-    r+='<tr data-st="'+c.st+'" style="'+(c.st==='Vencido'?'background:#fff5f5;':'')+(isPago?'opacity:.75;':'')+'">'
-    +'<td style="min-width:160px">'
-    +'<div id="fpd-'+i+'" style="font-weight:600;cursor:pointer">'+c.desc+'</div>'
-    +'<div style="font-size:10px;margin-top:2px"><span class="badge bgr" style="font-size:9px">'+c.cat+'</span></div>'
-    +'</td>'
-    +'<td style="text-align:right;font-weight:700" id="fpv-'+i+'">'+fmt(c.val)+'</td>'
-    +'<td style="text-align:center"><div style="font-size:12px;font-weight:600">'+fmtD(c.venc)+'</div></td>'
-    +'<td style="text-align:center"><div style="font-size:11px;color:var(--lm)">'+( c.pago?fmtD(c.pago):'-')+'</div></td>'
-    +'<td style="text-align:center">'+statusBadge+'</td>'
-    +'<td><div id="fpf-'+i+'" style="font-size:11px;cursor:pointer">'+( c.forma||'-')+'</div>'
-    +'<div id="fpo-'+i+'" style="font-size:10px;color:var(--lm);cursor:pointer;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+( c.obs||'-')+'</div></td>'
-    +'<td style="white-space:nowrap">'
-    +(!isPago?'<button class="btn btn-xs btn-green" style="margin-bottom:3px" onclick="marcarPago('+i+')">✓ Pago</button><br>':'')
-    +'<button class="btn btn-xs" style="font-size:10px" onclick="ePag('+i+')">Editar</button>'
-    +(c.st==='Vencido'?'<br><button class="btn btn-xs" style="background:#fee2e2;color:#991b1b;font-size:10px;margin-top:3px" onclick="excluirDespesa('+i+')">Excluir</button>':'')
-    +'</td>'
-    +'</tr>';
+    var isVenc=c.st==='Vencido';
+    var rowBg=isVenc?'background:linear-gradient(90deg,#fff5f5,#fff);border-left:3px solid #ef4444;':isPago?'background:linear-gradient(90deg,#f0fdf4,#fff);border-left:3px solid #22c55e;opacity:.85;':'border-left:3px solid transparent;';
+    var sb=stPag(c.st,c.venc);
+    r+='<tr style="'+rowBg+'">'+
+    '<td style="min-width:180px">'+
+    '<div style="font-weight:700;font-size:13px;color:var(--navy)">'+c.desc+'</div>'+
+    '<div style="margin-top:3px;display:flex;gap:4px;align-items:center">'+
+    '<span style="background:#e0e7ff;color:#3730a3;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;text-transform:uppercase">'+c.cat+'</span>'+
+    (c.forma?'<span style="background:#f3f4f6;color:#6b7280;font-size:9px;padding:1px 5px;border-radius:8px">'+c.forma+'</span>':'')+
+    '</div>'+
+    (c.obs&&c.obs!=='-'?'<div style="font-size:10px;color:var(--lm);margin-top:2px;font-style:italic">'+c.obs+'</div>':'')+
+    '</td>'+
+    '<td style="text-align:right;font-weight:800;font-size:14px;color:'+(isVenc?'#dc2626':isPago?'#16a34a':'#1e293b')+'">'+fmt(c.val)+'</td>'+
+    '<td style="text-align:center">'+
+    '<div style="font-size:12px;font-weight:600;color:var(--navy)">'+fmtD(c.venc)+'</div>'+
+    '</td>'+
+    '<td style="text-align:center">'+
+    '<div style="font-size:11px;color:'+(isPago?'#16a34a':'var(--lm)')+'">'+( c.pago?'✓ '+fmtD(c.pago):'-')+'</div>'+
+    '</td>'+
+    '<td style="text-align:center">'+sb+'</td>'+
+    '<td style="white-space:nowrap;text-align:center">'+
+    '<div style="display:flex;flex-direction:column;gap:3px;align-items:center">'+
+    (!isPago?'<button class="btn btn-xs btn-green" style="min-width:70px" onclick="marcarPago('+i+')">✓ Pagar</button>':'<button class="btn btn-xs" style="min-width:70px;background:#dcfce7;color:#166534;font-size:10px" onclick="desmarcarPago('+i+')">↩ Desfazer</button>')+
+    '<button class="btn btn-xs" style="min-width:70px;font-size:10px;background:#eff6ff;color:#1d4ed8" onclick="ePag('+i+')">✏ Editar</button>'+
+    '<button class="btn btn-xs" style="min-width:70px;font-size:10px;background:#fff1f2;color:#be123c" onclick="excluirDespesa('+i+')">🗑 Excluir</button>'+
+    '</div>'+
+    '</td>'+
+    '</tr>';
   });
-  r+='<tr class="sum-row"><td>TOTAL GERAL</td><td style="text-align:right;font-weight:700">'+fmt(tGer)+'</td><td colspan="5"></td></tr>';
+
+  // Totais do filtro atual
+  var tFiltro=lista.reduce(function(s,c){return s+c.val;},0);
+  var tPagoFiltro=lista.filter(function(c){return c.st==='Pago';}).reduce(function(s,c){return s+c.val;},0);
+
+  // Meses disponíveis
+  var meses=[];
+  cpD.forEach(function(c){var m=(c.venc||'').slice(0,7);if(m&&meses.indexOf(m)<0)meses.push(m);});
+  meses.sort().reverse();
+  var mOpts=meses.map(function(m){return '<option value="'+m+'"'+(m===mesFiltro?' selected':'')+'>'+m+'</option>';}).join('');
+
+  document.getElementById('pa').innerHTML=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+    '<button class="btn btn-red" onclick="nPag()" style="font-weight:700">+ Nova Despesa</button>'+
+    '<button class="btn" onclick="imprimirContas()" style="background:#1d4ed8;color:#fff;font-weight:600">🖨 Imprimir</button>'+
+    '<button class="btn" onclick="relContasPagar()" style="background:#7c3aed;color:#fff;font-weight:600">📊 Relatório PDF</button>'+
+    '</div>';
+
   document.getElementById('pc').innerHTML=
-    '<div class="g4">'+
-    '<div class="kc red"><div class="kc-l">Total despesas</div><div class="kc-v">'+fmt(tGer)+'</div></div>'+
-    '<div class="kc green"><div class="kc-l">Pago</div><div class="kc-v">'+fmt(tPago)+'</div></div>'+
-    '<div class="kc blue"><div class="kc-l">A vencer</div><div class="kc-v">'+fmt(tAven)+'</div></div>'+
-    '<div class="kc warn"><div class="kc-l">Vencido</div><div class="kc-v">'+fmt(tVenc)+'</div></div></div>'+
-    '<div class="card">'+
-    '<div class="fbar"><input class="sinp" placeholder="Buscar despesa..." id="fp-si">'+
-    '<div class="chip on" onclick="fSt(this,\'fp-b\',\'todos\')">Todas</div>'+
-    '<div class="chip" onclick="fSt(this,\'fp-b\',\'Pago\')">Pagas</div>'+
-    '<div class="chip" onclick="fSt(this,\'fp-b\',\'A vencer\')">A vencer</div>'+
-    '<div class="chip" onclick="fSt(this,\'fp-b\',\'Vencido\')">Vencidas</div></div>'+
+    // KPI Bar
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">'+
+    '<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border-radius:12px;padding:14px 12px;box-shadow:0 2px 8px rgba(30,58,138,.25)">'+
+    '<div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Total Geral</div>'+
+    '<div style="font-size:18px;font-weight:800">'+fmt(tGer)+'</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border-radius:12px;padding:14px 12px;box-shadow:0 2px 8px rgba(22,101,52,.25)">'+
+    '<div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Pago</div>'+
+    '<div style="font-size:18px;font-weight:800">'+fmt(tPago)+'</div>'+
+    '<div style="font-size:9px;opacity:.8;margin-top:2px">'+pct+'% quitado</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#92400e,#d97706);color:#fff;border-radius:12px;padding:14px 12px;box-shadow:0 2px 8px rgba(146,64,14,.25)">'+
+    '<div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">A Vencer</div>'+
+    '<div style="font-size:18px;font-weight:800">'+fmt(tAven)+'</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#991b1b,#dc2626);color:#fff;border-radius:12px;padding:14px 12px;box-shadow:0 2px 8px rgba(153,27,27,.25)">'+
+    '<div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Vencido</div>'+
+    '<div style="font-size:18px;font-weight:800">'+fmt(tVenc)+'</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#374151,#4b5563);color:#fff;border-radius:12px;padding:14px 12px;box-shadow:0 2px 8px rgba(55,65,81,.25)">'+
+    '<div style="font-size:10px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Progresso Pag.</div>'+
+    '<div style="font-size:18px;font-weight:800">'+pct+'%</div>'+
+    '<div style="background:rgba(255,255,255,.2);border-radius:4px;height:4px;margin-top:4px"><div style="background:#4ade80;border-radius:4px;height:4px;width:'+pct+'%"></div></div>'+
+    '</div>'+
+    '</div>'+
+    // Barra de filtros
+    '<div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;flex-wrap:wrap;gap:10px;align-items:center">'+
+    '<input class="sinp" placeholder="🔍 Buscar despesa..." id="fp-si" style="min-width:180px;flex:1">'+
+    '<select id="fp-mes" onchange="window._fpMes=this.value;pFP()" style="padding:7px 10px;border:1px solid var(--lb);border-radius:8px;font-size:12px;color:var(--navy)">'+
+    '<option value="todos">📅 Todos os meses</option>'+mOpts+
+    '</select>'+
+    '<select id="fp-cat" onchange="window._fpCat=this.value;pFP()" style="padding:7px 10px;border:1px solid var(--lb);border-radius:8px;font-size:12px;color:var(--navy)">'+
+    '<option value="todas">📂 Todas categorias</option>'+
+    cats.map(function(c){return '<option value="'+c+'"'+(c===catFiltro?' selected':'')+'>'+c+'</option>';}).join('')+
+    '</select>'+
+    '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+    '<div class="chip'+(stFiltro==='todos'?' on':'')+'" onclick="window._fpSt=\'todos\';pFP()">Todas</div>'+
+    '<div class="chip'+(stFiltro==='Pago'?' on':'')+'" onclick="window._fpSt=\'Pago\';pFP()">✅ Pagas</div>'+
+    '<div class="chip'+(stFiltro==='A vencer'?' on':'')+'" onclick="window._fpSt=\'A vencer\';pFP()">🔵 A vencer</div>'+
+    '<div class="chip'+(stFiltro==='Vencido'?' on':'')+'" onclick="window._fpSt=\'Vencido\';pFP()">🔴 Vencidas</div>'+
+    '</div>'+
+    '</div>'+
+    // Tabela
+    '<div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden">'+
+    '<div style="background:#f8fafc;padding:10px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">'+
+    '<span style="font-size:12px;font-weight:700;color:var(--navy)">'+lista.length+' despesa(s) encontrada(s)</span>'+
+    '<span style="font-size:12px;color:var(--lm)">Total filtrado: <strong style="color:var(--navy)">'+fmt(tFiltro)+'</strong> | Pago: <strong style="color:#16a34a">'+fmt(tPagoFiltro)+'</strong></span>'+
+    '</div>'+
     '<div class="tw"><table><thead><tr>'+
-    '<th style="min-width:160px">Descrição</th>'+
+    '<th style="min-width:180px">Descrição</th>'+
     '<th style="text-align:right">Valor</th>'+
     '<th style="text-align:center">Vencimento</th>'+
     '<th style="text-align:center">Pago em</th>'+
     '<th style="text-align:center">Status</th>'+
-    '<th>Forma / Obs</th>'+
-    '<th style="text-align:center">Acoes</th>'+
-    '</tr></thead><tbody id="fp-b">'+r+'</tbody></table></div></div>';
-  document.getElementById('fp-si').oninput=function(){var q=this.value.toLowerCase();document.querySelectorAll('#fp-b tr:not(.sum-row)').forEach(function(r){r.style.display=r.textContent.toLowerCase().indexOf(q)>=0?'':'none';});};
-  cpD.forEach(function(c,i){
-    ied(document.getElementById('fpd-'+i),c.desc,function(v){cpD[i].desc=v;pFP();});
-    ied(document.getElementById('fpf-'+i),c.forma||'',function(v){cpD[i].forma=v;});
-    ied(document.getElementById('fpo-'+i),c.obs||'',function(v){cpD[i].obs=v;});
-    iedNum(document.getElementById('fpv-'+i),c.val,function(v){cpD[i].val=v;pFP();});
-  });
+    '<th style="text-align:center;min-width:90px">Ações</th>'+
+    '</tr></thead><tbody id="fp-b">'+r+
+    (lista.length===0?'<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--lm);font-style:italic">Nenhuma despesa encontrada para este filtro</td></tr>':'')+
+    '</tbody></table></div></div>';
+
+  // Busca por texto
+  document.getElementById('fp-si').oninput=function(){
+    var q=this.value.toLowerCase();
+    document.querySelectorAll('#fp-b tr').forEach(function(r){
+      r.style.display=r.textContent.toLowerCase().indexOf(q)>=0?'':'none';
+    });
+  };
+}
+function desmarcarPago(i){
+  if(!confirm('Desfazer pagamento de: '+cpD[i].desc+'?')) return;
+  cpD[i].st='A vencer';
+  cpD[i].pago='';
+  cM(); pFP();
+  if(typeof pDash==='function') setTimeout(pDash,100);
 }
 function marcarPago(i){
   cpD[i].st='Pago';
   cpD[i].pago=new Date().toISOString().split('T')[0];
   cM(); pFP();
-  // Sincroniza dashboard
   if(typeof pDash==='function') setTimeout(pDash,100);
 }
 function excluirDespesa(i){
-  if(!confirm('Excluir despesa: '+cpD[i].desc+'?')) return;
+  if(!confirm('⚠ Excluir despesa: '+cpD[i].desc+' ('+fmt(cpD[i].val)+')?\n\nEsta ação não pode ser desfeita.')) return;
   cpD.splice(i,1);
-  cM(); pFP();
+  cM(); salvarTudo(); pFP();
 }
 function ePag(i){
   var c=cpD[i];
-  oM('Editar Despesa',
-    '<div class="fg"><label>Descricao</label><input id="ep2-d" value="'+c.desc+'"></div>'+
+  oM('✏ Editar Despesa',
+    '<div class="fg"><label>Descrição</label><input id="ep2-d" value="'+c.desc+'"></div>'+
     '<div class="fg3"><div class="fg"><label>Valor R$</label><input id="ep2-v" type="number" value="'+c.val+'"></div>'+
     '<div class="fg"><label>Vencimento</label><input type="date" id="ep2-ve" value="'+c.venc+'"></div>'+
-    '<div class="fg"><label>Categoria</label><select id="ep2-c"><option>Fixo</option><option>Marketing</option><option>Variavel</option><option>Manutencao</option><option>Impostos</option></select></div></div>'+
+    '<div class="fg"><label>Categoria</label><select id="ep2-c"><option>Fixo</option><option>Marketing</option><option>Variavel</option><option>Manutencao</option><option>Impostos</option><option>Outros</option></select></div></div>'+
     '<div class="fg3"><div class="fg"><label>Status</label><select id="ep2-s"><option>A vencer</option><option>Pago</option><option>Vencido</option></select></div>'+
-    '<div class="fg"><label>Data pagamento</label><input type="date" id="ep2-pg" value="'+c.pago+'"></div>'+
-    '<div class="fg"><label>Forma pagamento</label><select id="ep2-f"><option>PIX</option><option>TED</option><option>Deposito</option><option>Cartao</option><option>Debito auto</option><option>Dinheiro</option></select></div></div>'+
-    '<div class="fg"><label>Observacoes</label><textarea id="ep2-o">'+c.obs+'</textarea></div>',
-    function(){cpD[i].desc=document.getElementById('ep2-d').value;cpD[i].val=parseFloat(document.getElementById('ep2-v').value)||c.val;cpD[i].venc=document.getElementById('ep2-ve').value;cpD[i].cat=document.getElementById('ep2-c').value;cpD[i].st=document.getElementById('ep2-s').value;cpD[i].pago=document.getElementById('ep2-pg').value;cpD[i].forma=document.getElementById('ep2-f').value;cpD[i].obs=document.getElementById('ep2-o').value;cM();salvarTudo();pFP();});
-  setTimeout(function(){document.getElementById('ep2-c').value=c.cat;document.getElementById('ep2-s').value=c.st;document.getElementById('ep2-f').value=c.forma||'PIX';},50);
+    '<div class="fg"><label>Data pagamento</label><input type="date" id="ep2-pg" value="'+(c.pago||'')+'"></div>'+
+    '<div class="fg"><label>Forma pagamento</label><select id="ep2-f"><option>PIX</option><option>TED</option><option>Deposito</option><option>Cartao</option><option>Debito auto</option><option>Dinheiro</option><option>Boleto</option></select></div></div>'+
+    '<div class="fg"><label>Observações</label><textarea id="ep2-o">'+(c.obs||'')+'</textarea></div>',
+    function(){
+      cpD[i].desc=document.getElementById('ep2-d').value;
+      cpD[i].val=parseFloat(document.getElementById('ep2-v').value)||c.val;
+      cpD[i].venc=document.getElementById('ep2-ve').value;
+      cpD[i].cat=document.getElementById('ep2-c').value;
+      cpD[i].st=document.getElementById('ep2-s').value;
+      cpD[i].pago=document.getElementById('ep2-pg').value;
+      cpD[i].forma=document.getElementById('ep2-f').value;
+      cpD[i].obs=document.getElementById('ep2-o').value;
+      cM();salvarTudo();pFP();
+    });
+  setTimeout(function(){
+    document.getElementById('ep2-c').value=c.cat;
+    document.getElementById('ep2-s').value=c.st;
+    document.getElementById('ep2-f').value=c.forma||'PIX';
+  },50);
 }
 function nPag(){
-  oM('Nova Despesa',
-    '<div class="fg"><label>Descricao</label><input id="np2-d"></div>'+
-    '<div class="fg3"><div class="fg"><label>Valor R$</label><input id="np2-v" type="number"></div>'+
-    '<div class="fg"><label>Vencimento</label><input type="date" id="np2-ve"></div>'+
-    '<div class="fg"><label>Categoria</label><select id="np2-c"><option>Fixo</option><option>Marketing</option><option>Variavel</option></select></div></div>'+
-    '<div class="fg2"><div class="fg"><label>Forma pagamento</label><select id="np2-f"><option>PIX</option><option>TED</option><option>Cartao</option></select></div>'+
-    '<div class="fg"><label>Obs</label><input id="np2-o"></div></div>',
-    function(){cpD.push({id:cpD.length+1,desc:document.getElementById('np2-d').value||'-',val:parseFloat(document.getElementById('np2-v').value)||0,venc:document.getElementById('np2-ve').value,pago:'',cat:document.getElementById('np2-c').value,st:'A vencer',forma:document.getElementById('np2-f').value,obs:document.getElementById('np2-o').value});cM();salvarTudo();pFP();});
+  oM('➕ Nova Despesa',
+    '<div class="fg"><label>Descrição *</label><input id="np2-d" placeholder="Ex: Aluguel escritório, Conta de água..."></div>'+
+    '<div class="fg3"><div class="fg"><label>Valor R$ *</label><input id="np2-v" type="number" step="0.01" placeholder="0,00"></div>'+
+    '<div class="fg"><label>Vencimento *</label><input type="date" id="np2-ve"></div>'+
+    '<div class="fg"><label>Categoria</label><select id="np2-c"><option>Fixo</option><option>Marketing</option><option>Variavel</option><option>Manutencao</option><option>Impostos</option><option>Outros</option></select></div></div>'+
+    '<div class="fg3"><div class="fg"><label>Forma pagamento</label><select id="np2-f"><option>PIX</option><option>TED</option><option>Cartao</option><option>Debito auto</option><option>Boleto</option><option>Dinheiro</option></select></div>'+
+    '<div class="fg"><label>Observações</label><input id="np2-o" placeholder="Opcional..."></div></div>',
+    function(){
+      var desc=document.getElementById('np2-d').value.trim();
+      var val=parseFloat(document.getElementById('np2-v').value)||0;
+      if(!desc){alert('Informe a descrição.');return;}
+      if(!val){alert('Informe o valor.');return;}
+      cpD.push({
+        id:Date.now(),
+        desc:desc,
+        val:val,
+        venc:document.getElementById('np2-ve').value,
+        pago:'',
+        cat:document.getElementById('np2-c').value,
+        st:'A vencer',
+        forma:document.getElementById('np2-f').value,
+        obs:document.getElementById('np2-o').value
+      });
+      cM();salvarTudo();pFP();
+    });
+}
+function imprimirContas(){
+  var tPago=cpD.filter(function(c){return c.st==='Pago';}).reduce(function(s,c){return s+c.val;},0);
+  var tVenc=cpD.filter(function(c){return c.st==='Vencido';}).reduce(function(s,c){return s+c.val;},0);
+  var tAven=cpD.filter(function(c){return c.st!=='Pago'&&c.st!=='Vencido';}).reduce(function(s,c){return s+c.val;},0);
+  var tGer=cpD.reduce(function(s,c){return s+c.val;},0);
+  var rows=cpD.map(function(c){
+    return '<tr style="border-bottom:1px solid #e2e8f0">'+
+    '<td style="padding:6px 8px;font-weight:600">'+c.desc+'</td>'+
+    '<td style="padding:6px 8px">'+c.cat+'</td>'+
+    '<td style="padding:6px 8px;text-align:right;font-weight:700">'+fmt(c.val)+'</td>'+
+    '<td style="padding:6px 8px;text-align:center">'+fmtD(c.venc)+'</td>'+
+    '<td style="padding:6px 8px;text-align:center">'+(c.pago?fmtD(c.pago):'-')+'</td>'+
+    '<td style="padding:6px 8px;text-align:center">'+c.st+'</td>'+
+    '<td style="padding:6px 8px">'+(c.forma||'-')+'</td>'+
+    '</tr>';
+  }).join('');
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Contas a Pagar — RE/MAX Space</title>'+
+  '<style>body{font-family:Arial,sans-serif;padding:24px;color:#1e293b}h1{color:#0f1a35;font-size:20px;margin-bottom:4px}'+
+  '.sub{color:#64748b;font-size:12px;margin-bottom:20px}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}'+
+  '.kpi{border-radius:10px;padding:12px;color:#fff}.kpi b{display:block;font-size:18px;margin-top:4px}.kpi span{font-size:10px;opacity:.85}'+
+  'table{width:100%;border-collapse:collapse}th{background:#0f1a35;color:#fff;padding:8px;text-align:left;font-size:11px}'+
+  'tr:nth-child(even){background:#f8fafc}.tot{background:#0f1a35;color:#fff;font-weight:700}'+
+  '@media print{button{display:none}}</style></head><body>'+
+  '<h1>📋 Contas a Pagar — RE/MAX Space</h1>'+
+  '<div class="sub">Emitido em '+new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR')+'</div>'+
+  '<div class="kpis">'+
+  '<div class="kpi" style="background:#1d4ed8"><span>Total Geral</span><b>'+fmt(tGer)+'</b></div>'+
+  '<div class="kpi" style="background:#16a34a"><span>Pago</span><b>'+fmt(tPago)+'</b></div>'+
+  '<div class="kpi" style="background:#d97706"><span>A Vencer</span><b>'+fmt(tAven)+'</b></div>'+
+  '<div class="kpi" style="background:#dc2626"><span>Vencido</span><b>'+fmt(tVenc)+'</b></div>'+
+  '</div>'+
+  '<table><thead><tr><th>Descrição</th><th>Categoria</th><th style="text-align:right">Valor</th><th>Vencimento</th><th>Pago em</th><th>Status</th><th>Forma</th></tr></thead>'+
+  '<tbody>'+rows+'</tbody>'+
+  '<tfoot><tr class="tot"><td>TOTAL</td><td></td><td style="text-align:right">'+fmt(tGer)+'</td><td colspan="4"></td></tr></tfoot>'+
+  '</table>'+
+  '<div style="margin-top:30px;text-align:right"><button onclick="window.print()" style="padding:10px 24px;background:#0f1a35;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">🖨 Imprimir / Salvar PDF</button></div>'+
+  '</body></html>');
+  w.document.close();
+}
+function relContasPagar(){
+  relFinanceiro();
 }
 
 function pFRP(){
