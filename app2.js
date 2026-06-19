@@ -2636,73 +2636,292 @@ function mFRP(i){
 
 // ===== CADASTROS =====
 function pCadCor(){
-  document.getElementById('pa').innerHTML='<button class="btn btn-red" onclick="nCadCor()">+ Novo Corretor</button> <button class="btn btn-primary" onclick="pGerenciarSenhas()">🔐 Senhas</button>';
-  var r=''; corCad.forEach(function(c,i){
-    r+='<div class="cad-card"><div class="cad-av" style="background:'+c.cor+'">'+c.ini+'</div>'+
-    '<div class="cad-info">'+
-    '<div class="cad-name">'+c.nome+' <span class="badge '+(c.status==='Ativo'?'bg':'br')+'">'+c.status+'</span></div>'+
-    '<div class="cad-det">'+c.cargo+' - CRECI: '+c.creci+'</div>'+
-    '<div class="cad-det">Tel: '+c.tel+' - Email: '+c.email+'</div>'+
-    '<div class="cad-det">CPF: '+c.cpf+' - Nasc.: '+fmtD(c.nasc)+'</div>'+
-    '<div class="cad-det">End.: '+c.end+', '+c.bairro+' - '+c.cidade+'</div>'+
-    '<div class="cad-det">Banco: '+c.banco+' Ag: '+c.agencia+' Cc: '+c.conta+' - PIX: '+c.pix+'</div>'+
-    '</div>'+
-    '<button class="btn btn-sm" onclick="eCadCor('+i+')">Editar</button></div>';
+  // KPIs rápidos
+  var total=corCad.length;
+  var ativos=corCad.filter(function(c){return c.status==='Ativo';}).length;
+  var inativos=corCad.filter(function(c){return c.status!=='Ativo';}).length;
+
+  document.getElementById('pa').innerHTML=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+    '<button class="btn btn-red" onclick="nCadCor()" style="font-weight:700">+ Novo Corretor</button>'+
+    '<button class="btn btn-primary" onclick="pGerenciarSenhas()" style="font-weight:600">🔐 Senhas</button>'+
+    '<button class="btn" onclick="imprimirCorretores()" style="background:#7c3aed;color:#fff;font-weight:600">🖨 Imprimir Equipe</button>'+
+    '</div>';
+
+  // Filtro de busca e status
+  var stF=window._corStF||'Ativo';
+
+  var lista=corCad.filter(function(c){
+    if(stF==='todos') return true;
+    return (c.status||'Ativo')===stF;
   });
-  document.getElementById('pc').innerHTML='<div>'+r+'</div>';
+
+  // Cards
+  var cards='';
+  lista.forEach(function(c,idx){
+    var realIdx=corCad.indexOf(c);
+    var isAtivo=(c.status||'Ativo')==='Ativo';
+
+    // Calcular contratos vinculados (pelo nome do corretor em ctD)
+    var meusCts=ctD.filter(function(ct){return ct.corretor===c.nome||ct.corretor===c.ini;});
+    var recMes=meusCts.reduce(function(s,ct){return s+ct.valor;},0);
+    var comissao=recMes*0.1;
+
+    // Calcular idade
+    var idade='';
+    if(c.nasc){
+      var n=new Date(c.nasc),hoje=new Date();
+      idade=Math.floor((hoje-n)/(365.25*24*3600*1000))+' anos';
+    }
+
+    cards+=
+    '<div style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.08);overflow:hidden;transition:box-shadow .2s;'+(isAtivo?'':'opacity:.65;')+'" '+
+    'onmouseover="this.style.boxShadow=\'0 6px 24px rgba(0,0,0,.14)\'" onmouseout="this.style.boxShadow=\'0 2px 12px rgba(0,0,0,.08)\'">' +
+
+    // Header colorido com avatar
+    '<div style="background:linear-gradient(135deg,'+c.cor+','+c.cor+'cc);padding:20px 20px 0;position:relative;min-height:90px">'+
+
+    // Badge status
+    '<div style="position:absolute;top:12px;right:12px">'+
+    '<span style="background:'+(isAtivo?'rgba(255,255,255,.25)':'rgba(0,0,0,.25)')+';color:#fff;font-size:9px;font-weight:700;padding:3px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px">'+
+    (c.status||'Ativo')+'</span>'+
+    '</div>'+
+
+    // Avatar
+    '<div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.2);border:3px solid rgba(255,255,255,.5);'+
+    'display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;letter-spacing:-1px;margin-bottom:0">'+
+    c.ini+'</div>'+
+
+    // Nome e cargo
+    '<div style="margin-top:-32px;padding:0 0 16px 80px">'+
+    '<div style="font-size:15px;font-weight:800;color:#fff">'+c.nome+'</div>'+
+    '<div style="font-size:11px;color:rgba(255,255,255,.8);margin-top:2px">'+c.cargo+'</div>'+
+    (c.creci?'<div style="font-size:10px;color:rgba(255,255,255,.65);margin-top:1px">CRECI: '+c.creci+'</div>':'')+
+    '</div>'+
+    '</div>'+
+
+    // KPIs de produção
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #f1f5f9">'+
+    '<div style="padding:10px;text-align:center;border-right:1px solid #f1f5f9">'+
+    '<div style="font-size:16px;font-weight:800;color:var(--navy)">'+meusCts.length+'</div>'+
+    '<div style="font-size:9px;color:var(--lm);text-transform:uppercase;letter-spacing:.4px">Contratos</div>'+
+    '</div>'+
+    '<div style="padding:10px;text-align:center;border-right:1px solid #f1f5f9">'+
+    '<div style="font-size:14px;font-weight:800;color:#16a34a">'+fmt(recMes)+'</div>'+
+    '<div style="font-size:9px;color:var(--lm);text-transform:uppercase;letter-spacing:.4px">Cart./mês</div>'+
+    '</div>'+
+    '<div style="padding:10px;text-align:center">'+
+    '<div style="font-size:14px;font-weight:800;color:#7c3aed">'+fmt(comissao)+'</div>'+
+    '<div style="font-size:9px;color:var(--lm);text-transform:uppercase;letter-spacing:.4px">Comissão 10%</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Dados de contato
+    '<div style="padding:14px 16px">'+
+    '<div style="display:flex;flex-direction:column;gap:5px">'+
+
+    (c.tel?
+    '<div style="display:flex;align-items:center;gap:8px">'+
+    '<span style="font-size:13px">📱</span>'+
+    '<span style="font-size:12px;color:var(--navy);font-weight:600">'+c.tel+'</span>'+
+    '<a href="https://wa.me/55'+c.tel.replace(/\D/g,'')+'" target="_blank" style="margin-left:auto;background:#25d366;color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;text-decoration:none">WhatsApp</a>'+
+    '</div>':'')+ 
+
+    (c.email?
+    '<div style="display:flex;align-items:center;gap:8px">'+
+    '<span style="font-size:13px">✉️</span>'+
+    '<span style="font-size:11px;color:var(--lm)">'+c.email+'</span>'+
+    '</div>':'')+ 
+
+    (c.end?
+    '<div style="display:flex;align-items:center;gap:8px">'+
+    '<span style="font-size:13px">📍</span>'+
+    '<span style="font-size:11px;color:var(--lm)">'+c.end+(c.bairro?', '+c.bairro:'')+(c.cidade?' - '+c.cidade:'')+'</span>'+
+    '</div>':'')+ 
+
+    (idade?
+    '<div style="display:flex;align-items:center;gap:8px">'+
+    '<span style="font-size:13px">🎂</span>'+
+    '<span style="font-size:11px;color:var(--lm)">'+fmtD(c.nasc)+' ('+idade+')</span>'+
+    '</div>':'')+ 
+
+    '</div>'+
+
+    // Dados bancários (colapsável)
+    (c.banco&&c.agencia?
+    '<div style="background:#f8fafc;border-radius:8px;padding:8px 10px;margin-top:10px">'+
+    '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--lm);font-weight:700;margin-bottom:4px">Dados Bancários</div>'+
+    '<div style="font-size:11px;color:var(--navy)">'+c.banco+' — Ag: '+c.agencia+' | Cc: '+c.conta+'</div>'+
+    '<div style="font-size:11px;color:#7c3aed;font-weight:600">PIX: '+(c.pix||'-')+'</div>'+
+    '</div>':'')+ 
+
+    // Botões
+    '<div style="display:flex;gap:6px;margin-top:12px">'+
+    '<button class="btn btn-sm" style="flex:1;background:#eff6ff;color:#1d4ed8;font-weight:600" onclick="eCadCor('+realIdx+')">✏ Editar</button>'+
+    '<button class="btn btn-sm" style="flex:1;background:#f0fdf4;color:#16a34a;font-weight:600" onclick="verPerfilCor('+realIdx+')">👤 Perfil</button>'+
+    (isAtivo?
+    '<button class="btn btn-sm" style="background:#fff1f2;color:#be123c;font-size:10px" onclick="inativarCor('+realIdx+')">Inativar</button>':
+    '<button class="btn btn-sm btn-green" style="font-size:10px" onclick="reativarCor('+realIdx+')">Reativar</button>')+
+    '</div>'+
+    '</div>'+
+    '</div>';
+  });
+
+  document.getElementById('pc').innerHTML=
+    // KPI bar topo
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">'+
+    '<div style="background:linear-gradient(135deg,#0f1a35,#1e3a8a);color:#fff;border-radius:12px;padding:14px;text-align:center">'+
+    '<div style="font-size:24px;font-weight:900">'+total+'</div>'+
+    '<div style="font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.5px">Total Corretores</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border-radius:12px;padding:14px;text-align:center">'+
+    '<div style="font-size:24px;font-weight:900">'+ativos+'</div>'+
+    '<div style="font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.5px">Ativos</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#991b1b,#dc2626);color:#fff;border-radius:12px;padding:14px;text-align:center">'+
+    '<div style="font-size:24px;font-weight:900">'+inativos+'</div>'+
+    '<div style="font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.5px">Inativos</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Filtros
+    '<div style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+    '<input class="sinp" placeholder="🔍 Buscar corretor..." id="cor-si" style="flex:1;min-width:180px" oninput="filtrarCorretores(this.value)">'+
+    '<div style="display:flex;gap:4px">'+
+    '<div class="chip'+(stF==='Ativo'?' on':'')+'" onclick="window._corStF=\'Ativo\';pCadCor()">Ativos</div>'+
+    '<div class="chip'+(stF==='Inativo'?' on':'')+'" onclick="window._corStF=\'Inativo\';pCadCor()">Inativos</div>'+
+    '<div class="chip'+(stF==='todos'?' on':'')+'" onclick="window._corStF=\'todos\';pCadCor()">Todos</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Grid de cards
+    '<div id="cor-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">'+
+    cards+
+    (lista.length===0?'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--lm);font-style:italic">Nenhum corretor encontrado</div>':'')+
+    '</div>';
+}
+function filtrarCorretores(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('#cor-grid > div').forEach(function(el){
+    el.style.display=el.textContent.toLowerCase().indexOf(q)>=0?'':'none';
+  });
+}
+function inativarCor(i){
+  if(!confirm('Inativar '+corCad[i].nome+'?')) return;
+  corCad[i].status='Inativo';
+  cM();salvarTudo();pCadCor();
+}
+function reativarCor(i){
+  corCad[i].status='Ativo';
+  cM();salvarTudo();pCadCor();
+}
+function verPerfilCor(i){
+  var c=corCad[i];
+  var meusCts=ctD.filter(function(ct){return ct.corretor===c.nome||ct.corretor===c.ini;});
+  var recMes=meusCts.reduce(function(s,ct){return s+ct.valor;},0);
+  var ctRows=meusCts.map(function(ct){
+    return '<tr><td style="padding:5px 8px">'+ct.id+'</td>'+
+    '<td style="padding:5px 8px">'+ct.inq+'</td>'+
+    '<td style="padding:5px 8px">'+ct.prop+'</td>'+
+    '<td style="padding:5px 8px;text-align:right;font-weight:700">'+fmt(ct.valor)+'</td>'+
+    '<td style="padding:5px 8px;text-align:center">Dia '+ct.venc+'</td></tr>';
+  }).join('');
+  oM('👤 Perfil — '+c.nome,
+    '<div style="display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,'+c.cor+','+c.cor+'cc);border-radius:12px;padding:16px;margin-bottom:16px">'+
+    '<div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff">'+c.ini+'</div>'+
+    '<div><div style="font-size:16px;font-weight:800;color:#fff">'+c.nome+'</div>'+
+    '<div style="font-size:11px;color:rgba(255,255,255,.8)">'+c.cargo+' | CRECI: '+(c.creci||'—')+'</div>'+
+    '<div style="font-size:11px;color:rgba(255,255,255,.7)">'+c.tel+' | '+c.email+'</div>'+
+    '</div></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">'+
+    '<div style="background:#f0f9ff;border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--navy)">'+meusCts.length+'</div><div style="font-size:10px;color:var(--lm)">Contratos</div></div>'+
+    '<div style="background:#f0fdf4;border-radius:10px;padding:12px;text-align:center"><div style="font-size:14px;font-weight:800;color:#16a34a">'+fmt(recMes)+'</div><div style="font-size:10px;color:var(--lm)">Cart./mês</div></div>'+
+    '<div style="background:#faf5ff;border-radius:10px;padding:12px;text-align:center"><div style="font-size:14px;font-weight:800;color:#7c3aed">'+fmt(recMes*0.1)+'</div><div style="font-size:10px;color:var(--lm)">Comissão</div></div>'+
+    '</div>'+
+    (meusCts.length?
+    '<div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Contratos Vinculados</div>'+
+    '<div class="tw"><table style="width:100%"><thead><tr><th>ID</th><th>Inquilino</th><th>Proprietário</th><th>Valor</th><th>Venc.</th></tr></thead><tbody>'+ctRows+'</tbody></table></div>':
+    '<div style="text-align:center;padding:20px;color:var(--lm);font-style:italic">Nenhum contrato vinculado</div>')+
+    '<div style="background:#f8fafc;border-radius:10px;padding:12px;margin-top:12px">'+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--lm);margin-bottom:6px">Dados Bancários</div>'+
+    '<div style="font-size:12px;color:var(--navy)"><b>'+c.banco+'</b> | Ag: '+c.agencia+' | Cc: '+c.conta+'</div>'+
+    '<div style="font-size:12px;color:#7c3aed;font-weight:600;margin-top:3px">PIX: '+(c.pix||'—')+'</div>'+
+    '</div>',
+    null,null,true);
+}
+function imprimirCorretores(){
+  var rows=corCad.map(function(c){
+    var meusCts=ctD.filter(function(ct){return ct.corretor===c.nome||ct.corretor===c.ini;});
+    return '<tr>'+
+    '<td style="padding:6px 10px"><b>'+c.nome+'</b><br><small>'+c.cargo+'</small></td>'+
+    '<td style="padding:6px 10px">'+c.creci+'</td>'+
+    '<td style="padding:6px 10px">'+c.tel+'<br><small>'+c.email+'</small></td>'+
+    '<td style="padding:6px 10px;text-align:center">'+(c.status||'Ativo')+'</td>'+
+    '<td style="padding:6px 10px;text-align:center">'+meusCts.length+'</td>'+
+    '<td style="padding:6px 10px;text-align:right;font-weight:700">'+fmt(meusCts.reduce(function(s,ct){return s+ct.valor;},0))+'</td>'+
+    '</tr>';
+  }).join('');
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Equipe RE/MAX Space</title>'+
+  '<style>body{font-family:Arial,sans-serif;padding:24px;color:#1e293b}h1{color:#D42028;font-size:20px}'+
+  '.sub{color:#64748b;font-size:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse}'+
+  'th{background:#0f1a35;color:#fff;padding:8px 10px;text-align:left;font-size:11px}'+
+  'tr:nth-child(even){background:#f8fafc}td{font-size:12px;border-bottom:1px solid #e2e8f0}'+
+  '@media print{button{display:none}}</style></head><body>'+
+  '<h1>🏢 Equipe RE/MAX Space — Caldas Novas</h1>'+
+  '<div class="sub">Emitido em '+new Date().toLocaleDateString('pt-BR')+' | Total: '+corCad.length+' corretores</div>'+
+  '<table><thead><tr><th>Nome / Cargo</th><th>CRECI</th><th>Contato</th><th>Status</th><th>Contratos</th><th>Carteira/mês</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+  '<div style="margin-top:24px;text-align:right"><button onclick="window.print()" style="padding:10px 24px;background:#D42028;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px">🖨 Imprimir / Salvar PDF</button></div>'+
+  '</body></html>');
+  w.document.close();
 }
 function eCadCor(i){
   var c=corCad[i];
-  oM('Editar Corretor - '+c.nome,
+  oM('✏ Editar Corretor — '+c.nome,
     '<div class="fg2"><div class="fg"><label>Nome completo</label><input id="cc-n" value="'+c.nome+'"></div><div class="fg"><label>CPF</label><input id="cc-cpf" value="'+c.cpf+'"></div></div>'+
-    '<div class="fg3"><div class="fg"><label>RG</label><input id="cc-rg" value="'+c.rg+'"></div><div class="fg"><label>Nascimento</label><input type="date" id="cc-nasc" value="'+c.nasc+'"></div><div class="fg"><label>CRECI</label><input id="cc-creci" value="'+c.creci+'"></div></div>'+
-    '<div class="fg2"><div class="fg"><label>Telefone</label><input id="cc-tel" value="'+c.tel+'"></div><div class="fg"><label>Email</label><input id="cc-email" value="'+c.email+'"></div></div>'+
-    '<div class="fg"><label>Endereco</label><input id="cc-end" value="'+c.end+'"></div>'+
-    '<div class="fg3"><div class="fg"><label>Bairro</label><input id="cc-bai" value="'+c.bairro+'"></div><div class="fg"><label>Cidade/UF</label><input id="cc-cid" value="'+c.cidade+'"></div>'+
+    '<div class="fg3"><div class="fg"><label>RG</label><input id="cc-rg" value="'+(c.rg||'')+'"></div><div class="fg"><label>Nascimento</label><input type="date" id="cc-nasc" value="'+(c.nasc||'')+'"></div><div class="fg"><label>CRECI</label><input id="cc-creci" value="'+(c.creci||'')+'"></div></div>'+
+    '<div class="fg2"><div class="fg"><label>Telefone</label><input id="cc-tel" value="'+c.tel+'"></div><div class="fg"><label>Email</label><input id="cc-email" value="'+(c.email||'')+'"></div></div>'+
+    '<div class="fg"><label>Endereço</label><input id="cc-end" value="'+(c.end||'')+'"></div>'+
+    '<div class="fg3"><div class="fg"><label>Bairro</label><input id="cc-bai" value="'+(c.bairro||'')+'"></div><div class="fg"><label>Cidade/UF</label><input id="cc-cid" value="'+(c.cidade||'Caldas Novas GO')+'"></div>'+
     '<div class="fg"><label>Cargo</label><select id="cc-car"><option>Diretora/Corretora</option><option>Gerente/Corretora</option><option>Corretora</option><option>Corretor</option><option>Corretor/Marketing</option><option>Corretor Trainee</option></select></div></div>'+
     '<div class="fg3"><div class="fg"><label>Banco</label><select id="cc-ban"><option>Bradesco</option><option>Itau</option><option>Caixa</option><option>BB</option><option>Santander</option><option>Nubank</option><option>Inter</option><option>Outro</option></select></div>'+
-    '<div class="fg"><label>Agencia</label><input id="cc-ag" value="'+c.agencia+'"></div><div class="fg"><label>Conta</label><input id="cc-cc" value="'+c.conta+'"></div></div>'+
-    '<div class="fg2"><div class="fg"><label>Chave PIX</label><input id="cc-pix" value="'+c.pix+'"></div>'+
-    '<div class="fg"><label>Status</label><select id="cc-st"><option>Ativo</option><option>Inativo</option><option>Afastado</option></select></div></div>',
-    function(){corCad[i].nome=document.getElementById('cc-n').value;corCad[i].cpf=document.getElementById('cc-cpf').value;corCad[i].rg=document.getElementById('cc-rg').value;corCad[i].nasc=document.getElementById('cc-nasc').value;corCad[i].creci=document.getElementById('cc-creci').value;corCad[i].tel=document.getElementById('cc-tel').value;corCad[i].email=document.getElementById('cc-email').value;corCad[i].end=document.getElementById('cc-end').value;corCad[i].bairro=document.getElementById('cc-bai').value;corCad[i].cidade=document.getElementById('cc-cid').value;corCad[i].cargo=document.getElementById('cc-car').value;corCad[i].banco=document.getElementById('cc-ban').value;corCad[i].agencia=document.getElementById('cc-ag').value;corCad[i].conta=document.getElementById('cc-cc').value;corCad[i].pix=document.getElementById('cc-pix').value;corCad[i].status=document.getElementById('cc-st').value;cM();salvarTudo();pCadCor();});
-  setTimeout(function(){document.getElementById('cc-car').value=c.cargo;document.getElementById('cc-ban').value=c.banco;document.getElementById('cc-st').value=c.status;},50);
+    '<div class="fg"><label>Agência</label><input id="cc-ag" value="'+(c.agencia||'')+'"></div><div class="fg"><label>Conta</label><input id="cc-cc" value="'+(c.conta||'')+'"></div></div>'+
+    '<div class="fg2"><div class="fg"><label>Chave PIX</label><input id="cc-pix" value="'+(c.pix||'')+'"></div>'+
+    '<div class="fg"><label>Status</label><select id="cc-st"><option>Ativo</option><option>Inativo</option><option>Afastado</option></select></div></div>'+
+    '<div class="fg2"><div class="fg"><label>Cor do card</label><input type="color" id="cc-cor" value="'+(c.cor||'#6b7280')+'" style="height:36px;width:100%;border-radius:6px;cursor:pointer"></div>'+
+    '<div class="fg"><label>Iniciais</label><input id="cc-ini" value="'+(c.ini||'')+'" maxlength="2" style="text-transform:uppercase" placeholder="Ex: TB"></div></div>',
+    function(){
+      corCad[i].nome=document.getElementById('cc-n').value;
+      corCad[i].cpf=document.getElementById('cc-cpf').value;
+      corCad[i].rg=document.getElementById('cc-rg').value;
+      corCad[i].nasc=document.getElementById('cc-nasc').value;
+      corCad[i].creci=document.getElementById('cc-creci').value;
+      corCad[i].tel=document.getElementById('cc-tel').value;
+      corCad[i].email=document.getElementById('cc-email').value;
+      corCad[i].end=document.getElementById('cc-end').value;
+      corCad[i].bairro=document.getElementById('cc-bai').value;
+      corCad[i].cidade=document.getElementById('cc-cid').value;
+      corCad[i].cargo=document.getElementById('cc-car').value;
+      corCad[i].banco=document.getElementById('cc-ban').value;
+      corCad[i].agencia=document.getElementById('cc-ag').value;
+      corCad[i].conta=document.getElementById('cc-cc').value;
+      corCad[i].pix=document.getElementById('cc-pix').value;
+      corCad[i].status=document.getElementById('cc-st').value;
+      corCad[i].cor=document.getElementById('cc-cor').value;
+      corCad[i].ini=document.getElementById('cc-ini').value.toUpperCase();
+      cM();salvarTudo();pCadCor();
+    });
+  setTimeout(function(){
+    document.getElementById('cc-car').value=c.cargo;
+    document.getElementById('cc-ban').value=c.banco;
+    document.getElementById('cc-st').value=c.status||'Ativo';
+  },50);
 }
-function nCadCor(){corCad.push({id:corCad.length+1,nome:'Novo Corretor',cpf:'',rg:'',nasc:'',tel:'',email:'',end:'',bairro:'',cidade:'Caldas Novas GO',creci:'',banco:'Bradesco',agencia:'',conta:'',pix:'',cargo:'Corretor',status:'Ativo',cor:'#6b7280',ini:'NC'});eCadCor(corCad.length-1);}
+function nCadCor(){
+  corCad.push({id:corCad.length+1,nome:'Novo Corretor',cpf:'',rg:'',nasc:'',tel:'',email:'',end:'',bairro:'',cidade:'Caldas Novas GO',creci:'',banco:'Bradesco',agencia:'',conta:'',pix:'',cargo:'Corretor',status:'Ativo',cor:'#6b7280',ini:'NC'});
+  eCadCor(corCad.length-1);
+}
 
-function pCadPropFinanceiroOld(){
-  document.getElementById('pa').innerHTML='<button class="btn btn-red" onclick="nCadProp()">+ Novo Proprietario</button>';
-  var totAll=ctD.reduce(function(s,c){return s+c.valor;},0);
-  var totalCard='<div style="background:#0f1a35;color:#fff;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">'+
-    '<div style="font-size:13px;font-weight:700">TOTAIS DA CARTEIRA</div>'+
-    '<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:7px 12px;text-align:center"><div style="font-size:9px;opacity:.7">Total/mes</div><div style="font-size:16px;font-weight:700">'+fmt(totAll)+'</div></div>'+
-    '<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:7px 12px;text-align:center"><div style="font-size:9px;opacity:.7">ADM 10%</div><div style="font-size:16px;font-weight:700;color:#86efac">'+fmt(totAll*.1)+'</div></div>'+
-    '<div style="background:rgba(255,255,255,.1);border-radius:8px;padding:7px 12px;text-align:center"><div style="font-size:9px;opacity:.7">Repasse</div><div style="font-size:16px;font-weight:700;color:#fde047">'+fmt(totAll*.9)+'</div></div>'+
-  '</div>';
-  var r=''; propCad.forEach(function(p,i){
-    var cts=ctD.filter(function(c){return c.prop===p.nome;}), tot=cts.reduce(function(s,c){return s+c.valor;},0);
-    var inad=cts.filter(function(c){return(c.rs||[])[4]==='N';}).length;
-    r+='<div class="cad-card"><div class="cad-av" style="background:var(--navy)">'+p.nome.split(' ').map(function(x){return x[0];}).join('').substring(0,2)+'</div>'+
-    '<div class="cad-info">'+
-    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">'+
-    '<div class="cad-name" style="margin:0">'+p.nome+'</div>'+
-    (cts.length?'<span class="badge bb">'+cts.length+' ct(s)</span>':'<span class="badge bgr">Sem contrato</span>')+
-    (inad>0?'<span class="badge br">'+inad+' inad.</span>':cts.length?'<span class="badge bg">Em dia</span>':'')+
-    '</div>'+
-    '<div class="cad-det">CPF: '+p.cpf+' - Tel: '+p.tel+'</div>'+
-    '<div class="cad-det">'+p.end+' - '+p.cidade+'</div>'+
-    '<div class="cad-det">Banco: <b>'+p.banco+'</b> Ag: '+p.agencia+' Cc: '+p.conta+' - PIX: '+p.pix+'</div>'+
-    (tot>0?'<div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap">'+
-    '<div style="background:#f0fdf4;border-radius:6px;padding:5px 10px;font-size:11px"><div style="color:var(--lm)">Aluguel</div><div style="font-weight:700">'+fmt(tot)+'</div></div>'+
-    '<div style="background:#dbeafe;border-radius:6px;padding:5px 10px;font-size:11px"><div style="color:var(--lm)">ADM</div><div style="font-weight:700;color:var(--navy)">'+fmt(tot*.1)+'</div></div>'+
-    '<div style="background:#fef3c7;border-radius:6px;padding:5px 10px;font-size:11px"><div style="color:var(--lm)">Repasse</div><div style="font-weight:700;color:var(--ok)">'+fmt(tot*.9)+'</div></div>'+
-    '</div>':'')+
-    (p.obs?'<div class="cad-det" style="color:var(--warn);margin-top:3px">Obs: '+p.obs+'</div>':'')+
-    '</div>'+
-    '<div style="display:flex;flex-direction:column;gap:4px"><button class="btn btn-sm" onclick="eCadProp('+i+')">Editar</button></div>'+
-    '</div>';
-  });
-  document.getElementById('pc').innerHTML=totalCard+r;
-}
 function eCadProp(i){
   var p=propCad[i];
   oM('Editar Proprietario - '+p.nome,
