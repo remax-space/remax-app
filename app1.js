@@ -527,14 +527,7 @@ var vsD = [{
   },
   fotos:[],laudos:[],contratos:[]
 }];
-var cpD = [
-  {id:1,desc:'Aluguel escritorio Galeria Verano',val:3500,venc:'2026-05-10',pago:'2026-05-09',st:'Pago',cat:'Fixo',forma:'Deposito',obs:''},
-  {id:2,desc:'Meta Ads - Lucas Basile',val:2000,venc:'2026-05-15',pago:'2026-05-14',st:'Pago',cat:'Marketing',forma:'Cartao',obs:'Campanha maio'},
-  {id:3,desc:'Franquia RE/MAX',val:1800,venc:'2026-05-20',pago:'',st:'A vencer',cat:'Fixo',forma:'TED',obs:'Royalties'},
-  {id:4,desc:'Contador',val:800,venc:'2026-05-25',pago:'',st:'A vencer',cat:'Fixo',forma:'PIX',obs:''},
-  {id:5,desc:'Internet/Telefone',val:350,venc:'2026-05-10',pago:'2026-05-10',st:'Pago',cat:'Fixo',forma:'Debito auto',obs:''},
-  {id:6,desc:'Material de escritorio',val:280,venc:'2026-04-30',pago:'',st:'Vencido',cat:'Variavel',forma:'',obs:'Nota pendente'}
-];
+var cpD = [];
 var corCad = [
   {id:1,nome:'Tatiana Basile',cpf:'123.456.789-00',rg:'1234567',nasc:'1978-03-15',tel:'(64)9 9123-4567',email:'tatiana@remax.com',end:'Rua das Flores 100',bairro:'Centro',cidade:'Caldas Novas GO',creci:'GO-12345',banco:'Bradesco',agencia:'1234',conta:'56789-0',pix:'tatiana@remax.com',cargo:'Diretora/Corretora',status:'Ativo',cor:'#D42028',ini:'TB'},
   {id:2,nome:'Meirielli',cpf:'234.567.890-11',rg:'2345678',nasc:'1985-07-22',tel:'(64)9 9234-5678',email:'meirielli@remax.com',end:'Av. Brasil 250',bairro:'Aeroporto',cidade:'Caldas Novas GO',creci:'GO-23456',banco:'Itau',agencia:'2345',conta:'67890-1',pix:'(64)9 9234-5678',cargo:'Gerente/Corretora',status:'Ativo',cor:'#003DA5',ini:'ME'},
