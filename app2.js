@@ -2657,15 +2657,16 @@ function gerarNotifInadCt(ctId){
     '⚠ Telefone não cadastrado para este inquilino. Cadastre em Clientes → Inquilinos.'+
     '</div>')+
     '</div>'+
-    '<textarea id="notif-txt" style="width:100%;height:280px;font-family:monospace;font-size:11px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical;margin-top:10px">'+texto+'</textarea>'+
-    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+    // Botões ACIMA da textarea para sempre visíveis
+    '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
     '<a id="wa-btn" href="'+waLink+'" target="_blank" '+
-    'style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;text-decoration:none;cursor:pointer">'+
-    '💬 Enviar pelo WhatsApp'+(inqData.tel?' ('+inqData.tel+')':' (digitar número)')+'</a>'+
-    '<button class="btn" style="background:#1d4ed8;color:#fff;font-weight:600" onclick="copiarNotif()">📋 Copiar texto</button>'+
+    'style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;text-decoration:none">'+
+    '💬 Enviar WhatsApp'+(inqData.tel?' — '+inqData.tel:'')+'</a>'+
+    '<button class="btn" style="background:#1d4ed8;color:#fff;font-weight:600" onclick="copiarNotif()">📋 Copiar</button>'+
     '<button class="btn" style="background:#374151;color:#fff;font-weight:600" onclick="imprimirNotif()">🖨 Imprimir</button>'+
     '</div>'+
-    '<div style="font-size:10px;color:#94a3b8;margin-top:8px">* O WhatsApp abrirá com o texto já preenchido. Você pode editar antes de enviar.</div>',
+    '<div style="font-size:10px;color:#94a3b8;margin-bottom:6px">✏ Edite o texto abaixo se necessário — o link WhatsApp atualiza automaticamente.</div>'+
+    '<textarea id="notif-txt" style="width:100%;height:220px;font-family:monospace;font-size:11px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical">'+texto+'</textarea>',
     null,'Fechar',true);
 
   // Atualizar link WhatsApp se texto for editado
