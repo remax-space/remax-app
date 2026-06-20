@@ -179,7 +179,7 @@ function pLV(){
     '<div style="display:flex;gap:5px;flex-wrap:wrap">'+
     '<button class="btn btn-sm" style="flex:1;background:#eff6ff;color:#1d4ed8;font-weight:600" onclick="vVst('+ri+')">👁 Ver laudo</button>'+
     '<button class="btn btn-sm" style="flex:1;background:#f0fdf4;color:#166534;font-weight:600" onclick="imprimirVistoria('+ri+')">🖨 Imprimir</button>'+
-    '<button class="btn btn-sm" style="background:#f8fafc;color:var(--navy)" onclick="eVst('+ri+')">✏</button>'+
+    '<button class="btn btn-sm" style="background:#f8fafc;color:var(--navy);font-size:10px" onclick="eVst('+ri+')">✏ Editar</button>'+
     (vsD.filter(function(x){return x.ctId===v.ctId&&x.ctId;}).length>=2?
     '<button class="btn btn-sm" style="background:#faf5ff;color:#7c3aed" onclick="compararVistoria(\''+v.ctId+'\')" >⚖ Comp.</button>'+
     '<button class="btn btn-sm" style="background:#f0fdf4;color:#166534;font-size:10px" onclick="abrirComparativoFotos(\''+v.ctId+'\')" >🤖 Fotos IA</button>':'') +
@@ -550,7 +550,7 @@ function eVst(i){
     '</div>'+
     '<div class="fg"><label>Endereço completo</label><input id="ev2-e" value="'+v.end+'"></div>'+
     '<div class="fg3">'+
-    '<div class="fg"><label>Data</label><input type="date" id="ev2-d" value="'+v.dt+'"></div>'+
+    '<div class="fg"><label>Data</label><input type="date" id="ev2-d" value="'+(function(d){if(!d)return'';if(d.indexOf('/')>=0){var p=d.split('/');return(p[2]||'')+'-'+(p[1]||'')+'-'+(p[0]||'');}return d;})(v.dt)+'"></div>'+ 
     '<div class="fg"><label>Hora</label><input type="time" id="ev2-h" value="'+v.hr+'"></div>'+
     '<div class="fg"><label>Vistoriador</label><select id="ev2-v">'+corrSel(v.vis)+'</select></div>'+
     '</div>'+
