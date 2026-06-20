@@ -94,135 +94,503 @@ function delLL(i){
   );
 }
 
-// ===== VISTORIAS (com upload de laudo, contrato e fotos) =====
+// ===== VISTORIAS =====
 function pLV(){
-  document.getElementById('pa').innerHTML='<button class="btn btn-red" onclick="nVistoria()">+ Nova Vistoria</button>';
-  var r=''; vsD.forEach(function(v,i){
-    r+='<tr>'+
-    '<td style="font-weight:700">'+v.id+'</td>'+
-    '<td><span class="badge '+(v.tipo==='Entrada'?'bg':'br')+'">'+v.tipo+'</span></td>'+
-    '<td style="font-weight:600">'+v.prop+'</td>'+
-    '<td>'+v.inq+'</td>'+
-    '<td>'+v.dt+' '+v.hr+'</td>'+
-    '<td>'+v.vis+'</td>'+
-    '<td><span class="badge bg">'+v.res+'</span></td>'+
-    '<td>'+sBadge(v.ass==='Sim'?'Recebido':'Nao recebido')+'</td>'+
-    '<td><span class="badge '+(v.cont==='Nao'?'bg':'br')+'">'+v.cont+'</span></td>'+
-    '<td style="display:flex;gap:3px">'+
-    '<span class="badge bgr">'+((v.fotos||[]).length)+' fotos</span>'+
-    '<span class="badge bb">'+((v.laudos||[]).length)+' laudos</span>'+
-    '<span class="badge bt">'+((v.contratos||[]).length)+' cts</span>'+
-    '</td>'+
-    '<td style="display:flex;gap:3px">'+
-    '<button class="btn btn-sm" onclick="vVst('+i+')">Ver</button>'+
-    '<button class="btn btn-sm btn-blue" onclick="eVst('+i+')">Editar</button>'+
-    '</td></tr>';
+  var total=vsD.length;
+  var entradas=vsD.filter(function(v){return v.tipo==='Entrada';}).length;
+  var saidas=vsD.filter(function(v){return v.tipo==='Saida';}).length;
+  var pendAssin=vsD.filter(function(v){return v.ass!=='Sim';}).length;
+  var contestadas=vsD.filter(function(v){return v.cont==='Sim';}).length;
+
+  var stF=window._vsStF||'todas';
+  var tipoF=window._vsTipoF||'todos';
+  var lista=vsD.filter(function(v){
+    if(tipoF!=='todos'&&v.tipo!==tipoF) return false;
+    if(stF==='pendentes'&&v.ass==='Sim') return false;
+    if(stF==='contestadas'&&v.cont!=='Sim') return false;
+    return true;
   });
+
+  // Cards por vistoria
+  var cards='';
+  lista.forEach(function(v,li){
+    var ri=vsD.indexOf(v);
+    var isEntrada=v.tipo==='Entrada';
+    var resCor=v.res==='Bom a excelente'||v.res==='Bom'?'#166534':v.res==='Regular'?'#92400e':'#991b1b';
+    var resBg=v.res==='Bom a excelente'||v.res==='Bom'?'#f0fdf4':v.res==='Regular'?'#fffbeb':'#fef2f2';
+
+    // Buscar contrato vinculado
+    var ctInfo=ctD.find(function(c){return c.id===v.ctId;});
+
+    cards+=
+    '<div style="background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;transition:box-shadow .2s" '+
+    'onmouseover="this.style.boxShadow=\'0 6px 20px rgba(0,0,0,.13)\'" onmouseout="this.style.boxShadow=\'0 2px 10px rgba(0,0,0,.07)\'">'+
+
+    // Header
+    '<div style="background:linear-gradient(135deg,'+(isEntrada?'#1e3a8a,#2563eb':'#7c2d12,#c2410c')+';padding:14px 16px;position:relative">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+    '<div>'+
+    '<div style="font-size:10px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.8px">'+
+    (isEntrada?'🔑 Vistoria de Entrada':'🔓 Vistoria de Saída')+
+    '</div>'+
+    '<div style="font-size:16px;font-weight:800;color:#fff;margin-top:2px">Laudo #'+v.id+'</div>'+
+    (v.ctId?'<div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:2px">Contrato: '+v.ctId+'</div>':'')+
+    '</div>'+
+    '<div style="text-align:right">'+
+    '<div style="background:'+resBg+';color:'+resCor+';font-size:9px;font-weight:800;padding:3px 8px;border-radius:8px;text-transform:uppercase">'+v.res+'</div>'+
+    (v.cont==='Sim'?'<div style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;margin-top:3px">⚠ Contestado</div>':'')+
+    (v.ass!=='Sim'?'<div style="background:#fce7f3;color:#9d174d;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;margin-top:3px">✍ Ass. pendente</div>':'')+
+    '</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Corpo
+    '<div style="padding:14px 16px">'+
+
+    // Partes
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'+
+    '<div style="background:#f8fafc;border-radius:8px;padding:8px 10px">'+
+    '<div style="font-size:9px;color:var(--lm);text-transform:uppercase;font-weight:700;margin-bottom:2px">Proprietário</div>'+
+    '<div style="font-size:12px;font-weight:700;color:var(--navy)">'+v.prop+'</div>'+
+    '</div>'+
+    '<div style="background:#f8fafc;border-radius:8px;padding:8px 10px">'+
+    '<div style="font-size:9px;color:var(--lm);text-transform:uppercase;font-weight:700;margin-bottom:2px">Inquilino</div>'+
+    '<div style="font-size:12px;font-weight:700;color:var(--navy)">'+v.inq+'</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Endereço e data
+    '<div style="font-size:11px;color:var(--lm);margin-bottom:8px">'+
+    '<span style="font-size:13px">📍</span> '+v.end+
+    '</div>'+
+    '<div style="display:flex;gap:12px;font-size:11px;color:var(--lm);margin-bottom:10px">'+
+    '<span>📅 '+fmtD(v.dt)+(v.hr?' às '+v.hr:'')+'</span>'+
+    '<span>👤 '+v.vis+'</span>'+
+    '</div>'+
+
+    // Contador arquivos
+    '<div style="display:flex;gap:6px;margin-bottom:12px">'+
+    '<span style="background:#eff6ff;color:#1d4ed8;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px">📸 '+((v.fotos||[]).length)+' fotos</span>'+
+    '<span style="background:#f5f3ff;color:#7c3aed;font-size:10px;font-weight:700;padding:3px 8px;border-radius:8px">📄 '+((v.laudos||[]).length)+' laudos</span>'+
+    (v.cont==='Sim'&&v.contObs?'<span style="background:#fef3c7;color:#92400e;font-size:10px;padding:3px 8px;border-radius:8px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+v.contObs+'">⚠ '+v.contObs+'</span>':'')+
+    '</div>'+
+
+    // Ações
+    '<div style="display:flex;gap:5px;flex-wrap:wrap">'+
+    '<button class="btn btn-sm" style="flex:1;background:#eff6ff;color:#1d4ed8;font-weight:600" onclick="vVst('+ri+')">👁 Ver laudo</button>'+
+    '<button class="btn btn-sm" style="flex:1;background:#f0fdf4;color:#166534;font-weight:600" onclick="imprimirVistoria('+ri+')">🖨 Imprimir</button>'+
+    '<button class="btn btn-sm" style="background:#f8fafc;color:var(--navy)" onclick="eVst('+ri+')">✏</button>'+
+    (vsD.filter(function(x){return x.ctId===v.ctId&&x.ctId;}).length>=2?
+    '<button class="btn btn-sm" style="background:#faf5ff;color:#7c3aed" onclick="compararVistoria(\''+v.ctId+'\')">⚖ Comp.</button>':'') +
+    '</div>'+
+    '</div>'+
+    '</div>';
+  });
+
+  document.getElementById('pa').innerHTML=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+    '<button class="btn btn-red" onclick="nVistoria()" style="font-weight:700">+ Nova Vistoria</button>'+
+    '</div>';
+
   document.getElementById('pc').innerHTML=
-    '<div class="card"><div class="chd"><h3>Arquivo de Laudos de Vistoria</h3></div>'+
-    '<div class="tw"><table><thead><tr>'+
-    '<th>Num</th><th>Tipo</th><th>Proprietário</th><th>Inquilino</th><th>Data/Hora</th><th>Vistoriador</th>'+
-    '<th>Resultado</th><th>Assinado</th><th>Contestado</th><th>Arquivos</th><th>Ações</th>'+
-    '</tr></thead><tbody>'+r+'</tbody></table></div></div>';
+    // KPIs
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">'+
+    '<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border-radius:12px;padding:12px;text-align:center">'+
+    '<div style="font-size:22px;font-weight:900">'+total+'</div><div style="font-size:9px;opacity:.8;text-transform:uppercase">Total</div></div>'+
+    '<div style="background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border-radius:12px;padding:12px;text-align:center">'+
+    '<div style="font-size:22px;font-weight:900">'+entradas+'</div><div style="font-size:9px;opacity:.8;text-transform:uppercase">Entradas</div></div>'+
+    '<div style="background:linear-gradient(135deg,#7c2d12,#c2410c);color:#fff;border-radius:12px;padding:12px;text-align:center">'+
+    '<div style="font-size:22px;font-weight:900">'+saidas+'</div><div style="font-size:9px;opacity:.8;text-transform:uppercase">Saídas</div></div>'+
+    '<div style="background:linear-gradient(135deg,#831843,#db2777);color:#fff;border-radius:12px;padding:12px;text-align:center">'+
+    '<div style="font-size:22px;font-weight:900">'+pendAssin+'</div><div style="font-size:9px;opacity:.8;text-transform:uppercase">Ass. Pendente</div></div>'+
+    '<div style="background:linear-gradient(135deg,#78350f,#d97706);color:#fff;border-radius:12px;padding:12px;text-align:center">'+
+    '<div style="font-size:22px;font-weight:900">'+contestadas+'</div><div style="font-size:9px;opacity:.8;text-transform:uppercase">Contestadas</div></div>'+
+    '</div>'+
+
+    // Filtros
+    '<div style="background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.05);display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+    '<input class="sinp" placeholder="🔍 Buscar inquilino, proprietário, endereço..." id="vs-si" style="flex:1;min-width:200px" oninput="filtrarVistoria(this.value)">'+
+    '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+    '<div class="chip'+(tipoF==='todos'?' on':'')+'" onclick="window._vsTipoF=\'todos\';pLV()">Todos</div>'+
+    '<div class="chip'+(tipoF==='Entrada'?' on':'')+'" onclick="window._vsTipoF=\'Entrada\';pLV()">🔑 Entrada</div>'+
+    '<div class="chip'+(tipoF==='Saida'?' on':'')+'" onclick="window._vsTipoF=\'Saida\';pLV()">🔓 Saída</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+    '<div class="chip'+(stF==='todas'?' on':'')+'" onclick="window._vsStF=\'todas\';pLV()">Todas</div>'+
+    '<div class="chip'+(stF==='pendentes'?' on':'')+'" onclick="window._vsStF=\'pendentes\';pLV()">✍ Pendentes</div>'+
+    '<div class="chip'+(stF==='contestadas'?' on':'')+'" onclick="window._vsStF=\'contestadas\';pLV()">⚠ Contestadas</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Grid de cards
+    '<div id="vs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">'+
+    cards+
+    (lista.length===0?'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--lm);font-style:italic">Nenhuma vistoria encontrada</div>':'')+
+    '</div>';
+}
+
+function filtrarVistoria(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('#vs-grid > div').forEach(function(el){
+    el.style.display=el.textContent.toLowerCase().indexOf(q)>=0?'':'none';
+  });
 }
 
 function vVst(i){
   var v=vsD[i]; var ck=v.checklist||{};
-  function secH(nome,obj){
-    if(!obj) return '';
-    var h='<div style="margin-bottom:8px"><div class="sec-title">'+nome+'</div>'+
-    '<table style="width:100%;font-size:11px"><tbody>';
+  var comodos=[
+    {k:'sala',n:'Sala'},
+    {k:'cozinha',n:'Cozinha'},
+    {k:'quarto1',n:'Quarto 1'},
+    {k:'quarto2',n:'Quarto 2'},
+    {k:'quarto3',n:'Quarto 3'},
+    {k:'quarto4',n:'Quarto 4'},
+    {k:'banheiro',n:'Banheiro'},
+    {k:'banheiro2',n:'Banheiro 2'},
+    {k:'servico',n:'Área de Serviço'},
+    {k:'quintal',n:'Quintal/Área Externa'},
+    {k:'garagem',n:'Garagem'},
+    {k:'piscina',n:'Piscina'},
+    {k:'eletrica',n:'Instalação Elétrica'},
+    {k:'hidraulica',n:'Instalação Hidráulica'}
+  ];
+
+  function secH(key,nome){
+    var obj=ck[key]; if(!obj||Object.keys(obj).length===0) return '';
+    var cor={Otimo:'#166534',Bom:'#166534',Boa:'#166534',Regular:'#92400e',Ruim:'#991b1b','N/A':'#64748b',Nao:'#166534'};
+    var bg={Otimo:'#f0fdf4',Bom:'#f0fdf4',Boa:'#f0fdf4',Regular:'#fffbeb',Ruim:'#fef2f2','N/A':'#f1f5f9',Nao:'#f0fdf4'};
+    var h='<div style="margin-bottom:10px">'+
+    '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--navy);border-bottom:1px solid #e2e8f0;padding-bottom:4px;margin-bottom:6px">'+nome+'</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:4px">';
     for(var k in obj){
       if(k==='obs') continue;
-      var badge=obj[k]==='Otimo'||obj[k]==='Boa'||obj[k]==='Nao'?'bg':obj[k]==='Bom'?'bg':obj[k]==='Regular'?'by':'br';
-      h+='<tr><td style="width:100px;color:var(--lm);padding:3px 0">'+k+'</td><td><span class="badge '+badge+'">'+obj[k]+'</span></td></tr>';
+      h+='<div style="display:flex;flex-direction:column;align-items:center;background:'+( bg[obj[k]]||'#f1f5f9')+';border-radius:6px;padding:4px 8px;min-width:70px">'+
+      '<span style="font-size:9px;color:var(--lm)">'+ k+'</span>'+
+      '<span style="font-size:10px;font-weight:700;color:'+(cor[obj[k]]||'#374151')+'">'+obj[k]+'</span>'+
+      '</div>';
     }
-    if(obj.obs&&obj.obs!=='-') h+='<tr><td style="color:var(--lm)">Obs</td><td style="color:var(--warn)">'+obj.obs+'</td></tr>';
-    h+='</tbody></table></div>';
+    h+='</div>';
+    if(obj.obs&&obj.obs!=='-')
+      h+='<div style="font-size:11px;color:#92400e;background:#fffbeb;border-radius:6px;padding:5px 8px;margin-top:5px">⚠ '+obj.obs+'</div>';
+    h+='</div>';
     return h;
   }
-  var fotsH=(v.fotos&&v.fotos.length)?v.fotos.map(function(f){return '<img src="'+f+'" class="foto-thumb" onclick="window.open(this.src)">';}).join(''):'<span style="font-size:11px;color:var(--lm)">Sem fotos</span>';
-  var laudosH=(v.laudos&&v.laudos.length)?v.laudos.map(function(l){return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0"><span style="font-size:12px">'+l.nome+'</span><a href="'+l.url+'" target="_blank" class="btn btn-xs">Abrir</a></div>';}).join(''):'<span style="font-size:11px;color:var(--lm)">Sem laudos anexados</span>';
-  var ctH=(v.contratos&&v.contratos.length)?v.contratos.map(function(l){return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0"><span style="font-size:12px">'+l.nome+'</span><a href="'+l.url+'" target="_blank" class="btn btn-xs">Abrir</a></div>';}).join(''):'<span style="font-size:11px;color:var(--lm)">Sem contratos anexados</span>';
-  oM('Laudo Num '+v.id+' - '+v.tipo,
-    '<div class="fg2" style="margin-bottom:12px">'+
-    '<div><div style="font-size:10px;color:var(--lm);font-weight:700">PROPRIETARIO</div><div style="font-size:13px;font-weight:700">'+v.prop+'</div></div>'+
-    '<div><div style="font-size:10px;color:var(--lm);font-weight:700">INQUILINO</div><div style="font-size:13px;font-weight:700">'+v.inq+'</div></div>'+
-    '<div><div style="font-size:10px;color:var(--lm);font-weight:700">ENDERECO</div><div style="font-size:12px">'+v.end+'</div></div>'+
-    '<div><div style="font-size:10px;color:var(--lm);font-weight:700">DATA/HORA</div><div style="font-size:12px">'+v.dt+' as '+v.hr+'</div></div>'+
-    '<div><div style="font-size:10px;color:var(--lm);font-weight:700">VISTORIADOR</div><div style="font-size:12px">'+v.vis+'</div></div>'+
-    '<div><div style="font-size:10px;color:var(--lm);font-weight:700">RESULTADO</div><span class="badge bg">'+v.res+'</span></div>'+
+
+  var fotsH=(v.fotos&&v.fotos.length)?
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+    v.fotos.map(function(f){return '<img src="'+f+'" style="width:80px;height:60px;object-fit:cover;border-radius:6px;cursor:pointer;border:1px solid #e2e8f0" onclick="window.open(this.src)">';}).join('')+
+    '</div>':'<div style="font-size:11px;color:var(--lm);font-style:italic">Sem fotos</div>';
+
+  var laudosH=(v.laudos&&v.laudos.length)?
+    v.laudos.map(function(l){return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9">'+
+    '<span style="font-size:13px">📄</span><span style="font-size:12px;flex:1">'+l.nome+'</span>'+
+    '<a href="'+l.url+'" target="_blank" class="btn btn-xs btn-blue">Abrir</a></div>';}).join(''):
+    '<div style="font-size:11px;color:var(--lm);font-style:italic">Nenhum laudo</div>';
+
+  var secOk=comodos.map(function(c){return secH(c.k,c.n);}).join('');
+
+  oM('📋 Laudo #'+v.id+' — '+v.tipo,
+    // Header info
+    '<div style="background:linear-gradient(135deg,'+(v.tipo==='Entrada'?'#1e3a8a,#2563eb':'#7c2d12,#c2410c')+';border-radius:10px;padding:14px 16px;margin-bottom:14px">'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">'+
+    '<div><div style="font-size:9px;color:rgba(255,255,255,.6);text-transform:uppercase">Proprietário</div><div style="font-size:13px;font-weight:700;color:#fff">'+v.prop+'</div></div>'+
+    '<div><div style="font-size:9px;color:rgba(255,255,255,.6);text-transform:uppercase">Inquilino</div><div style="font-size:13px;font-weight:700;color:#fff">'+v.inq+'</div></div>'+
+    '<div><div style="font-size:9px;color:rgba(255,255,255,.6);text-transform:uppercase">Data</div><div style="font-size:12px;color:#fff">'+fmtD(v.dt)+(v.hr?' '+v.hr:'')+'</div></div>'+
     '</div>'+
-    secH('Sala',ck.sala)+secH('Cozinha',ck.cozinha)+secH('Quarto 1',ck.quarto1)+secH('Quarto 2',ck.quarto2)+secH('Quarto 3',ck.quarto3)+secH('Banheiro',ck.banheiro)+secH('Servico',ck.servico)+secH('Quintal',ck.quintal)+secH('Eletrica',ck.eletrica)+secH('Hidraulica',ck.hidraulica)+
-    '<div style="background:#f9fafb;padding:10px;border-radius:8px;font-size:12px;margin:10px 0"><b>Obs finais:</b> '+v.obs+'</div>'+
-    '<div style="margin-top:8px;display:flex;gap:10px">'+sBadge(v.ass==='Sim'?'Recebido':'Nao recebido')+' &nbsp; <span class="badge '+(v.cont==='Nao'?'bg':'br')+'">Contestado: '+v.cont+'</span></div>'+
-    '<div class="sec-title" style="margin-top:12px">Fotos da Vistoria</div>'+
-    '<div class="foto-area">'+fotsH+'</div>'+
-    '<div class="sec-title">Laudos Anexados</div>'+
-    '<div style="padding:8px">'+laudosH+'</div>'+
-    '<div class="sec-title">Contratos Anexados</div>'+
-    '<div style="padding:8px">'+ctH+'</div>',
+    '<div style="margin-top:8px;font-size:11px;color:rgba(255,255,255,.75)">📍 '+v.end+'</div>'+
+    '<div style="margin-top:6px;display:flex;gap:8px;align-items:center">'+
+    '<span style="font-size:10px;color:rgba(255,255,255,.6)">Vistoriador: '+v.vis+'</span>'+
+    '<span style="background:rgba(255,255,255,.15);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:8px">'+v.res+'</span>'+
+    '</div>'+
+    '</div>'+
+    // Checklist
+    (secOk||'<div style="font-size:11px;color:var(--lm);font-style:italic;margin-bottom:10px">Checklist não preenchido</div>')+
+    // Obs finais
+    (v.obs?'<div style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px"><b>Observações finais:</b> '+v.obs+'</div>':'')+
+    // Status
+    '<div style="display:flex;gap:8px;margin-bottom:12px">'+
+    '<span style="background:'+(v.ass==='Sim'?'#f0fdf4':'#fef2f2')+';color:'+(v.ass==='Sim'?'#166534':'#991b1b')+';font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px">'+
+    (v.ass==='Sim'?'✅ Assinado pelas partes':'⏳ Assinatura pendente')+'</span>'+
+    '<span style="background:'+(v.cont==='Sim'?'#fffbeb':'#f0fdf4')+';color:'+(v.cont==='Sim'?'#92400e':'#166534')+';font-size:11px;font-weight:700;padding:4px 10px;border-radius:8px">'+
+    (v.cont==='Sim'?'⚠ Contestado':'✓ Sem contestação')+'</span>'+
+    '</div>'+
+    (v.contObs?'<div style="background:#fffbeb;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#92400e"><b>Motivo contestação:</b> '+v.contObs+'</div>':'')+
+    // Fotos
+    '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);margin-bottom:6px">📸 Fotos ('+( (v.fotos||[]).length)+')</div>'+
+    fotsH+
+    '<div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--navy);margin:10px 0 6px">📄 Laudos</div>'+
+    laudosH+
+    '<div style="margin-top:12px">'+
+    '<button class="btn btn-blue" onclick="imprimirVistoria('+i+')">🖨 Imprimir laudo</button>'+
+    '</div>',
     null,'Fechar',true);
-  document.getElementById('mok').style.display='none';
-  setTimeout(function(){document.getElementById('mok').style.display='';},200);
+}
+
+function imprimirVistoria(i){
+  var v=vsD[i]; var ck=v.checklist||{};
+  var comodos=[
+    {k:'sala',n:'Sala'},{k:'cozinha',n:'Cozinha'},
+    {k:'quarto1',n:'Quarto 1'},{k:'quarto2',n:'Quarto 2'},
+    {k:'quarto3',n:'Quarto 3'},{k:'quarto4',n:'Quarto 4'},
+    {k:'banheiro',n:'Banheiro'},{k:'banheiro2',n:'Banheiro 2'},
+    {k:'servico',n:'Área de Serviço'},{k:'quintal',n:'Quintal'},
+    {k:'garagem',n:'Garagem'},{k:'piscina',n:'Piscina'},
+    {k:'eletrica',n:'Instalação Elétrica'},{k:'hidraulica',n:'Instalação Hidráulica'}
+  ];
+
+  function secPrint(key,nome){
+    var obj=ck[key]; if(!obj||Object.keys(obj).length===0) return '';
+    var rows='';
+    for(var k in obj){
+      if(k==='obs') continue;
+      var cor=obj[k]==='Otimo'||obj[k]==='Bom'||obj[k]==='Boa'||obj[k]==='Nao'?'#166534':obj[k]==='Regular'?'#92400e':'#991b1b';
+      rows+='<tr><td style="padding:3px 8px;color:#374151">'+k+'</td><td style="padding:3px 8px;font-weight:700;color:'+cor+'">'+obj[k]+'</td></tr>';
+    }
+    if(obj.obs&&obj.obs!=='-') rows+='<tr><td colspan="2" style="padding:3px 8px;color:#92400e;font-style:italic">Obs: '+obj.obs+'</td></tr>';
+    return '<div style="margin-bottom:12px"><div style="background:#1e3a8a;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:4px 4px 0 0">'+nome+'</div>'+
+    '<table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-top:none"><tbody>'+rows+'</tbody></table></div>';
+  }
+
+  var secoes=comodos.map(function(c){return secPrint(c.k,c.n);}).join('');
+  var fotosHtml=(v.fotos&&v.fotos.length)?
+    '<div style="page-break-before:always;margin-top:20px"><h3 style="color:#1e3a8a">Fotos da Vistoria</h3><div style="display:flex;flex-wrap:wrap;gap:8px">'+
+    v.fotos.map(function(f){return '<img src="'+f+'" style="width:180px;height:135px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0">';}).join('')+
+    '</div></div>':'';
+
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Laudo de Vistoria #'+v.id+' — RE/MAX Space</title>'+
+  '<style>'+
+  'body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;margin:0;padding:24px}'+
+  'h1{font-size:18px;color:#1e3a8a;margin:0 0 4px}'+
+  '.sub{font-size:11px;color:#64748b;margin-bottom:16px}'+
+  '.header-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:16px}'+
+  '.header-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}'+
+  '.lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:2px}'+
+  '.val{font-size:13px;font-weight:700;color:#1e293b}'+
+  '.status-bar{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap}'+
+  '.badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700}'+
+  '.assoc{border-top:3px solid #1e3a8a;margin-top:32px;padding-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:40px}'+
+  '.ass-field{text-align:center;border-top:1px solid #000;padding-top:4px;font-size:10px;color:#374151;margin-top:40px}'+
+  '@media print{button{display:none!important}@page{margin:20mm}}'+
+  '</style></head><body>'+
+  // Cabeçalho empresa
+  '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;border-bottom:2px solid #1e3a8a;padding-bottom:12px">'+
+  '<div>'+
+  '<div style="font-size:20px;font-weight:900;color:#D42028">RE/MAX <span style="color:#1e3a8a">Space</span></div>'+
+  '<div style="font-size:10px;color:#64748b">CRECI/GO 41.377 | CNPJ 53.172.343/0001-08</div>'+
+  '<div style="font-size:10px;color:#64748b">Caldas Novas - GO | (64) 9 9123-4567</div>'+
+  '</div>'+
+  '<div style="text-align:right">'+
+  '<div style="font-size:14px;font-weight:800;color:#1e3a8a">LAUDO DE VISTORIA</div>'+
+  '<div style="font-size:20px;font-weight:900;color:'+(v.tipo==='Entrada'?'#1d4ed8':'#c2410c')+'">'+(v.tipo==='Entrada'?'ENTRADA':'SAÍDA')+'</div>'+
+  '<div style="font-size:11px;color:#64748b">Nº '+v.id+'</div>'+
+  '</div>'+
+  '</div>'+
+  // Dados do imóvel
+  '<div class="header-box">'+
+  '<div class="header-grid">'+
+  '<div><div class="lbl">Proprietário</div><div class="val">'+v.prop+'</div></div>'+
+  '<div><div class="lbl">Inquilino</div><div class="val">'+v.inq+'</div></div>'+
+  '<div style="grid-column:1/-1"><div class="lbl">Endereço do imóvel</div><div class="val">'+v.end+'</div></div>'+
+  '<div><div class="lbl">Data da vistoria</div><div class="val">'+fmtD(v.dt)+(v.hr?' às '+v.hr:'')+'</div></div>'+
+  '<div><div class="lbl">Vistoriador</div><div class="val">'+v.vis+'</div></div>'+
+  (v.ctId?'<div><div class="lbl">Contrato</div><div class="val">'+v.ctId+'</div></div>':'')+
+  '</div>'+
+  '<div class="status-bar">'+
+  '<span class="badge" style="background:#dbeafe;color:#1e3a8a">Resultado geral: '+v.res+'</span>'+
+  '<span class="badge" style="background:'+(v.ass==='Sim'?'#dcfce7':'#fce7f3')+';color:'+(v.ass==='Sim'?'#166534':'#9d174d')+'">'+(v.ass==='Sim'?'✅ Assinado pelas partes':'⏳ Assinatura pendente')+'</span>'+
+  (v.cont==='Sim'?'<span class="badge" style="background:#fef3c7;color:#92400e">⚠ Contestado</span>':'')+
+  '</div>'+
+  '</div>'+
+  // Checklist
+  '<h3 style="color:#1e3a8a;font-size:13px;margin:0 0 8px">CHECKLIST DE ESTADO DO IMÓVEL</h3>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
+  secoes+
+  '</div>'+
+  // Obs finais
+  (v.obs?'<div style="background:#fffbeb;border-radius:6px;padding:10px;margin-top:12px;font-size:12px"><b>Observações finais:</b> '+v.obs+'</div>':'')+
+  (v.contObs?'<div style="background:#fef2f2;border-radius:6px;padding:10px;margin-top:8px;font-size:12px;color:#991b1b"><b>Motivo da contestação:</b> '+v.contObs+'</div>':'')+
+  // Assinaturas
+  '<div class="assoc">'+
+  '<div><div class="ass-field">'+v.prop+' (Proprietário)</div></div>'+
+  '<div><div class="ass-field">'+v.inq+' (Inquilino)</div></div>'+
+  '<div><div class="ass-field">'+v.vis+' — RE/MAX Space</div></div>'+
+  '<div><div class="ass-field">Testemunha</div></div>'+
+  '</div>'+
+  // Fotos
+  fotosHtml+
+  '<div style="text-align:right;margin-top:24px">'+
+  '<button onclick="window.print()" style="padding:10px 24px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer">🖨 Imprimir / Salvar PDF</button>'+
+  '</div>'+
+  '<div style="margin-top:20px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:8px">'+
+  'Emitido em '+new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR')+' | RE/MAX Space — Caldas Novas GO | CRECI/GO 41.377'+
+  '</div>'+
+  '</body></html>');
+  w.document.close();
+}
+
+function compararVistoria(ctId){
+  var vsts=vsD.filter(function(v){return v.ctId===ctId;}).sort(function(a,b){return (a.dt||'').localeCompare(b.dt||'');});
+  var entrada=vsts.find(function(v){return v.tipo==='Entrada';});
+  var saida=vsts.find(function(v){return v.tipo==='Saida';});
+  if(!entrada||!saida){ alert('Precisa ter vistoria de Entrada e Saída do mesmo contrato para comparar.'); return; }
+
+  var comodos=[
+    {k:'sala',n:'Sala'},{k:'cozinha',n:'Cozinha'},
+    {k:'quarto1',n:'Quarto 1'},{k:'quarto2',n:'Quarto 2'},
+    {k:'quarto3',n:'Quarto 3'},{k:'quarto4',n:'Quarto 4'},
+    {k:'banheiro',n:'Banheiro'},{k:'banheiro2',n:'Banheiro 2'},
+    {k:'servico',n:'Área de Serviço'},{k:'quintal',n:'Quintal'},
+    {k:'garagem',n:'Garagem'},{k:'piscina',n:'Piscina'},
+    {k:'eletrica',n:'Elétrica'},{k:'hidraulica',n:'Hidráulica'}
+  ];
+
+  var ordem={Otimo:4,Bom:3,Boa:3,Regular:2,Ruim:1,'N/A':0,Nao:3};
+  var divergencias=[];
+  var tabela='';
+
+  comodos.forEach(function(c){
+    var ce=entrada.checklist&&entrada.checklist[c.k]||{};
+    var cs=saida.checklist&&saida.checklist[c.k]||{};
+    var allKeys={};
+    Object.keys(ce).forEach(function(k){if(k!=='obs')allKeys[k]=1;});
+    Object.keys(cs).forEach(function(k){if(k!=='obs')allKeys[k]=1;});
+    if(Object.keys(allKeys).length===0) return;
+
+    var rows='';
+    var temDiv=false;
+    Object.keys(allKeys).forEach(function(k){
+      var ve=ce[k]||'—'; var vs2=cs[k]||'—';
+      var piorou=(ordem[ve]||0)>(ordem[vs2]||0);
+      if(piorou){temDiv=true;divergencias.push(c.n+': '+k+' ('+ve+' → '+vs2+')');}
+      rows+='<tr style="'+(piorou?'background:#fef2f2;':'')+'">'+
+      '<td style="padding:4px 8px;font-size:11px">'+k+'</td>'+
+      '<td style="padding:4px 8px;font-size:11px;font-weight:600;color:#166534">'+ve+'</td>'+
+      '<td style="padding:4px 8px;font-size:11px;font-weight:600;color:'+(piorou?'#dc2626':'#166534')+'">'+vs2+(piorou?' ⚠':'')+'</td>'+
+      '</tr>';
+    });
+    if(ce.obs||cs.obs) rows+='<tr><td colspan="3" style="padding:4px 8px;font-size:10px;color:#92400e;font-style:italic">'+
+    (ce.obs?'Entrada: '+ce.obs+' ':'')+(cs.obs?'Saída: '+cs.obs:'')+'</td></tr>';
+
+    tabela+='<div style="margin-bottom:12px">'+
+    '<div style="background:'+(temDiv?'#fef2f2':'#f0fdf4')+';border-left:3px solid '+(temDiv?'#dc2626':'#16a34a')+';padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy)">'+
+    c.n+(temDiv?' ⚠':' ✓')+'</div>'+
+    '<table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-top:none">'+
+    '<thead><tr style="background:#f8fafc"><th style="padding:4px 8px;font-size:9px;text-align:left">Item</th>'+
+    '<th style="padding:4px 8px;font-size:9px;text-align:left">Entrada</th>'+
+    '<th style="padding:4px 8px;font-size:9px;text-align:left">Saída</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>';
+  });
+
+  oM('⚖ Comparativo de Vistoria — Contrato '+ctId,
+    '<div style="background:#1e3a8a;border-radius:10px;padding:12px 16px;margin-bottom:14px;color:#fff">'+
+    '<div style="font-size:13px;font-weight:800">'+entrada.prop+' / '+entrada.inq+'</div>'+
+    '<div style="font-size:11px;opacity:.75">'+entrada.end+'</div>'+
+    '<div style="display:flex;gap:16px;margin-top:8px;font-size:11px">'+
+    '<span>📥 Entrada: '+fmtD(entrada.dt)+'</span>'+
+    '<span>📤 Saída: '+fmtD(saida.dt)+'</span>'+
+    '</div>'+
+    '</div>'+
+    (divergencias.length?
+    '<div style="background:#fef2f2;border-radius:8px;padding:10px 14px;margin-bottom:12px">'+
+    '<div style="font-size:11px;font-weight:800;color:#991b1b;margin-bottom:6px">⚠ '+divergencias.length+' item(ns) com piora identificada:</div>'+
+    '<ul style="margin:0;padding-left:16px">'+divergencias.map(function(d){return '<li style="font-size:11px;color:#991b1b;margin-bottom:2px">'+d+'</li>';}).join('')+'</ul>'+
+    '</div>':
+    '<div style="background:#f0fdf4;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#166534;font-weight:700">✅ Nenhuma piora identificada entre entrada e saída</div>')+
+    tabela,
+    null,'Fechar',true);
 }
 
 function eVst(i){
   var v=vsD[i]; var ck=v.checklist||{};
-  var opts='<option>Otimo</option><option>Bom</option><option>Regular</option><option>Ruim</option><option>N/A</option><option>Nao</option><option>Boa</option>';
+  var opts='<option>Otimo</option><option>Bom</option><option>Boa</option><option>Regular</option><option>Ruim</option><option>N/A</option><option>Nao</option>';
+
+  // Selectbox de contratos
+  var ctOpts='<option value="">— Sem vínculo —</option>'+
+    ctD.filter(function(c){return c.status!=='Inativo';}).map(function(c){
+      return '<option value="'+c.id+'"'+(v.ctId===c.id?' selected':'')+'>'+c.id+' — '+c.inq+' / '+c.prop+'</option>';
+    }).join('');
+
   function secEdit(key,nome,fields){
-    var h='<div class="sec-title">'+nome+'</div><div class="fg3">';
+    var ckk=ck[key]||{};
+    var h='<div style="margin-bottom:12px"><div style="background:#f1f5f9;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">'+nome+'</div>'+
+    '<div class="fg3">';
     fields.forEach(function(f){
-      h+='<div class="fg"><label>'+f+'</label><select id="ck-'+key+'-'+f+'">'+opts+'</select></div>';
+      h+='<div class="fg"><label style="font-size:10px">'+f+'</label><select id="ck-'+key+'-'+f+'" style="font-size:11px">'+opts+'</select></div>';
     });
-    h+='</div><div class="fg"><label>Obs '+nome+'</label><input id="ck-'+key+'-obs" value="'+((ck[key]&&ck[key].obs)||'')+'"></div>';
+    h+='</div><div class="fg"><label style="font-size:10px">Obs '+nome+'</label><input id="ck-'+key+'-obs" value="'+(ckk.obs||'')+'" placeholder="Observação específica..."></div></div>';
     return h;
   }
-  var fotsP=(v.fotos&&v.fotos.length)?v.fotos.map(function(f){return '<img src="'+f+'" class="foto-thumb">';}).join(''):'';
-  var laudosP=(v.laudos&&v.laudos.length)?v.laudos.map(function(l,li){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;flex:1">'+l.nome+'</span><button class="btn btn-xs btn-gray" onclick="vsD['+i+'].laudos.splice('+li+',1);eVst('+i+')">Del</button></div>';}).join(''):'';
-  var ctP=(v.contratos&&v.contratos.length)?v.contratos.map(function(l,li){return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;flex:1">'+l.nome+'</span><button class="btn btn-xs btn-gray" onclick="vsD['+i+'].contratos.splice('+li+',1);eVst('+i+')">Del</button></div>';}).join(''):'';
-  oM('Editar Vistoria - '+v.id,
-    '<div class="fg3"><div class="fg"><label>Num Laudo</label><input id="ev2-n" value="'+v.id+'"></div><div class="fg"><label>Tipo</label><select id="ev2-t"><option>Entrada</option><option>Saida</option></select></div><div class="fg"><label>Resultado geral</label><select id="ev2-r"><option>Bom a excelente</option><option>Bom</option><option>Regular</option><option>Ruim</option></select></div></div>'+
-    '<div class="fg2"><div class="fg"><label>Proprietario</label><input id="ev2-p" value="'+v.prop+'"></div><div class="fg"><label>Inquilino</label><input id="ev2-i" value="'+v.inq+'"></div></div>'+
-    '<div class="fg"><label>Endereco completo</label><input id="ev2-e" value="'+v.end+'"></div>'+
-    '<div class="fg3"><div class="fg"><label>Data</label><input type="date" id="ev2-d" value="'+v.dt+'"></div><div class="fg"><label>Hora</label><input type="time" id="ev2-h" value="'+v.hr+'"></div><div class="fg"><label>Vistoriador</label><select id="ev2-v">'+corrSel(v.vis)+'</select></div></div>'+
-    secEdit('sala','Sala',['piso','paredes','teto','portas','janelas','tomadas'])+
-    secEdit('cozinha','Cozinha',['piso','paredes','pia','torneira','janela'])+
-    secEdit('quarto1','Quarto 1',['piso','paredes','teto','porta','janela'])+
-    secEdit('quarto2','Quarto 2',['piso','paredes','teto','porta','janela'])+
-    secEdit('quarto3','Quarto 3',['piso','paredes','teto','porta','janela'])+
-    secEdit('banheiro','Banheiro',['piso','azulejos','vaso','pia','chuveiro','box'])+
-    secEdit('servico','Area de Servico',['piso','tanque','eletrica'])+
-    secEdit('quintal','Quintal',['piso','paredes','portao'])+
-    secEdit('eletrica','Eletrica',['tomadas','disjuntor','fiacao'])+
-    secEdit('hidraulica','Hidraulica',['vazamentos','ralos','pressao'])+
-    '<div class="fg"><label>Observacoes finais</label><textarea id="ev2-obs">'+v.obs+'</textarea></div>'+
-    '<div class="fg2"><div class="fg"><label>Assinado pelas partes?</label><select id="ev2-a"><option>Sim</option><option>Nao</option></select></div><div class="fg"><label>Houve contestacao?</label><select id="ev2-c"><option>Nao</option><option>Sim</option></select></div></div>'+
-    // FOTOS
-    '<div class="sec-title">Fotos da Vistoria</div>'+
-    '<div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:10px">'+
-    '<input type="file" id="ev2-fotos" accept="image/*,video/*" multiple style="display:none">'+
-    '<label for="ev2-fotos" class="upload-lbl">Selecionar Fotos/Videos</label>'+
-    '<div class="foto-area" id="ev2-prev" style="margin-top:8px">'+fotsP+'</div>'+
+
+  var fotsP=(v.fotos&&v.fotos.length)?
+    '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+
+    v.fotos.map(function(f,fi){
+      return '<div style="position:relative"><img src="'+f+'" style="width:60px;height:45px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0">'+
+      '<button onclick="vsD['+i+'].fotos.splice('+fi+',1);eVst('+i+')" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>';
+    }).join('')+'</div>':'';
+
+  var laudosP=(v.laudos&&v.laudos.length)?
+    v.laudos.map(function(l,li){
+      return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;background:#f8fafc;border-radius:6px;padding:5px 8px">'+
+      '<span style="font-size:11px;flex:1">📄 '+l.nome+'</span>'+
+      '<button class="btn btn-xs" style="background:#fef2f2;color:#dc2626" onclick="vsD['+i+'].laudos.splice('+li+',1);eVst('+i+')">✕</button></div>';
+    }).join(''):'';
+
+  oM('✏ Editar Vistoria — Laudo #'+v.id,
+    // Dados básicos
+    '<div class="fg3">'+
+    '<div class="fg"><label>Nº Laudo</label><input id="ev2-n" value="'+v.id+'"></div>'+
+    '<div class="fg"><label>Tipo</label><select id="ev2-t"><option>Entrada</option><option>Saida</option></select></div>'+
+    '<div class="fg"><label>Resultado geral</label><select id="ev2-r"><option>Bom a excelente</option><option>Bom</option><option>Regular</option><option>Ruim</option></select></div>'+
     '</div>'+
-    // LAUDOS
-    '<div class="sec-title">Laudos (PDF)</div>'+
-    '<div style="background:#f9fafb;border-radius:8px;padding:12px;margin-bottom:10px">'+
-    (laudosP||'<div style="font-size:11px;color:var(--lm);margin-bottom:8px">Nenhum laudo anexado</div>')+
+    '<div class="fg"><label>Contrato vinculado</label><select id="ev2-ct" onchange="vVstAutoFill(this.value,\'ev2\')">'+ctOpts+'</select></div>'+
+    '<div class="fg2">'+
+    '<div class="fg"><label>Proprietário</label><input id="ev2-p" value="'+v.prop+'"></div>'+
+    '<div class="fg"><label>Inquilino</label><input id="ev2-i" value="'+v.inq+'"></div>'+
+    '</div>'+
+    '<div class="fg"><label>Endereço completo</label><input id="ev2-e" value="'+v.end+'"></div>'+
+    '<div class="fg3">'+
+    '<div class="fg"><label>Data</label><input type="date" id="ev2-d" value="'+v.dt+'"></div>'+
+    '<div class="fg"><label>Hora</label><input type="time" id="ev2-h" value="'+v.hr+'"></div>'+
+    '<div class="fg"><label>Vistoriador</label><select id="ev2-v">'+corrSel(v.vis)+'</select></div>'+
+    '</div>'+
+    // Checklists por cômodo
+    secEdit('sala','🛋 Sala',['piso','paredes','teto','portas','janelas','tomadas'])+
+    secEdit('cozinha','🍳 Cozinha',['piso','paredes','pia','torneira','janela','armarios'])+
+    secEdit('quarto1','🛏 Quarto 1',['piso','paredes','teto','porta','janela'])+
+    secEdit('quarto2','🛏 Quarto 2',['piso','paredes','teto','porta','janela'])+
+    secEdit('quarto3','🛏 Quarto 3',['piso','paredes','teto','porta','janela'])+
+    secEdit('quarto4','🛏 Quarto 4',['piso','paredes','teto','porta','janela'])+
+    secEdit('banheiro','🚿 Banheiro 1',['piso','azulejos','vaso','pia','chuveiro','box'])+
+    secEdit('banheiro2','🚿 Banheiro 2',['piso','azulejos','vaso','pia','chuveiro','box'])+
+    secEdit('servico','🧺 Área de Serviço',['piso','tanque','eletrica'])+
+    secEdit('quintal','🌿 Quintal / Área Externa',['piso','paredes','portao','jardim'])+
+    secEdit('garagem','🚗 Garagem',['piso','portao','paredes'])+
+    secEdit('piscina','🏊 Piscina',['revestimento','bombas','limpeza','escadas'])+
+    secEdit('eletrica','⚡ Instalação Elétrica',['tomadas','disjuntor','fiacao','quadro'])+
+    secEdit('hidraulica','💧 Instalação Hidráulica',['vazamentos','ralos','pressao','registro'])+
+    '<div class="fg"><label>Observações finais</label><textarea id="ev2-obs" rows="3" placeholder="Descreva condições gerais, pendências ou observações importantes...">'+v.obs+'</textarea></div>'+
+    '<div class="fg3">'+
+    '<div class="fg"><label>Assinado pelas partes?</label><select id="ev2-a"><option>Sim</option><option>Nao</option></select></div>'+
+    '<div class="fg"><label>Houve contestação?</label><select id="ev2-c" onchange="document.getElementById(\'ev2-motivo-wrap\').style.display=this.value===\'Sim\'?\'block\':\'none\'"><option>Nao</option><option>Sim</option></select></div>'+
+    '</div>'+
+    '<div class="fg" id="ev2-motivo-wrap" style="display:'+(v.cont==='Sim'?'block':'none')+'">'+
+    '<label>Motivo da contestação</label><textarea id="ev2-contobs" rows="2" placeholder="Descreva o que foi contestado e por quem...">'+( v.contObs||'')+'</textarea></div>'+
+    // Fotos
+    '<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">📸 Fotos da Vistoria</div>'+
+    fotsP+
+    '<input type="file" id="ev2-fotos" accept="image/*" multiple style="display:none">'+
+    '<label for="ev2-fotos" class="upload-lbl">+ Adicionar fotos</label></div>'+
+    // Laudos
+    '<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">📄 Laudos / Documentos</div>'+
+    laudosP+
     '<input type="file" id="ev2-laudos" accept=".pdf,.doc,.docx,image/*" multiple style="display:none">'+
-    '<label for="ev2-laudos" class="upload-lbl">Anexar Laudos/Documentos</label>'+
-    '</div>'+
-    // CONTRATOS
-    '<div class="sec-title">Contratos (PDF)</div>'+
-    '<div style="background:#f9fafb;border-radius:8px;padding:12px">'+
-    (ctP||'<div style="font-size:11px;color:var(--lm);margin-bottom:8px">Nenhum contrato anexado</div>')+
-    '<input type="file" id="ev2-cts" accept=".pdf,.doc,.docx,image/*" multiple style="display:none">'+
-    '<label for="ev2-cts" class="upload-lbl">Anexar Contratos</label>'+
-    '</div>',
+    '<label for="ev2-laudos" class="upload-lbl">+ Anexar laudos</label></div>',
     function(){
       vsD[i].id=document.getElementById('ev2-n').value;
       vsD[i].tipo=document.getElementById('ev2-t').value;
       vsD[i].res=document.getElementById('ev2-r').value;
+      vsD[i].ctId=document.getElementById('ev2-ct').value;
       vsD[i].prop=document.getElementById('ev2-p').value;
       vsD[i].inq=document.getElementById('ev2-i').value;
       vsD[i].end=document.getElementById('ev2-e').value;
@@ -232,22 +600,24 @@ function eVst(i){
       vsD[i].obs=document.getElementById('ev2-obs').value;
       vsD[i].ass=document.getElementById('ev2-a').value;
       vsD[i].cont=document.getElementById('ev2-c').value;
-      var comodos=['sala','cozinha','quarto1','quarto2','quarto3','banheiro','servico','quintal','eletrica','hidraulica'];
+      vsD[i].contObs=document.getElementById('ev2-contobs')?document.getElementById('ev2-contobs').value:'';
+      var comodos=['sala','cozinha','quarto1','quarto2','quarto3','quarto4','banheiro','banheiro2','servico','quintal','garagem','piscina','eletrica','hidraulica'];
+      if(!vsD[i].checklist) vsD[i].checklist={};
       comodos.forEach(function(key){
-        if(!vsD[i].checklist) vsD[i].checklist={};
         if(!vsD[i].checklist[key]) vsD[i].checklist[key]={};
         document.querySelectorAll('[id^="ck-'+key+'-"]').forEach(function(el){
           vsD[i].checklist[key][el.id.replace('ck-'+key+'-','')]=el.value;
         });
       });
-      cM(); pLV();
+      cM(); salvarTudo(); pLV();
     }, null, true);
+
   setTimeout(function(){
     document.getElementById('ev2-t').value=v.tipo;
     document.getElementById('ev2-r').value=v.res;
     document.getElementById('ev2-a').value=v.ass;
     document.getElementById('ev2-c').value=v.cont;
-    var comodos=['sala','cozinha','quarto1','quarto2','quarto3','banheiro','servico','quintal','eletrica','hidraulica'];
+    var comodos=['sala','cozinha','quarto1','quarto2','quarto3','quarto4','banheiro','banheiro2','servico','quintal','garagem','piscina','eletrica','hidraulica'];
     comodos.forEach(function(key){
       if(!v.checklist||!v.checklist[key]) return;
       for(var f in v.checklist[key]){
@@ -258,19 +628,17 @@ function eVst(i){
     // Upload fotos
     var inp=document.getElementById('ev2-fotos');
     if(inp) inp.onchange=function(){
-      var prev=document.getElementById('ev2-prev');
       if(!vsD[i].fotos) vsD[i].fotos=[];
       Array.from(inp.files).forEach(function(file){
         var rd=new FileReader();
         rd.onload=function(e){
           if(file.type.startsWith('image/')){
-            var img=document.createElement('img'); img.src=e.target.result; img.className='foto-thumb';
-            img.onclick=function(){window.open(this.src);};
-            prev.appendChild(img); vsD[i].fotos.push(e.target.result);
+            vsD[i].fotos.push(e.target.result);
           }
         };
         rd.readAsDataURL(file);
       });
+      setTimeout(function(){eVst(i);},500);
     };
     // Upload laudos
     var inpL=document.getElementById('ev2-laudos');
@@ -281,25 +649,33 @@ function eVst(i){
         rd.onload=function(e){ vsD[i].laudos.push({nome:file.name,url:e.target.result}); };
         rd.readAsDataURL(file);
       });
-      alert(inpL.files.length+' laudo(s) carregado(s). Clique em Salvar.');
-    };
-    // Upload contratos
-    var inpC=document.getElementById('ev2-cts');
-    if(inpC) inpC.onchange=function(){
-      if(!vsD[i].contratos) vsD[i].contratos=[];
-      Array.from(inpC.files).forEach(function(file){
-        var rd=new FileReader();
-        rd.onload=function(e){ vsD[i].contratos.push({nome:file.name,url:e.target.result}); };
-        rd.readAsDataURL(file);
-      });
-      alert(inpC.files.length+' contrato(s) carregado(s). Clique em Salvar.');
+      alert(inpL.files.length+' arquivo(s) carregado(s). Clique em Salvar.');
     };
   },80);
 }
+
+function vVstAutoFill(ctId,prefix){
+  if(!ctId) return;
+  var ct=ctD.find(function(c){return c.id===ctId;});
+  if(!ct) return;
+  var p=document.getElementById(prefix+'-p'); if(p) p.value=ct.prop;
+  var iq=document.getElementById(prefix+'-i'); if(iq) iq.value=ct.inq;
+  var en=document.getElementById(prefix+'-e'); if(en) en.value=ct.end||'';
+}
+
 function nVistoria(){
-  vsD.unshift({id:String(vsD.length+1).padStart(2,'0')+'/26',tipo:'Entrada',prop:'',inq:'',end:'',dt:'',hr:'',vis:'Tatiana Basile',res:'Bom',ass:'Nao',cont:'Nao',obs:'',checklist:{},fotos:[],laudos:[],contratos:[]});
+  var ano=new Date().getFullYear().toString().slice(-2);
+  var num=String(vsD.length+1).padStart(2,'0');
+  vsD.unshift({
+    id:num+'/'+ano, tipo:'Entrada', ctId:'', prop:'', inq:'', end:'',
+    dt:new Date().toISOString().split('T')[0], hr:'', vis:'Tatiana Basile',
+    res:'Bom', ass:'Nao', cont:'Nao', contObs:'', obs:'',
+    checklist:{}, fotos:[], laudos:[]
+  });
   eVst(0);
 }
+
+
 
 // ===== IMOVEIS VENDA =====
 // ===== IA MARKETING — ANTHROPIC API =====
