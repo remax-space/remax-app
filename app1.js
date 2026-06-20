@@ -275,96 +275,308 @@ function pAlertas(){
   var hoje = new Date(); hoje.setHours(0,0,0,0);
   var html = '';
 
-  // --- Boletos vencendo em 3 dias ---
+  // ── Boletos vencendo em até 3 dias ──
   var alertasBoleto = [];
   ctD.forEach(function(c){
-    if(c.status === 'Inativo') return;
-    var diaVenc = c.venc || 10;
-    var mesAtual = hoje.getMonth();
-    var anoAtual = hoje.getFullYear();
-    var dtVenc = new Date(anoAtual, mesAtual, diaVenc);
-    if(dtVenc < hoje){
-      dtVenc = new Date(anoAtual, mesAtual+1, diaVenc);
-    }
-    var diasFaltam = Math.round((dtVenc - hoje) / 86400000);
-    if(diasFaltam >= 0 && diasFaltam <= 3){
-      alertasBoleto.push({ct:c, dias:diasFaltam, dtVenc:dtVenc});
-    }
+    if(c.status==='Inativo') return;
+    var diaVenc=c.venc||10, mesAtual=hoje.getMonth(), anoAtual=hoje.getFullYear();
+    var dtVenc=new Date(anoAtual,mesAtual,diaVenc);
+    if(dtVenc<hoje) dtVenc=new Date(anoAtual,mesAtual+1,diaVenc);
+    var diasFaltam=Math.round((dtVenc-hoje)/86400000);
+    if(diasFaltam>=0&&diasFaltam<=3) alertasBoleto.push({ct:c,dias:diasFaltam,dtVenc:dtVenc});
   });
 
-  // --- Contratos vencendo em 30 dias ---
-  var alertasContrato = [];
+  // ── Contratos vencendo — 90/60/30 dias ──
+  var ct90=[], ct60=[], ct30=[];
   ctD.forEach(function(c){
-    if(c.status === 'Inativo' || !c.fim) return;
-    var dtFim = new Date(c.fim);
-    var dias = Math.round((dtFim - hoje) / 86400000);
-    if(dias >= 0 && dias <= 30) alertasContrato.push({ct:c, dias:dias});
+    if(c.status==='Inativo'||!c.fim) return;
+    var dtFim=new Date(c.fim); dtFim.setHours(0,0,0,0);
+    var dias=Math.round((dtFim-hoje)/86400000);
+    if(dias<0) return; // já vencido
+    if(dias<=30) ct30.push({ct:c,dias:dias,dtFim:dtFim});
+    else if(dias<=60) ct60.push({ct:c,dias:dias,dtFim:dtFim});
+    else if(dias<=90) ct90.push({ct:c,dias:dias,dtFim:dtFim});
   });
 
-  // --- Vistorias pendentes ---
-  var vistPend = ctD.filter(function(c){ return c.status !== 'Inativo' && (!c.vistoria || c.vistoria === 'A conferir'); }).length;
+  // ── Já vencidos (contratos expirados ainda ativos) ──
+  var ctVencidos=[];
+  ctD.forEach(function(c){
+    if(c.status==='Inativo'||!c.fim) return;
+    var dtFim=new Date(c.fim); dtFim.setHours(0,0,0,0);
+    var dias=Math.round((hoje-dtFim)/86400000);
+    if(dias>0) ctVencidos.push({ct:c,dias:dias,dtFim:dtFim});
+  });
 
-  // HEADER CARDS
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px">';
-  html += _alertCard('🔴', alertasBoleto.length, 'Boletos vencendo', alertasBoleto.length > 0 ? '#fee2e2' : '#f0fdf4', alertasBoleto.length > 0 ? '#dc2626' : '#16a34a');
-  html += _alertCard('📄', alertasContrato.length, 'Contratos vencendo', alertasContrato.length > 0 ? '#fef3c7' : '#f0fdf4', alertasContrato.length > 0 ? '#d97706' : '#16a34a');
-  html += _alertCard('🔍', vistPend, 'Vistorias pendentes', vistPend > 0 ? '#ede9fe' : '#f0fdf4', vistPend > 0 ? '#7c3aed' : '#16a34a');
-  html += '</div>';
+  // ── Inadimplência do mês ──
+  var mesIdx=hoje.getMonth();
+  var inadList=ctD.filter(function(c){
+    if(c.status==='Inativo') return false;
+    var st=c.rs&&c.rs[mesIdx]||'N';
+    var diaVenc=parseInt(c.venc)||10;
+    var dtVenc=new Date(hoje.getFullYear(),mesIdx,diaVenc);
+    return (st!=='R'&&st!=='X')&&dtVenc<=hoje;
+  });
 
-  // BOLETOS VENCENDO
+  // ── Vistorias pendentes ──
+  var vistPend=ctD.filter(function(c){return c.status!=='Inativo'&&(!c.vistoria||c.vistoria==='A conferir');}).length;
+
+  var total90=ct90.length, total60=ct60.length, total30=ct30.length;
+  var totalVenc=ctVencidos.length, totalInad=inadList.length;
+  var totalAlertas=total30+total60+total90+totalVenc+totalInad;
+
+  // ── KPIs ──
+  html+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">';
+  html+=_alertKpi('🚨','Expirados',totalVenc,'#991b1b','#fef2f2');
+  html+=_alertKpi('🔴','Vencem em 30d',total30,'#dc2626','#fff1f2');
+  html+=_alertKpi('🟠','Vencem em 60d',total60,'#c2410c','#fff7ed');
+  html+=_alertKpi('🟡','Vencem em 90d',total90,'#b45309','#fffbeb');
+  html+=_alertKpi('⚠','Inadimplência',totalInad,'#92400e','#fef3c7');
+  html+='</div>';
+
+  if(totalAlertas===0){
+    html+='<div style="background:#f0fdf4;border-radius:14px;padding:32px;text-align:center">'+
+    '<div style="font-size:36px;margin-bottom:10px">✅</div>'+
+    '<div style="font-size:16px;font-weight:700;color:#166534">Tudo em dia!</div>'+
+    '<div style="font-size:12px;color:#16a34a;margin-top:6px">Nenhum alerta de vencimento ou inadimplência no momento.</div>'+
+    '</div>';
+    document.getElementById('pc').innerHTML=html;
+    return;
+  }
+
+  // ── Contratos expirados ──
+  if(ctVencidos.length){
+    html+=_alertSection('🚨 Contratos EXPIRADOS — regularizar urgente','#991b1b','#fef2f2','#fca5a5');
+    ctVencidos.sort(function(a,b){return b.dias-a.dias;}).forEach(function(a){
+      var c=a.ct;
+      var inqData=inqCad.find(function(q){return q.ct===c.id||q.nome===c.inq;})||{};
+      var tel=(inqData.tel||'').replace(/\D/g,'');
+      var waTxt=encodeURIComponent('Prezado(a) '+c.inq+', seu contrato de locação ('+c.id+') referente ao imóvel '+c.end+' venceu em '+a.dtFim.toLocaleDateString('pt-BR')+' (há '+a.dias+' dias). Por favor entre em contato para regularização. RE/MAX Space — (64) 9 9123-4567');
+      var waLink=tel?'https://wa.me/55'+tel+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+      html+=_alertRow(
+        '<strong style="color:#991b1b">'+c.id+'</strong> — '+c.inq,
+        c.end+' | Prop: '+c.prop,
+        '<span style="color:#dc2626;font-weight:800">Expirado há '+a.dias+' dias</span> ('+a.dtFim.toLocaleDateString('pt-BR')+')',
+        waLink,inqData.tel,
+        '<button class="btn btn-xs" style="background:#fef2f2;color:#991b1b;font-weight:700" onclick="propRenovacao(\''+c.id+'\')">📋 Proposta Renovação</button>'
+      );
+    });
+    html+='</div></div>';
+  }
+
+  // ── 30 dias ──
+  if(ct30.length){
+    html+=_alertSection('🔴 Vencendo em até 30 dias — ação imediata','#dc2626','#fff1f2','#fca5a5');
+    ct30.sort(function(a,b){return a.dias-b.dias;}).forEach(function(a){
+      var c=a.ct;
+      var inqData=inqCad.find(function(q){return q.ct===c.id||q.nome===c.inq;})||{};
+      var tel=(inqData.tel||'').replace(/\D/g,'');
+      var waTxt=encodeURIComponent('Prezado(a) '+c.inq+', seu contrato de locação ('+c.id+') referente ao imóvel '+c.end+' vence em '+a.dias+' dias ('+a.dtFim.toLocaleDateString('pt-BR')+'). Gostaria de tratar sobre a renovação. RE/MAX Space — (64) 9 9123-4567');
+      var waLink=tel?'https://wa.me/55'+tel+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+      html+=_alertRow(
+        '<strong>'+c.id+'</strong> — '+c.inq,
+        c.end+' | Prop: '+c.prop+' | R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2}),
+        'Vence em <strong style="color:#dc2626">'+a.dias+' dias</strong> — '+a.dtFim.toLocaleDateString('pt-BR'),
+        waLink,inqData.tel,
+        '<button class="btn btn-xs" style="background:#fff1f2;color:#dc2626;font-weight:700" onclick="propRenovacao(\''+c.id+'\')">📋 Proposta</button>'
+      );
+    });
+    html+='</div></div>';
+  }
+
+  // ── 60 dias ──
+  if(ct60.length){
+    html+=_alertSection('🟠 Vencendo entre 31–60 dias — iniciar contato','#c2410c','#fff7ed','#fed7aa');
+    ct60.sort(function(a,b){return a.dias-b.dias;}).forEach(function(a){
+      var c=a.ct;
+      var inqData=inqCad.find(function(q){return q.ct===c.id||q.nome===c.inq;})||{};
+      var tel=(inqData.tel||'').replace(/\D/g,'');
+      var waTxt=encodeURIComponent('Prezado(a) '+c.inq+', passando para avisar que seu contrato ('+c.id+') referente ao imóvel '+c.end+' vence em '+a.dias+' dias. Podemos conversar sobre a renovação? RE/MAX Space — (64) 9 9123-4567');
+      var waLink=tel?'https://wa.me/55'+tel+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+      html+=_alertRow(
+        '<strong>'+c.id+'</strong> — '+c.inq,
+        c.end+' | Prop: '+c.prop,
+        'Vence em <strong style="color:#c2410c">'+a.dias+' dias</strong> — '+a.dtFim.toLocaleDateString('pt-BR'),
+        waLink,inqData.tel,
+        '<button class="btn btn-xs" style="background:#fff7ed;color:#c2410c" onclick="propRenovacao(\''+c.id+'\')">📋 Proposta</button>'
+      );
+    });
+    html+='</div></div>';
+  }
+
+  // ── 90 dias ──
+  if(ct90.length){
+    html+=_alertSection('🟡 Vencendo entre 61–90 dias — planejamento','#b45309','#fffbeb','#fde68a');
+    ct90.sort(function(a,b){return a.dias-b.dias;}).forEach(function(a){
+      var c=a.ct;
+      var inqData=inqCad.find(function(q){return q.ct===c.id||q.nome===c.inq;})||{};
+      var tel=(inqData.tel||'').replace(/\D/g,'');
+      var waTxt=encodeURIComponent('Olá '+c.inq+'! Seu contrato ('+c.id+') vence em '+a.dias+' dias. Já pensando na renovação? Entre em contato! RE/MAX Space — (64) 9 9123-4567');
+      var waLink=tel?'https://wa.me/55'+tel+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+      html+=_alertRow(
+        '<strong>'+c.id+'</strong> — '+c.inq,
+        c.end+' | Prop: '+c.prop,
+        'Vence em <strong style="color:#b45309">'+a.dias+' dias</strong> — '+a.dtFim.toLocaleDateString('pt-BR'),
+        waLink,inqData.tel,
+        ''
+      );
+    });
+    html+='</div></div>';
+  }
+
+  // ── Inadimplência do mês ──
+  if(inadList.length){
+    html+=_alertSection('⚠ Inadimplentes — '+['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][mesIdx],'#92400e','#fef3c7','#fcd34d');
+    inadList.forEach(function(c){
+      var inqData=inqCad.find(function(q){return q.ct===c.id||q.nome===c.inq;})||{};
+      var tel=(inqData.tel||'').replace(/\D/g,'');
+      var multa=c.valor*0.10, juros=c.valor*0.01;
+      var waTxt=encodeURIComponent('Prezado(a) '+c.inq+', identificamos que o aluguel do imóvel '+c.end+' referente ao mês atual está em aberto. Valor: R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+' + encargos. Por favor regularize. RE/MAX Space — (64) 9 9123-4567 | PIX: +5511969197881');
+      var waLink=tel?'https://wa.me/55'+tel+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+      html+=_alertRow(
+        '<strong>'+c.id+'</strong> — '+c.inq,
+        c.end+' | Prop: '+c.prop,
+        'Aluguel em aberto: <strong style="color:#92400e">R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</strong>',
+        waLink,inqData.tel,
+        '<button class="btn btn-xs" style="background:#fef3c7;color:#92400e" onclick="gerarNotifInadCt(\''+c.id+'\')">📄 Notificar</button>'
+      );
+    });
+    html+='</div></div>';
+  }
+
+  // ── Boletos vencendo em 3 dias ──
   if(alertasBoleto.length){
-    html += '<div style="background:#fff;border-radius:12px;border:1px solid #fecaca;margin-bottom:16px;overflow:hidden">';
-    html += '<div style="background:#fee2e2;padding:12px 16px;font-weight:700;color:#dc2626;font-size:14px">🔴 Boletos vencendo em até 3 dias</div>';
+    html+=_alertSection('💰 Boletos vencendo em até 3 dias','#1d4ed8','#eff6ff','#bfdbfe');
     alertasBoleto.forEach(function(a){
-      var c = a.ct;
-      var dtStr = a.dtVenc.toLocaleDateString('pt-BR');
-      var diasTxt = a.dias === 0 ? '<strong>HOJE</strong>' : a.dias === 1 ? 'amanhã' : 'em '+a.dias+' dias';
-      var waTxt = encodeURIComponent('Olá '+c.inq+'! Seu aluguel referente ao imóvel '+c.end+' vence '+diasTxt.replace(/<[^>]+>/g,'')+' ('+dtStr+'). Valor: R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'. Qualquer dúvida estamos à disposição. RE/MAX Space');
-      html += '<div style="padding:12px 16px;border-top:1px solid #fecaca;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
-      html += '<div><div style="font-weight:600;color:#1e293b">'+c.inq+' — '+c.end+'</div>';
-      html += '<div style="font-size:12px;color:#64748b">Vence '+diasTxt+' ('+dtStr+') · R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div></div>';
-      html += '<a href="https://wa.me/55"+c.telInq+"?text='+waTxt+'" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;text-decoration:none;white-space:nowrap">💬 WhatsApp</a>';
-      html += '</div>';
+      var c=a.ct;
+      var inqData=inqCad.find(function(q){return q.ct===c.id||q.nome===c.inq;})||{};
+      var tel=(inqData.tel||'').replace(/\D/g,'');
+      var diasTxt=a.dias===0?'HOJE':a.dias===1?'amanhã':'em '+a.dias+' dias';
+      var waTxt=encodeURIComponent('Olá '+c.inq+'! Lembrando que seu aluguel referente ao imóvel '+c.end+' vence '+diasTxt+' ('+a.dtVenc.toLocaleDateString('pt-BR')+') — R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'. PIX: +5511969197881 (Itaú). RE/MAX Space');
+      var waLink=tel?'https://wa.me/55'+tel+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+      html+=_alertRow(
+        c.inq+' — '+c.end,
+        c.id+' | Prop: '+c.prop,
+        'Vence <strong style="color:#1d4ed8">'+diasTxt+'</strong> ('+a.dtVenc.toLocaleDateString('pt-BR')+') — R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2}),
+        waLink,inqData.tel,''
+      );
     });
-    html += '</div>';
+    html+='</div></div>';
   }
 
-  // CONTRATOS VENCENDO
-  if(alertasContrato.length){
-    html += '<div style="background:#fff;border-radius:12px;border:1px solid #fde68a;margin-bottom:16px;overflow:hidden">';
-    html += '<div style="background:#fef3c7;padding:12px 16px;font-weight:700;color:#d97706;font-size:14px">⚠️ Contratos vencendo em até 30 dias</div>';
-    alertasContrato.forEach(function(a){
-      var c = a.ct;
-      html += '<div style="padding:12px 16px;border-top:1px solid #fde68a;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
-      html += '<div><div style="font-weight:600;color:#1e293b">'+c.id+' — '+c.inq+'</div>';
-      html += '<div style="font-size:12px;color:#64748b">Vence em '+a.dias+' dias ('+new Date(c.fim).toLocaleDateString('pt-BR')+') · '+c.end+'</div></div>';
-      html += '<button class="btn btn-sm" style="background:#fef3c7;color:#d97706;border:1px solid #fde68a" onclick="gP(&quot;loc-c&quot;)">📋 Ver Contrato</button>';
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-
-  // SENHA — link WhatsApp para solicitar reset
-  html += '<div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;margin-bottom:16px;overflow:hidden">';
-  html += '<div style="background:#f8fafc;padding:12px 16px;font-weight:700;color:#1e293b;font-size:14px">🔐 Redefinir Senha de Corretor</div>';
-  html += '<div style="padding:16px">';
-  html += '<p style="color:#475569;font-size:13px;margin:0 0 12px">Selecione o corretor e envie o link de redefinição via WhatsApp para a administração:</p>';
-  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-  Object.keys(USR).forEach(function(k){
-    if(k === U.id || USR[k].role_key === 'master') return;
-    var wa = encodeURIComponent('Olá! Sou '+USR[k].nome+' e preciso redefinir minha senha no sistema RE/MAX Space. Pode me ajudar?');
-    html += '<a href="https://wa.me/?text='+wa+'" target="_blank" class="btn btn-sm" style="background:#f1f5f9;color:#1e293b;text-decoration:none">💬 '+USR[k].nome+'</a>';
-  });
-  html += '</div>';
-  html += '<div style="margin-top:12px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:#16a34a">💡 Dica: Para redefinir senha, vá em <strong>Admin → Senhas</strong> e altere diretamente.</div>';
-  html += '</div></div>';
-
-  if(!alertasBoleto.length && !alertasContrato.length && !vistPend){
-    html += '<div style="text-align:center;padding:40px;color:#16a34a"><div style="font-size:48px">✅</div><div style="margin-top:12px;font-weight:600">Tudo em dia! Nenhum alerta no momento.</div></div>';
-  }
-
-  document.getElementById('pc').innerHTML = html;
+  document.getElementById('pc').innerHTML=html;
 }
+
+function _alertKpi(icon,label,num,cor,bg){
+  return '<div style="background:'+bg+';border-radius:12px;padding:14px;text-align:center;border:1px solid rgba(0,0,0,.05)">'+
+  '<div style="font-size:20px;margin-bottom:4px">'+icon+'</div>'+
+  '<div style="font-size:22px;font-weight:900;color:'+cor+'">'+num+'</div>'+
+  '<div style="font-size:10px;color:'+cor+';text-transform:uppercase;letter-spacing:.4px;margin-top:2px">'+label+'</div>'+
+  '</div>';
+}
+
+function _alertSection(titulo,cor,bg,borda){
+  return '<div style="background:#fff;border-radius:14px;border:1px solid '+borda+';margin-bottom:16px;overflow:hidden">'+
+  '<div style="background:'+bg+';padding:12px 16px;font-weight:700;color:'+cor+';font-size:13px;border-bottom:1px solid '+borda+'">'+titulo+'</div>'+
+  '<div>';
+}
+
+function _alertRow(titulo,subtitulo,info,waLink,tel,extraBtn){
+  return '<div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
+  '<div style="flex:1;min-width:200px">'+
+  '<div style="font-size:13px;font-weight:600;color:#1e293b">'+titulo+'</div>'+
+  '<div style="font-size:11px;color:#64748b;margin-top:2px">'+subtitulo+'</div>'+
+  '<div style="font-size:11px;margin-top:3px">'+info+'</div>'+
+  '</div>'+
+  '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">'+
+  extraBtn+
+  '<a href="'+waLink+'" target="_blank" '+
+  'style="display:inline-flex;align-items:center;gap:4px;background:#25d366;color:#fff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:7px;text-decoration:none">'+
+  '💬 WhatsApp'+(tel?' ('+tel+')':'')+
+  '</a>'+
+  '</div>'+
+  '</div>';
+}
+
+function propRenovacao(ctId){
+  var ct=ctD.find(function(c){return c.id===ctId;});
+  if(!ct) return;
+  var inqData=inqCad.find(function(q){return q.ct===ct.id||q.nome===ct.inq;})||{};
+  var tel=(inqData.tel||'').replace(/\D/g,'');
+  var dtFim=new Date(ct.fim);
+  var hoje=new Date();
+  var dias=Math.round((dtFim-hoje)/86400000);
+
+  var texto=
+    'PROPOSTA DE RENOVAÇÃO DE CONTRATO\n\n'+
+    'Caldas Novas, '+hoje.toLocaleDateString('pt-BR')+'\n\n'+
+    'Prezado(a) '+ct.inq+',\n\n'+
+    'Viemos por meio desta comunicar que o contrato de locação abaixo identificado está próximo do seu vencimento '+
+    (dias>0?'('+dias+' dias)':'(já expirado)')+' e gostaríamos de propor sua renovação.\n\n'+
+    'Dados do contrato:\n'+
+    '• Contrato: '+ct.id+'\n'+
+    '• Imóvel: '+ct.end+'\n'+
+    '• Proprietário: '+ct.prop+'\n'+
+    '• Valor atual: R$ '+ct.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'/mês\n'+
+    '• Vencimento: '+dtFim.toLocaleDateString('pt-BR')+'\n\n'+
+    'Proposta de renovação:\n'+
+    '• Novo prazo: 12 meses\n'+
+    '• Novo início: '+dtFim.toLocaleDateString('pt-BR')+'\n'+
+    '• Novo valor: R$ '+ct.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'/mês (reajuste IGPM a definir)\n\n'+
+    'Caso tenha interesse em renovar ou queira negociar os termos, entre em contato:\n'+
+    'RE/MAX Space — (64) 9 9123-4567\n'+
+    'E-mail: tatiana@remax.com\n\n'+
+    'Atenciosamente,\nTatiana Basile\nDiretora — RE/MAX Space\nCRECI/GO 41.377';
+
+  var waLink=tel?'https://wa.me/55'+tel+'?text='+encodeURIComponent(texto):'https://wa.me/?text='+encodeURIComponent(texto);
+
+  oM('📋 Proposta de Renovação — '+ctId,
+    '<div style="background:#f0fdf4;border-radius:10px;padding:12px 14px;margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">'+
+    '<div><span style="color:#64748b">Inquilino:</span> <strong>'+ct.inq+'</strong></div>'+
+    '<div><span style="color:#64748b">Contrato:</span> <strong>'+ct.id+'</strong></div>'+
+    '<div><span style="color:#64748b">Vencimento:</span> <strong style="color:'+(dias<=30?'#dc2626':'#d97706')+'">'+dtFim.toLocaleDateString('pt-BR')+(dias>0?' ('+dias+' dias)':' (EXPIRADO)')+'</strong></div>'+
+    '<div><span style="color:#64748b">Valor:</span> <strong>R$ '+ct.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'/mês</strong></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
+    '<a href="'+waLink+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;text-decoration:none">'+
+    '💬 Enviar pelo WhatsApp'+(inqData.tel?' — '+inqData.tel:'')+
+    '</a>'+
+    '<button class="btn" style="background:#1d4ed8;color:#fff;font-weight:600" onclick="copiarProposta()">📋 Copiar</button>'+
+    '<button class="btn" style="background:#374151;color:#fff;font-weight:600" onclick="imprimirProposta()">🖨 Imprimir</button>'+
+    '</div>'+
+    '<textarea id="prop-txt" style="width:100%;height:260px;font-family:monospace;font-size:11px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical">'+texto+'</textarea>',
+    null,'Fechar',true);
+
+  setTimeout(function(){
+    var ta=document.getElementById('prop-txt');
+    var waBtn=document.querySelector('[href="'+waLink+'"]');
+    if(ta&&waBtn){
+      ta.oninput=function(){
+        var newLink=(tel?'https://wa.me/55'+tel+'?text=':'https://wa.me/?text=')+encodeURIComponent(ta.value);
+        waBtn.href=newLink;
+      };
+    }
+  },100);
+}
+
+function copiarProposta(){
+  var txt=document.getElementById('prop-txt');
+  if(txt) navigator.clipboard.writeText(txt.value).then(function(){alert('Proposta copiada!');});
+}
+
+function imprimirProposta(){
+  var txt=document.getElementById('prop-txt');
+  if(!txt) return;
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Proposta de Renovação</title>'+
+  '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:40px;max-width:600px;margin:0 auto;color:#1e293b;line-height:1.7}'+
+  'pre{white-space:pre-wrap;font-family:Arial,sans-serif;font-size:12px}'+
+  '@media print{button{display:none}}</style></head><body>'+
+  '<pre>'+txt.value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</pre>'+
+  '<div style="margin-top:30px;text-align:right"><button onclick="window.print()" style="padding:10px 24px;background:#166534;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨 Imprimir</button></div>'+
+  '</body></html>');
+  w.document.close();
+}
+
 window.pAlertas = pAlertas;
 
 function _alertCard(icon, num, label, bg, cor){
@@ -923,7 +1135,7 @@ var NAV = [
   {s:'Locação'},{id:'loc-c',l:'Contratos Ativos'},{id:'repasses',l:'💰 Repasses',a:true},{id:'loc-l',l:'Leads Locação'},{id:'loc-v',l:'Vistorias'},{id:'boletos',l:'📨 Boletos',a:true},{id:'extrato',l:'📄 Extrato Prop.',a:true},{id:'os',l:'🔧 Ordens Serviço'},
   {s:'Portfólio'},{id:'captacao',l:'🔑 Captação Locação'},{id:'vitrine',l:'🏠 Vitrine Imóveis'},{id:'iv',l:'Imóveis Venda'},{id:'prop',l:'Proprietários'},
   {s:'Marketing'},{id:'mkt',l:'🎨 Marketing'},{s:'Admin'},{id:'usuarios',l:'👥 Usuários',a:true},{id:'senhas',l:'🔐 Senhas',a:true},{id:'permissoes',l:'🛡️ Permissões',a:true},
-  {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},{id:'inad',l:'🔴 Inadimplência',a:true},
+  {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},
   {s:'Clientes',a:true},{id:'cad-prop',l:'👥 Proprietários',a:true},{id:'cad-inq',l:'👥 Inquilinos',a:true},{id:'cad-cor',l:'Corretores',a:true},
   {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'extrato-cor',l:'💰 Extrato Corretor',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
   {s:'Sistema',a:true},{id:'auditoria',l:'📋 Log de Auditoria',a:true},{id:'alertas',l:'🔔 Alertas & Avisos',a:true},
@@ -972,7 +1184,7 @@ var TITLES = {
   acm:'ACM',docs:'Documentação',contratos:'Contratos',acoes:'Ações no Imóvel',mcmv:'MCMV',
   'auditoria':'Log de Auditoria','alertas':'Alertas e Avisos','loc-c':'Contratos de Locacao','repasses':'Repasses — Visão Unificada','loc-l':'Leads de Locacao','extrato':'Extrato do Proprietário','os':'Ordens de Serviço','loc-v':'Vistorias','boletos':'Envio de Boletos',
   iv:'Imoveis para Venda',prop:'Proprietários',vitrine:'🏠 Vitrine de Imóveis',mkt:'🎨 Marketing',
-  fd:'Dashboard Financeiro',fr:'Contas a Receber',fp:'Contas a Pagar',frp:'Repasses a Proprietarios',inad:'Inadimplência',
+  fd:'Dashboard Financeiro',fr:'Contas a Receber',fp:'Contas a Pagar',frp:'Repasses a Proprietarios',
   'cad-cor':'Cadastro de Corretores','cad-prop':'Cadastro de Proprietários','cad-inq':'Cadastro de Inquilinos',
   rank:'Ranking',
   relat:'Relatórios Gerenciais',
@@ -3446,7 +3658,7 @@ function gP(id){
     acm:pAcm, docs:pDocs, contratos:pContratos, acoes:pAcoes, mcmv:pMCMV,
     'loc-c':pLC, 'loc-r':pLR, 'repasses':pRepasses, 'loc-l':pLL, 'loc-v':pLV, 'boletos':pBoletos, 'extrato':pExtrato, 'os':pOS,
     iv:pIV, prop:pProp, vitrine:pVitrine, usuarios:pUsuarios, senhas:pGerenciarSenhas, permissoes:pPermissoes, captacao:function(){if(typeof pCaptacao!=='undefined')pCaptacao();else{document.getElementById('pc').innerHTML='<div style="padding:40px;text-align:center;color:#9ca3af">Carregando...</div>';setTimeout(function(){pCaptacao();},500);}}, mkt:pMkt,
-    fd:pFD, dre:pDRE, fr:pFR, fp:pFP, inad:pInadimplencia,
+    fd:pFD, dre:pDRE, fr:pFR, fp:pFP,
     'cad-cor':pCadCor, 'extrato-cor':pExtratoCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq,
     rank:pRank, metas:pMetas, historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
     relat:pRelat, modelos:pModelos, 'modelos-cor':pModeloRepresentacao,
