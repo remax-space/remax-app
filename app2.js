@@ -2608,12 +2608,17 @@ function gerarNotifInadCt(ctId){
   var juros=ct.valor*0.01*(diasAtraso/30);
   var total=ct.valor+multa+juros;
 
+  // Buscar telefone do inquilino cadastrado
+  var inqData = inqCad.find(function(q){ return q.ct===ct.id||q.nome===ct.inq; })||{};
+  var telInq = (inqData.tel||'').replace(/\D/g,'');
+  var mesNomeNotif=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][hoje.getMonth()];
+
   var texto=
     'NOTIFICAÇÃO DE INADIMPLÊNCIA\n\n'+
     'Caldas Novas, '+hoje.toLocaleDateString('pt-BR')+'\n\n'+
     'Prezado(a) '+ct.inq+',\n\n'+
     'Comunicamos que até a presente data não identificamos o pagamento referente ao aluguel do mês de '+
-    ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][hoje.getMonth()]+
+    mesNomeNotif+
     ', com vencimento em '+ct.venc+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear()+'.\n\n'+
     'Dados do débito:\n'+
     '• Imóvel: '+ct.end+'\n'+
@@ -2628,21 +2633,52 @@ function gerarNotifInadCt(ctId){
     'PIX: +5511969197881 (Itaú)\n\n'+
     'Atenciosamente,\nTatiana Basile\nDiretora — RE/MAX Space\nCRECI/GO 41.377';
 
+  // Montar link WhatsApp
+  var waNum = telInq.length>=10 ? '55'+telInq : '';
+  var waTxt = encodeURIComponent(texto);
+  var waLink = waNum ? 'https://wa.me/'+waNum+'?text='+waTxt : 'https://wa.me/?text='+waTxt;
+
   oM('📄 Notificação — '+ct.inq,
     '<div style="background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:12px">'+
-    '<div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:6px">Dados resumidos</div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">'+
+    '<div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:8px">Dados resumidos</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:8px">'+
     '<div><span style="color:#64748b">Inquilino:</span> <strong>'+ct.inq+'</strong></div>'+
     '<div><span style="color:#64748b">Contrato:</span> <strong>'+ct.id+'</strong></div>'+
     '<div><span style="color:#64748b">Atraso:</span> <strong style="color:#dc2626">'+diasAtraso+' dias</strong></div>'+
     '<div><span style="color:#64748b">Total devido:</span> <strong style="color:#dc2626">'+fmt(total)+'</strong></div>'+
-    '</div></div>'+
-    '<textarea id="notif-txt" style="width:100%;height:300px;font-family:monospace;font-size:11px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical">'+texto+'</textarea>'+
-    '<div style="display:flex;gap:8px;margin-top:10px">'+
-    '<button class="btn btn-green" onclick="copiarNotif()">📋 Copiar texto</button>'+
-    '<button class="btn btn-blue" onclick="imprimirNotif()">🖨 Imprimir</button>'+
-    '</div>',
+    '</div>'+
+    (inqData.tel?
+    '<div style="background:#f0fdf4;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px">'+
+    '<span style="font-size:13px">📱</span>'+
+    '<span style="font-size:12px;color:#166534;font-weight:600">'+inqData.tel+'</span>'+
+    '<span style="font-size:10px;color:#16a34a;margin-left:4px">— número cadastrado</span>'+
+    '</div>':
+    '<div style="background:#fff7ed;border-radius:8px;padding:8px 12px;font-size:11px;color:#92400e">'+
+    '⚠ Telefone não cadastrado para este inquilino. Cadastre em Clientes → Inquilinos.'+
+    '</div>')+
+    '</div>'+
+    '<textarea id="notif-txt" style="width:100%;height:280px;font-family:monospace;font-size:11px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical;margin-top:10px">'+texto+'</textarea>'+
+    '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+    '<a id="wa-btn" href="'+waLink+'" target="_blank" '+
+    'style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;text-decoration:none;cursor:pointer">'+
+    '💬 Enviar pelo WhatsApp'+(inqData.tel?' ('+inqData.tel+')':' (digitar número)')+'</a>'+
+    '<button class="btn" style="background:#1d4ed8;color:#fff;font-weight:600" onclick="copiarNotif()">📋 Copiar texto</button>'+
+    '<button class="btn" style="background:#374151;color:#fff;font-weight:600" onclick="imprimirNotif()">🖨 Imprimir</button>'+
+    '</div>'+
+    '<div style="font-size:10px;color:#94a3b8;margin-top:8px">* O WhatsApp abrirá com o texto já preenchido. Você pode editar antes de enviar.</div>',
     null,'Fechar',true);
+
+  // Atualizar link WhatsApp se texto for editado
+  setTimeout(function(){
+    var ta=document.getElementById('notif-txt');
+    var waBtn=document.getElementById('wa-btn');
+    if(ta&&waBtn){
+      ta.oninput=function(){
+        var txt=encodeURIComponent(ta.value);
+        waBtn.href=(waNum?'https://wa.me/'+waNum+'?text=':'https://wa.me/?text=')+txt;
+      };
+    }
+  },100);
 }
 
 function gerarNotifInad(){
