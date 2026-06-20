@@ -2772,6 +2772,394 @@ function imprimirInad(){
 }
 
 
+// ===== SCORE DE RISCO DO INQUILINO =====
+function pScoreRisco(){
+  document.getElementById('pa').innerHTML=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+    '<button class="btn btn-red" onclick="novaAnaliseScore()" style="font-weight:700">🔍 Nova Análise</button>'+
+    '</div>';
+
+  // Histórico de análises salvas
+  var historico = window._scoreHistorico || [];
+
+  var cards = historico.length ? historico.slice().reverse().map(function(h,i){
+    var ri = historico.length-1-i;
+    var scoreCor = h.score>=70?'#166534':h.score>=50?'#92400e':h.score>=30?'#c2410c':'#991b1b';
+    var scoreBg  = h.score>=70?'#f0fdf4':h.score>=50?'#fffbeb':h.score>=30?'#fff7ed':'#fef2f2';
+    var parecer  = h.score>=70?'APROVADO':h.score>=50?'APROVADO COM RESSALVAS':h.score>=30?'ANÁLISE APROFUNDADA':'REPROVADO';
+    return '<div style="background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.06);overflow:hidden">'+
+    '<div style="background:'+scoreBg+';padding:14px 16px;display:flex;justify-content:space-between;align-items:center">'+
+    '<div>'+
+    '<div style="font-size:15px;font-weight:800;color:'+scoreCor+'">'+h.nome+'</div>'+
+    '<div style="font-size:11px;color:#64748b;margin-top:2px">CPF: '+h.cpf+' | Renda: R$ '+parseFloat(h.renda).toLocaleString('pt-BR',{minimumFractionDigits:2})+'</div>'+
+    '<div style="font-size:10px;color:#94a3b8;margin-top:1px">Analisado em '+h.data+'</div>'+
+    '</div>'+
+    '<div style="text-align:center">'+
+    '<div style="font-size:32px;font-weight:900;color:'+scoreCor+'">'+h.score+'</div>'+
+    '<div style="font-size:9px;font-weight:700;color:'+scoreCor+';text-transform:uppercase;letter-spacing:.4px">'+parecer+'</div>'+
+    '</div>'+
+    '</div>'+
+    '<div style="padding:12px 16px">'+
+    '<div style="font-size:11px;color:#475569;line-height:1.6;max-height:80px;overflow:hidden">'+h.resumo+'</div>'+
+    '<div style="display:flex;gap:6px;margin-top:10px">'+
+    '<button class="btn btn-sm" style="background:#eff6ff;color:#1d4ed8" onclick="verScoreCompleto('+ri+')">📄 Ver parecer completo</button>'+
+    '<button class="btn btn-sm" style="background:#f0fdf4;color:#166534" onclick="imprimirScore('+ri+')">🖨 Imprimir</button>'+
+    '</div>'+
+    '</div>'+
+    '</div>';
+  }).join('') :
+  '<div style="background:#f8fafc;border-radius:14px;padding:40px;text-align:center;grid-column:1/-1">'+
+  '<div style="font-size:36px;margin-bottom:10px">🔍</div>'+
+  '<div style="font-size:14px;font-weight:700;color:#1e293b">Nenhuma análise realizada ainda</div>'+
+  '<div style="font-size:12px;color:#64748b;margin-top:6px">Clique em "Nova Análise" para avaliar um candidato a inquilino.</div>'+
+  '<button class="btn btn-red" onclick="novaAnaliseScore()" style="margin-top:16px;font-weight:700">🔍 Iniciar primeira análise</button>'+
+  '</div>';
+
+  document.getElementById('pc').innerHTML=
+    '<div style="background:linear-gradient(135deg,#0f1a35,#1e3a8a);border-radius:14px;padding:20px 24px;margin-bottom:18px;display:flex;align-items:center;gap:20px">'+
+    '<div style="font-size:40px">🛡</div>'+
+    '<div>'+
+    '<div style="font-size:16px;font-weight:800;color:#fff">Score de Risco do Inquilino</div>'+
+    '<div style="font-size:12px;color:rgba(255,255,255,.7);margin-top:4px;max-width:500px">'+
+    'Análise completa em 30 segundos. A IA avalia renda, perfil, histórico e comprometimento financeiro, '+
+    'gerando um parecer fundamentado para a sua decisão.</div>'+
+    '</div>'+
+    '<div style="margin-left:auto;text-align:center">'+
+    '<div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px">Análises realizadas</div>'+
+    '<div style="font-size:28px;font-weight:900;color:#fff">'+historico.length+'</div>'+
+    '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">'+
+    cards+
+    '</div>';
+}
+
+function novaAnaliseScore(){
+  oM('🔍 Análise de Risco — Novo Candidato',
+    '<div style="background:#eff6ff;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:#1d4ed8;line-height:1.6">'+
+    '💡 Preencha os dados do candidato. Quanto mais informação, mais preciso o parecer da IA.</div>'+
+
+    '<div class="fg2"><div class="fg"><label>Nome completo *</label><input id="sc-nome" placeholder="Nome do candidato"></div>'+
+    '<div class="fg"><label>CPF *</label><input id="sc-cpf" placeholder="000.000.000-00"></div></div>'+
+
+    '<div class="fg3">'+
+    '<div class="fg"><label>Renda mensal bruta (R$) *</label><input type="number" id="sc-renda" placeholder="Ex: 3500"></div>'+
+    '<div class="fg"><label>Valor do aluguel (R$) *</label><input type="number" id="sc-aluguel" placeholder="Ex: 1200"></div>'+
+    '<div class="fg"><label>Profissão / vínculo</label><select id="sc-vinculo">'+
+    '<option value="CLT">CLT (carteira assinada)</option>'+
+    '<option value="Servidor público">Servidor público</option>'+
+    '<option value="Autônomo">Autônomo / freelancer</option>'+
+    '<option value="Empresário">Empresário / MEI</option>'+
+    '<option value="Aposentado">Aposentado / pensionista</option>'+
+    '<option value="Profissional liberal">Profissional liberal</option>'+
+    '<option value="Sem renda formal">Sem renda formal declarada</option>'+
+    '</select></div>'+
+    '</div>'+
+
+    '<div class="fg3">'+
+    '<div class="fg"><label>Estado civil</label><select id="sc-civil">'+
+    '<option>Solteiro(a)</option><option>Casado(a)</option><option>União estável</option>'+
+    '<option>Divorciado(a)</option><option>Viúvo(a)</option>'+
+    '</select></div>'+
+    '<div class="fg"><label>Dependentes</label><select id="sc-dep">'+
+    '<option value="0">Nenhum</option><option value="1">1</option><option value="2">2</option>'+
+    '<option value="3">3</option><option value="4+">4 ou mais</option>'+
+    '</select></div>'+
+    '<div class="fg"><label>Tempo no emprego atual</label><select id="sc-tempo">'+
+    '<option value="menos6m">Menos de 6 meses</option>'+
+    '<option value="6m1a">6 meses a 1 ano</option>'+
+    '<option value="1a3a">1 a 3 anos</option>'+
+    '<option value="mais3a">Mais de 3 anos</option>'+
+    '<option value="NA">Não se aplica</option>'+
+    '</select></div>'+
+    '</div>'+
+
+    '<div class="fg3">'+
+    '<div class="fg"><label>Tem fiador?</label><select id="sc-fiador">'+
+    '<option value="Sim">Sim</option><option value="Nao">Não</option>'+
+    '</select></div>'+
+    '<div class="fg"><label>Tipo de garantia</label><select id="sc-garantia">'+
+    '<option>Fiador</option><option>Seguro fiança</option><option>Depósito caução</option>'+
+    '<option>Título capitalização</option><option>Sem garantia</option>'+
+    '</select></div>'+
+    '<div class="fg"><label>Referências anteriores</label><select id="sc-ref">'+
+    '<option value="Sim positiva">Sim, positivas</option>'+
+    '<option value="Sim neutra">Sim, neutras</option>'+
+    '<option value="Sim negativa">Sim, negativas</option>'+
+    '<option value="Nao">Sem referências</option>'+
+    '</select></div>'+
+    '</div>'+
+
+    '<div class="fg"><label>Observações livres (comportamento na visita, histórico relatado, etc.)</label>'+
+    '<textarea id="sc-obs" rows="2" placeholder="Ex: Demonstrou interesse sério, perguntou sobre tempo de contrato, tem cachorro..."></textarea></div>',
+
+    function(){ executarAnaliseIA(); },
+    'Analisar com IA 🤖', true);
+}
+
+async function executarAnaliseIA(){
+  var nome    = (document.getElementById('sc-nome')||{}).value||'';
+  var cpf     = (document.getElementById('sc-cpf')||{}).value||'';
+  var renda   = parseFloat((document.getElementById('sc-renda')||{}).value)||0;
+  var aluguel = parseFloat((document.getElementById('sc-aluguel')||{}).value)||0;
+  var vinculo = (document.getElementById('sc-vinculo')||{}).value||'';
+  var civil   = (document.getElementById('sc-civil')||{}).value||'';
+  var dep     = (document.getElementById('sc-dep')||{}).value||'0';
+  var tempo   = (document.getElementById('sc-tempo')||{}).value||'';
+  var fiador  = (document.getElementById('sc-fiador')||{}).value||'';
+  var garantia= (document.getElementById('sc-garantia')||{}).value||'';
+  var ref     = (document.getElementById('sc-ref')||{}).value||'';
+  var obs     = (document.getElementById('sc-obs')||{}).value||'';
+
+  if(!nome||!renda||!aluguel){ alert('Preencha nome, renda e valor do aluguel.'); return; }
+
+  var comprometimento = renda>0?((aluguel/renda)*100).toFixed(1):100;
+
+  // Fechar modal e mostrar loading
+  var mc=document.getElementById('mc'); if(mc) mc.style.display='none';
+
+  var loadDiv=document.createElement('div');
+  loadDiv.id='score-load';
+  loadDiv.innerHTML=
+    '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,26,53,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center">'+
+    '<div style="font-size:40px;margin-bottom:16px">🤖</div>'+
+    '<div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px">Analisando perfil de '+nome+'...</div>'+
+    '<div style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:20px">Avaliando renda, comprometimento, garantias e risco de inadimplência</div>'+
+    '<div style="width:200px;height:4px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden">'+
+    '<div id="score-bar" style="height:4px;background:#3b82f6;border-radius:4px;width:0%;transition:width 3s linear"></div>'+
+    '</div>'+
+    '</div>';
+  document.body.appendChild(loadDiv);
+  setTimeout(function(){ var b=document.getElementById('score-bar'); if(b) b.style.width='85%'; },100);
+
+  var prompt =
+    'Você é um especialista em análise de crédito e risco imobiliário brasileiro, com foco no mercado de locação residencial em cidades do interior de Goiás.\n\n'+
+    'Analise o seguinte candidato a inquilino e gere um SCORE DE RISCO DE INADIMPLÊNCIA de 0 a 100 (100 = risco mínimo, aprovado; 0 = risco máximo, reprovado).\n\n'+
+    '=== DADOS DO CANDIDATO ===\n'+
+    'Nome: '+nome+'\n'+
+    'CPF: '+cpf+'\n'+
+    'Renda mensal bruta: R$ '+renda.toLocaleString('pt-BR',{minimumFractionDigits:2})+'\n'+
+    'Valor do aluguel pretendido: R$ '+aluguel.toLocaleString('pt-BR',{minimumFractionDigits:2})+'\n'+
+    'Comprometimento da renda: '+comprometimento+'%\n'+
+    'Vínculo empregatício: '+vinculo+'\n'+
+    'Estado civil: '+civil+'\n'+
+    'Dependentes: '+dep+'\n'+
+    'Tempo no emprego/atividade atual: '+tempo+'\n'+
+    'Tem fiador: '+fiador+'\n'+
+    'Tipo de garantia: '+garantia+'\n'+
+    'Referências anteriores como inquilino: '+ref+'\n'+
+    (obs?'Observações adicionais: '+obs+'\n':'')+
+    '\n=== CRITÉRIOS DE ANÁLISE ===\n'+
+    '- Comprometimento ideal: até 30% da renda. Entre 30-40%: risco moderado. Acima de 40%: risco alto.\n'+
+    '- CLT e servidor público = maior estabilidade. Autônomo sem garantia = maior risco.\n'+
+    '- Fiador ou seguro fiança mitiga risco significativamente.\n'+
+    '- Referências negativas são sinal de alerta vermelho.\n'+
+    '- Dependentes acima de 2 aumentam comprometimento real.\n\n'+
+    'Responda APENAS em JSON válido, sem markdown, sem texto fora do JSON:\n'+
+    '{\n'+
+    '  "score": <número 0-100>,\n'+
+    '  "parecer": "<APROVADO | APROVADO COM RESSALVAS | ANÁLISE APROFUNDADA | REPROVADO>",\n'+
+    '  "resumo": "<2-3 frases diretas sobre o perfil>",\n'+
+    '  "pontos_positivos": ["<item>", "<item>"],\n'+
+    '  "pontos_atencao": ["<item>", "<item>"],\n'+
+    '  "recomendacoes": ["<ação recomendada>", "<ação recomendada>"],\n'+
+    '  "comprometimento_real": "<porcentagem e comentário>",\n'+
+    '  "garantia_adequada": "<sim/não e justificativa>",\n'+
+    '  "justificativa_score": "<explicação de 2-3 linhas do score>"\n'+
+    '}';
+
+  try{
+    var resposta = await callClaude(prompt,
+      'Você é um analista de crédito imobiliário especialista. Responda APENAS com JSON válido, sem texto adicional, sem ```json, apenas o objeto JSON puro.',
+      1500);
+
+    // Parse JSON
+    var clean = resposta.replace(/```json|```/g,'').trim();
+    var data = JSON.parse(clean);
+
+    // Remover loading
+    var ld=document.getElementById('score-load'); if(ld) ld.remove();
+
+    // Salvar no histórico
+    if(!window._scoreHistorico) window._scoreHistorico=[];
+    window._scoreHistorico.push({
+      nome:nome, cpf:cpf, renda:renda, aluguel:aluguel,
+      comprometimento:comprometimento, vinculo:vinculo,
+      score:data.score, parecer:data.parecer,
+      resumo:data.resumo,
+      positivos:data.pontos_positivos||[],
+      atencao:data.pontos_atencao||[],
+      recomendacoes:data.recomendacoes||[],
+      comprometReal:data.comprometimento_real||'',
+      garantiaOk:data.garantia_adequada||'',
+      justificativa:data.justificativa_score||'',
+      data:new Date().toLocaleDateString('pt-BR')+' '+new Date().toLocaleTimeString('pt-BR'),
+      raw:data
+    });
+
+    exibirResultadoScore(window._scoreHistorico.length-1);
+    pScoreRisco();
+
+  } catch(e){
+    var ld=document.getElementById('score-load'); if(ld) ld.remove();
+    alert('Erro na análise IA: '+e.message+'\n\nVerifique a conexão com o servidor.');
+  }
+}
+
+function exibirResultadoScore(idx){
+  var h=window._scoreHistorico[idx];
+  if(!h) return;
+
+  var scoreCor=h.score>=70?'#166534':h.score>=50?'#92400e':h.score>=30?'#c2410c':'#991b1b';
+  var scoreBg =h.score>=70?'#f0fdf4':h.score>=50?'#fffbeb':h.score>=30?'#fff7ed':'#fef2f2';
+  var scoreLabel=h.score>=70?'✅ APROVADO':h.score>=50?'⚠ APROVADO COM RESSALVAS':h.score>=30?'🔍 ANÁLISE APROFUNDADA':'❌ REPROVADO';
+
+  // Barra de score
+  var barCor=h.score>=70?'#16a34a':h.score>=50?'#d97706':h.score>=30?'#ea580c':'#dc2626';
+
+  var posHtml=(h.positivos||[]).map(function(p){return '<li style="margin-bottom:4px;color:#166534">'+p+'</li>';}).join('');
+  var atcHtml=(h.atencao||[]).map(function(p){return '<li style="margin-bottom:4px;color:#dc2626">'+p+'</li>';}).join('');
+  var recHtml=(h.recomendacoes||[]).map(function(p,i){return '<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9"><span style="font-size:12px;font-weight:700;color:#1d4ed8;min-width:16px">'+(i+1)+'.</span><span style="font-size:12px;color:#1e293b">'+p+'</span></div>';}).join('');
+
+  oM('🛡 Resultado — '+h.nome,
+    // Score principal
+    '<div style="background:'+scoreBg+';border-radius:12px;padding:18px 20px;margin-bottom:16px;display:flex;align-items:center;gap:20px">'+
+    '<div style="text-align:center;min-width:90px">'+
+    '<div style="font-size:52px;font-weight:900;color:'+scoreCor+';line-height:1">'+h.score+'</div>'+
+    '<div style="font-size:10px;color:'+scoreCor+';text-transform:uppercase;font-weight:700;letter-spacing:.5px">/100</div>'+
+    '</div>'+
+    '<div style="flex:1">'+
+    '<div style="font-size:16px;font-weight:800;color:'+scoreCor+'">'+scoreLabel+'</div>'+
+    '<div style="background:rgba(0,0,0,.06);border-radius:6px;height:8px;margin:8px 0;overflow:hidden">'+
+    '<div style="background:'+barCor+';height:8px;border-radius:6px;width:'+h.score+'%;transition:width 1s ease"></div>'+
+    '</div>'+
+    '<div style="font-size:12px;color:#475569;line-height:1.5">'+h.resumo+'</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Dados analisados
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'+
+    '<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">'+
+    '<div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px">Comprometimento</div>'+
+    '<div style="font-size:16px;font-weight:800;color:'+(parseFloat(h.comprometimento)>40?'#dc2626':parseFloat(h.comprometimento)>30?'#d97706':'#166534')+'">'+h.comprometimento+'%</div>'+
+    '<div style="font-size:10px;color:#94a3b8">da renda</div>'+
+    '</div>'+
+    '<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">'+
+    '<div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px">Renda</div>'+
+    '<div style="font-size:14px;font-weight:800;color:#1e293b">'+fmt(h.renda)+'</div>'+
+    '<div style="font-size:10px;color:#94a3b8">'+h.vinculo+'</div>'+
+    '</div>'+
+    '<div style="background:#f8fafc;border-radius:8px;padding:10px;text-align:center">'+
+    '<div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px">Aluguel</div>'+
+    '<div style="font-size:14px;font-weight:800;color:#1e293b">'+fmt(h.aluguel)+'</div>'+
+    '<div style="font-size:10px;color:#94a3b8">pretendido</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Justificativa do score
+    '<div style="background:#f0f9ff;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:#0c4a6e;line-height:1.6">'+
+    '<strong>Justificativa do score:</strong> '+h.justificativa+
+    '</div>'+
+
+    // Pontos positivos e de atenção
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'+
+    '<div style="background:#f0fdf4;border-radius:8px;padding:12px">'+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#166534;margin-bottom:6px">✅ Pontos positivos</div>'+
+    '<ul style="margin:0;padding-left:16px;font-size:11px">'+posHtml+'</ul>'+
+    '</div>'+
+    '<div style="background:#fef2f2;border-radius:8px;padding:12px">'+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#991b1b;margin-bottom:6px">⚠ Pontos de atenção</div>'+
+    '<ul style="margin:0;padding-left:16px;font-size:11px">'+atcHtml+'</ul>'+
+    '</div>'+
+    '</div>'+
+
+    // Recomendações
+    (recHtml?
+    '<div style="background:#fff;border-radius:8px;border:1px solid #e2e8f0;padding:12px;margin-bottom:12px">'+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#1d4ed8;margin-bottom:8px">📋 Recomendações para a imobiliária</div>'+
+    recHtml+
+    '</div>':'')+
+
+    // Garantia e comprometimento real
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'+
+    '<div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px">'+
+    '<div style="font-weight:700;color:#1e293b;margin-bottom:3px">💰 Comprometimento real</div>'+
+    '<div style="color:#475569">'+h.comprometReal+'</div>'+
+    '</div>'+
+    '<div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:11px">'+
+    '<div style="font-weight:700;color:#1e293b;margin-bottom:3px">🛡 Garantia adequada?</div>'+
+    '<div style="color:#475569">'+h.garantiaOk+'</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Ações
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+    '<button class="btn" style="background:#166534;color:#fff;font-weight:600" onclick="imprimirScore('+(window._scoreHistorico.length-1)+')">🖨 Imprimir parecer</button>'+
+    '<button class="btn" style="background:#1d4ed8;color:#fff;font-weight:600" onclick="novaAnaliseScore()">🔍 Nova análise</button>'+
+    '</div>',
+    null,'Fechar',true);
+}
+
+function verScoreCompleto(idx){ exibirResultadoScore(idx); }
+
+function imprimirScore(idx){
+  var h=window._scoreHistorico[idx];
+  if(!h) return;
+  var scoreCor=h.score>=70?'#166534':h.score>=50?'#92400e':h.score>=30?'#c2410c':'#991b1b';
+  var scoreLabel=h.score>=70?'APROVADO':h.score>=50?'APROVADO COM RESSALVAS':h.score>=30?'ANÁLISE APROFUNDADA':'REPROVADO';
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Parecer de Risco — '+h.nome+'</title>'+
+  '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:32px;color:#1e293b;max-width:700px;margin:0 auto;line-height:1.6}'+
+  'h2{font-size:15px;color:#1e3a8a;margin:16px 0 6px}'+
+  '.score-box{background:'+h.score>=70?'#f0fdf4':h.score>=50?'#fffbeb':h.score>=30?'#fff7ed':'#fef2f2'+';border-radius:10px;padding:16px;display:flex;align-items:center;gap:20px;margin:16px 0}'+
+  '.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}'+
+  '.kpi{background:#f8fafc;border-radius:6px;padding:10px;text-align:center}'+
+  '.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}'+
+  '.col{background:#f8fafc;border-radius:6px;padding:10px}'+
+  '.ass{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0}'+
+  '.ass-field{text-align:center;border-top:1px solid #000;padding-top:4px;font-size:10px;margin-top:36px}'+
+  '@media print{button{display:none}}</style></head><body>'+
+  '<div style="display:flex;justify-content:space-between;border-bottom:2px solid #1e3a8a;padding-bottom:10px;margin-bottom:16px">'+
+  '<div><div style="font-size:18px;font-weight:900;color:#D42028">RE/MAX <span style="color:#1e3a8a">Space</span></div>'+
+  '<div style="font-size:10px;color:#64748b">CRECI/GO 41.377 | Caldas Novas — GO</div></div>'+
+  '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:#1e3a8a">PARECER DE RISCO — INQUILINO</div>'+
+  '<div style="font-size:10px;color:#64748b">Emitido em '+h.data+'</div></div>'+
+  '</div>'+
+  '<div class="score-box">'+
+  '<div style="text-align:center;min-width:80px"><div style="font-size:48px;font-weight:900;color:'+scoreCor+'">'+h.score+'</div>'+
+  '<div style="font-size:9px;color:'+scoreCor+';text-transform:uppercase;font-weight:700">/100</div></div>'+
+  '<div><div style="font-size:15px;font-weight:800;color:'+scoreCor+'">'+scoreLabel+'</div>'+
+  '<div style="font-size:12px;color:#475569;margin-top:4px">'+h.resumo+'</div></div>'+
+  '</div>'+
+  '<h2>Dados analisados</h2>'+
+  '<div class="kpis">'+
+  '<div class="kpi"><div style="font-size:10px;color:#64748b">Candidato</div><div style="font-weight:700">'+h.nome+'</div><div style="font-size:10px;color:#94a3b8">CPF: '+h.cpf+'</div></div>'+
+  '<div class="kpi"><div style="font-size:10px;color:#64748b">Renda / Aluguel</div><div style="font-weight:700">'+fmt(h.renda)+' / '+fmt(h.aluguel)+'</div><div style="font-size:10px;color:#94a3b8">Comprometimento: '+h.comprometimento+'%</div></div>'+
+  '<div class="kpi"><div style="font-size:10px;color:#64748b">Vínculo / Garantia</div><div style="font-weight:700">'+h.vinculo+'</div><div style="font-size:10px;color:#94a3b8">'+h.garantiaOk+'</div></div>'+
+  '</div>'+
+  '<h2>Justificativa do score</h2><p>'+h.justificativa+'</p>'+
+  '<div class="cols">'+
+  '<div class="col"><div style="font-weight:700;color:#166534;margin-bottom:6px">Pontos positivos</div>'+
+  '<ul style="margin:0;padding-left:14px">'+(h.positivos||[]).map(function(p){return '<li>'+p+'</li>';}).join('')+'</ul></div>'+
+  '<div class="col"><div style="font-weight:700;color:#dc2626;margin-bottom:6px">Pontos de atenção</div>'+
+  '<ul style="margin:0;padding-left:14px">'+(h.atencao||[]).map(function(p){return '<li>'+p+'</li>';}).join('')+'</ul></div>'+
+  '</div>'+
+  '<h2>Recomendações</h2>'+
+  '<ol>'+(h.recomendacoes||[]).map(function(r){return '<li>'+r+'</li>';}).join('')+'</ol>'+
+  '<div class="ass">'+
+  '<div><div class="ass-field">Tatiana Basile — Diretora RE/MAX Space</div></div>'+
+  '<div><div class="ass-field">Analista Responsável</div></div>'+
+  '</div>'+
+  '<div style="margin-top:24px;text-align:right"><button onclick="window.print()" style="padding:10px 24px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨 Imprimir / Salvar PDF</button></div>'+
+  '<div style="margin-top:16px;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px">'+
+  'Este parecer foi gerado por inteligência artificial com base nos dados informados e tem caráter orientativo. '+
+  'A decisão final é de responsabilidade exclusiva da RE/MAX Space. '+
+  'RE/MAX Space — CRECI/GO 41.377 | CNPJ 53.172.343/0001-08</div>'+
+  '</body></html>');
+  w.document.close();
+}
+
+
 function pFD(){
   var ta=ctD.reduce(function(s,c){return s+c.valor;},0),adm=ta*.1,tpag=cpD.reduce(function(s,c){return s+c.val;},0),sal=adm-tpag;
   var rec=cpD.filter(function(c){return c.st==='Pago';}).reduce(function(s,c){return s+c.val;},0);
