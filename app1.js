@@ -824,7 +824,18 @@ function abrirAlterarSenha() {
 function fmt(v){ return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0); }
 function mesAno(d){ var dt=d||new Date(); return dt.toLocaleString('pt-BR',{month:'long',year:'numeric'}); }
 function mesAnoAbrev(d){ var dt=d||new Date(); return dt.toLocaleString('pt-BR',{month:'short',year:'numeric'}); }
-function fmtD(d){ if(!d)return ''; try{ var p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }catch(e){ return d; } }
+function fmtD(d){
+  if(!d) return '';
+  try{
+    // Formato ISO: YYYY-MM-DD
+    if(d.indexOf('-')>=0 && d.indexOf('-')===4){
+      var p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0];
+    }
+    // Já está em DD/MM/YYYY ou DD/MM/YY — retornar direto
+    if(d.indexOf('/')>=0) return d;
+    return d;
+  }catch(e){ return d; }
+}
 function stPag(st,venc){
   if(st==='Pago') return '<span class="stpago">PAGO</span>';
   var hoje=new Date(); hoje.setHours(0,0,0,0); var v=new Date(venc);
