@@ -2395,8 +2395,8 @@ function pInadimplencia(){
     var diasAtraso=Math.floor((hoje-dtVenc)/(1000*60*60*24));
     if(diasAtraso<0) return; // ainda não venceu
 
-    // Calcular multa e juros (Lei do Inquilinato: 2% multa + 1% a.m.)
-    var multa=c.valor*0.02;
+    // Calcular multa e juros (Contrato RE/MAX Space: 10% multa + 1% a.m.)
+    var multa=c.valor*0.10;
     var juros=c.valor*0.01*(diasAtraso/30);
     var total=c.valor+multa+juros;
     totalInad+=c.valor;
@@ -2604,7 +2604,7 @@ function gerarNotifInadCt(ctId){
   var diaVenc=parseInt(ct.venc)||10;
   var dtVenc=new Date(hoje.getFullYear(),hoje.getMonth(),diaVenc);
   var diasAtraso=Math.floor((hoje-dtVenc)/(1000*60*60*24));
-  var multa=ct.valor*0.02;
+  var multa=ct.valor*0.10;
   var juros=ct.valor*0.01*(diasAtraso/30);
   var total=ct.valor+multa+juros;
 
@@ -2619,7 +2619,7 @@ function gerarNotifInadCt(ctId){
     '• Imóvel: '+ct.end+'\n'+
     '• Contrato: '+ct.id+'\n'+
     '• Valor do aluguel: '+fmt(ct.valor)+'\n'+
-    '• Multa (2%): '+fmt(multa)+'\n'+
+    '• Multa (10%): '+fmt(multa)+'\n'+
     '• Juros (1% a.m. pro rata): '+fmt(juros)+'\n'+
     '• TOTAL A PAGAR: '+fmt(total)+'\n\n'+
     'Solicitamos a regularização no prazo de 5 (cinco) dias úteis, sob pena de adoção das medidas judiciais cabíveis, nos termos da Lei nº 8.245/91 — Lei do Inquilinato.\n\n'+
@@ -2687,7 +2687,7 @@ function imprimirInad(){
     var dtVenc=new Date(hoje.getFullYear(),mesIdx,diaVenc);
     var dias=Math.floor((hoje-dtVenc)/(1000*60*60*24));
     if(dias<0) return;
-    var multa=c.valor*0.02, juros=c.valor*0.01*(dias/30);
+    var multa=c.valor*0.10, juros=c.valor*0.01*(dias/30);
     inadList.push({id:c.id,inq:c.inq,prop:c.prop,end:c.end,valor:c.valor,dias:dias,multa:multa,juros:juros,total:c.valor+multa+juros});
   });
   var rows=inadList.map(function(i){
