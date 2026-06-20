@@ -181,7 +181,8 @@ function pLV(){
     '<button class="btn btn-sm" style="flex:1;background:#f0fdf4;color:#166534;font-weight:600" onclick="imprimirVistoria('+ri+')">🖨 Imprimir</button>'+
     '<button class="btn btn-sm" style="background:#f8fafc;color:var(--navy)" onclick="eVst('+ri+')">✏</button>'+
     (vsD.filter(function(x){return x.ctId===v.ctId&&x.ctId;}).length>=2?
-    '<button class="btn btn-sm" style="background:#faf5ff;color:#7c3aed" onclick="compararVistoria(\''+v.ctId+'\')">⚖ Comp.</button>':'') +
+    '<button class="btn btn-sm" style="background:#faf5ff;color:#7c3aed" onclick="compararVistoria(\''+v.ctId+'\')" >⚖ Comp.</button>'+
+    '<button class="btn btn-sm" style="background:#f0fdf4;color:#166534;font-size:10px" onclick="abrirComparativoFotos(\''+v.ctId+'\')" >🤖 Fotos IA</button>':'') +
     '</div>'+
     '</div>'+
     '</div>';
@@ -525,8 +526,7 @@ function eVst(i){
   var fotsP=(v.fotos&&v.fotos.length)?
     '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+
     v.fotos.map(function(f,fi){
-      return '<div style="position:relative"><img src="'+f+'" style="width:60px;height:45px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0">'+
-      '<button onclick="vsD['+i+'].fotos.splice('+fi+',1);eVst('+i+')" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0">×</button></div>';
+      return '<div style="position:relative">'+'<img src="'+f+'" style="width:72px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0">'+'<button onclick="vsD['+i+'].fotos.splice('+fi+',1);eVst('+i+')" style="position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;padding:0">×</button>'+'<button id="btn-ia-'+i+'-'+fi+'" onclick="analisarFotoComodo('+i+','+fi+',null)" style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:#7c3aed;color:#fff;border:none;border-radius:8px;font-size:8px;font-weight:700;padding:1px 5px;cursor:pointer;white-space:nowrap">🤖 IA</button>'+'</div>';
     }).join('')+'</div>':'';
 
   var laudosP=(v.laudos&&v.laudos.length)?
@@ -3409,6 +3409,570 @@ function imprimirScore(idx){
   w.document.close();
 }
 
+
+
+
+// ===== VISTORIA IA — ANÁLISE DE FOTOS =====
+
+async function callClaudeVision(mensagens, system, maxTokens){
+  maxTokens = maxTokens || 1500;
+  var PROXY_URL = 'https://pokgfnlywtgubpuswmni.supabase.co/functions/v1/claude-proxy';
+  var SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBva2dmbmx5d3RndWJwdXN3bW5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1OTYwNzgsImV4cCI6MjA5NTE3MjA3OH0.wK2qG14wMA7FVnVT0NKEbbLZyAIZkSahsChRivgd-Ko';
+  var resp = await fetch(PROXY_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_KEY},
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      system: system||'Você é um vistoriador imobiliário experiente no Brasil.',
+      messages: mensagens
+    })
+  });
+  if(!resp.ok) throw new Error('Proxy erro '+resp.status);
+  var data = await resp.json();
+  if(data.error) throw new Error(data.error.message||'Erro API');
+  if(data.content&&data.content[0]) return data.content[0].text;
+  throw new Error('Resposta inválida');
+}
+
+// Converter data URL em base64 puro + mediaType
+function parseDataUrl(dataUrl){
+  var parts = dataUrl.split(',');
+  var meta  = parts[0]; // ex: data:image/jpeg;base64
+  var b64   = parts[1];
+  var mt    = meta.match(/:(.*?);/);
+  return { mediaType: mt ? mt[1] : 'image/jpeg', data: b64 };
+}
+
+// ── Análise de foto única de um cômodo ──────────────────────────────────────
+async function analisarFotoComodo(vistIdx, fotoIdx, comodo){
+  var v = vsD[vistIdx];
+  if(!v||!v.fotos||!v.fotos[fotoIdx]){ alert('Foto não encontrada.'); return; }
+
+  var btnId = 'btn-ia-'+vistIdx+'-'+fotoIdx;
+  var btn   = document.getElementById(btnId);
+  if(btn){ btn.textContent='⏳ Analisando...'; btn.disabled=true; }
+
+  // Selecionar cômodo pelo usuário se não informado
+  if(!comodo){
+    comodo = prompt('Qual cômodo é esta foto?\n(sala, cozinha, quarto1, quarto2, banheiro, servico, quintal, garagem, eletrica, hidraulica)','sala');
+    if(!comodo) return;
+  }
+
+  var imgData = parseDataUrl(v.fotos[fotoIdx]);
+
+  var campos = {
+    sala:    ['piso','paredes','teto','portas','janelas','tomadas'],
+    cozinha: ['piso','paredes','pia','torneira','janela','armarios'],
+    quarto1: ['piso','paredes','teto','porta','janela'],
+    quarto2: ['piso','paredes','teto','porta','janela'],
+    quarto3: ['piso','paredes','teto','porta','janela'],
+    quarto4: ['piso','paredes','teto','porta','janela'],
+    banheiro:  ['piso','azulejos','vaso','pia','chuveiro','box'],
+    banheiro2: ['piso','azulejos','vaso','pia','chuveiro','box'],
+    servico:   ['piso','tanque','eletrica'],
+    quintal:   ['piso','paredes','portao','jardim'],
+    garagem:   ['piso','portao','paredes'],
+    piscina:   ['revestimento','bombas','limpeza','escadas'],
+    eletrica:  ['tomadas','disjuntor','fiacao','quadro'],
+    hidraulica:['vazamentos','ralos','pressao','registro']
+  };
+
+  var camposComodo = campos[comodo] || ['piso','paredes','teto'];
+
+  var prompt =
+    'Você é um vistoriador imobiliário profissional com 20 anos de experiência.\n\n'+
+    'Analise esta foto do cômodo "'+comodo+'" de um imóvel em Caldas Novas - GO.\n\n'+
+    'Avalie os seguintes itens visíveis na foto:\n'+
+    camposComodo.map(function(c){return '- '+c;}).join('\n')+'\n\n'+
+    'Para cada item visível, classifique como:\n'+
+    '- Otimo: perfeito, sem marcas\n'+
+    '- Bom: bom estado geral, desgaste mínimo natural\n'+
+    '- Regular: desgaste visível, uso normal mas acima do esperado\n'+
+    '- Ruim: danos claros, necessita reparo\n'+
+    '- N/A: não visível ou não aplicável\n\n'+
+    'Também:\n'+
+    '1. Identifique TODOS os danos visíveis com descrição precisa\n'+
+    '2. Estime o custo de reparo de cada dano (preços de Goiás, mão de obra + material)\n'+
+    '3. Dê uma observação geral do cômodo\n\n'+
+    'Responda APENAS em JSON puro:\n'+
+    '{\n'+
+    '  "checklist": {\n'+
+    camposComodo.map(function(c){return '    "'+c+'": "<Otimo|Bom|Regular|Ruim|N/A>"';}).join(',\n')+
+    ',\n    "obs": "<observação geral>"\n'+
+    '  },\n'+
+    '  "resultado_geral": "<Bom a excelente|Bom|Regular|Ruim>",\n'+
+    '  "danos": [\n'+
+    '    {"item": "<item danificado>", "descricao": "<descrição do dano>", "custo_estimado": <valor numérico em reais>}\n'+
+    '  ],\n'+
+    '  "custo_total_estimado": <valor numérico total>,\n'+
+    '  "observacao": "<2-3 frases sobre o estado geral do cômodo>"\n'+
+    '}';
+
+  try{
+    var resposta = await callClaudeVision([{
+      role:'user',
+      content:[
+        {type:'image', source:{type:'base64', media_type:imgData.mediaType, data:imgData.data}},
+        {type:'text',  text: prompt}
+      ]
+    }],
+    'Você é vistoriador imobiliário. Responda APENAS JSON puro válido, sem markdown.',
+    1500);
+
+    var clean = resposta.replace(/```json|```/g,'').trim();
+    var m = clean.match(/\{[\s\S]*\}/);
+    var data = JSON.parse(m ? m[0] : clean);
+
+    // Preencher checklist automaticamente
+    if(!v.checklist) v.checklist = {};
+    if(!v.checklist[comodo]) v.checklist[comodo] = {};
+    Object.assign(v.checklist[comodo], data.checklist||{});
+
+    // Atualizar resultado geral se pior
+    var ordemRes = {'Bom a excelente':4,'Bom':3,'Regular':2,'Ruim':1};
+    var resAtual = v.res||'Bom a excelente';
+    if((ordemRes[data.resultado_geral]||3) < (ordemRes[resAtual]||4)){
+      v.res = data.resultado_geral;
+    }
+
+    // Salvar danos na foto
+    if(!v.danos) v.danos = [];
+    (data.danos||[]).forEach(function(d){ d.comodo=comodo; d.fotoIdx=fotoIdx; v.danos.push(d); });
+
+    cM(); salvarTudo();
+
+    // Exibir resultado
+    exibirResultadoFotoIA(vistIdx, fotoIdx, comodo, data);
+
+  } catch(e){
+    if(btn){ btn.textContent='🤖 IA'; btn.disabled=false; }
+    alert('Erro na análise: '+e.message);
+  }
+}
+
+function exibirResultadoFotoIA(vistIdx, fotoIdx, comodo, data){
+  var v = vsD[vistIdx];
+  var resCor = data.resultado_geral==='Bom a excelente'||data.resultado_geral==='Bom'?'#166534':data.resultado_geral==='Regular'?'#92400e':'#991b1b';
+  var resBg  = data.resultado_geral==='Bom a excelente'||data.resultado_geral==='Bom'?'#f0fdf4':data.resultado_geral==='Regular'?'#fffbeb':'#fef2f2';
+
+  var checkHtml = Object.entries(data.checklist||{}).filter(function(e){return e[0]!=='obs';}).map(function(e){
+    var cor = e[1]==='Otimo'||e[1]==='Bom'?'#166534':e[1]==='Regular'?'#92400e':e[1]==='Ruim'?'#991b1b':'#94a3b8';
+    var bg  = e[1]==='Otimo'||e[1]==='Bom'?'#f0fdf4':e[1]==='Regular'?'#fffbeb':e[1]==='Ruim'?'#fef2f2':'#f1f5f9';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9">'+
+    '<span style="font-size:12px;color:#475569">'+e[0]+'</span>'+
+    '<span style="background:'+bg+';color:'+cor+';font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px">'+e[1]+'</span>'+
+    '</div>';
+  }).join('');
+
+  var danosHtml = (data.danos||[]).length ?
+    (data.danos||[]).map(function(d){
+      return '<div style="background:#fef2f2;border-radius:8px;padding:8px 12px;margin-bottom:6px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+      '<div style="font-size:12px;font-weight:600;color:#991b1b">⚠ '+d.item+'</div>'+
+      '<div style="font-size:12px;font-weight:800;color:#dc2626">'+fmt(d.custo_estimado)+'</div>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#64748b;margin-top:2px">'+d.descricao+'</div>'+
+      '</div>';
+    }).join('') :
+    '<div style="background:#f0fdf4;border-radius:8px;padding:10px;font-size:12px;color:#166534;text-align:center">✅ Nenhum dano identificado</div>';
+
+  oM('🤖 Análise IA — '+comodo.charAt(0).toUpperCase()+comodo.slice(1),
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'+
+    '<img src="'+v.fotos[fotoIdx]+'" style="width:100%;height:160px;object-fit:cover;border-radius:10px;border:1px solid #e2e8f0">'+
+    '<div style="background:'+resBg+';border-radius:10px;padding:14px;display:flex;flex-direction:column;justify-content:center;align-items:center">'+
+    '<div style="font-size:11px;color:'+resCor+';text-transform:uppercase;font-weight:700;margin-bottom:4px">Estado geral</div>'+
+    '<div style="font-size:20px;font-weight:900;color:'+resCor+'">'+data.resultado_geral+'</div>'+
+    (data.custo_total_estimado>0?
+    '<div style="margin-top:8px;text-align:center">'+
+    '<div style="font-size:10px;color:'+resCor+';text-transform:uppercase">Custo reparos</div>'+
+    '<div style="font-size:18px;font-weight:900;color:#dc2626">'+fmt(data.custo_total_estimado)+'</div>'+
+    '</div>':'<div style="margin-top:8px;font-size:12px;color:#166534;font-weight:600">Sem danos</div>')+
+    '</div>'+
+    '</div>'+
+
+    '<div style="background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:12px">'+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:8px">Checklist preenchido automaticamente</div>'+
+    checkHtml+
+    (data.checklist&&data.checklist.obs?'<div style="margin-top:6px;font-size:11px;color:#92400e;font-style:italic">Obs: '+data.checklist.obs+'</div>':'')+
+    '</div>'+
+
+    '<div style="margin-bottom:12px">'+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#991b1b;margin-bottom:6px">Danos identificados</div>'+
+    danosHtml+
+    '</div>'+
+
+    '<div style="background:#f0f9ff;border-radius:8px;padding:10px;font-size:12px;color:#0c4a6e;line-height:1.5;margin-bottom:12px">'+
+    '<strong>Observação:</strong> '+data.observacao+
+    '</div>'+
+
+    '<div style="background:#f0fdf4;border-radius:8px;padding:10px;font-size:11px;color:#166534">'+
+    '✅ Checklist do cômodo "'+comodo+'" preenchido automaticamente na vistoria. Salve para confirmar.'+
+    '</div>',
+    function(){ eVst(vistIdx); },
+    'Confirmar e voltar à vistoria', true);
+}
+
+// ── Comparativo entrada × saída com fotos ───────────────────────────────────
+function abrirComparativoFotos(ctId){
+  var vsts = vsD.filter(function(v){ return v.ctId===ctId; });
+  var entrada = vsts.find(function(v){ return v.tipo==='Entrada'; });
+  var saida   = vsts.find(function(v){ return v.tipo==='Saida'; });
+
+  if(!entrada){ alert('Vistoria de ENTRADA não encontrada para este contrato.'); return; }
+  if(!saida)  { alert('Vistoria de SAÍDA não encontrada. Crie a vistoria de saída primeiro.'); return; }
+
+  var fotsE = entrada.fotos||[];
+  var fotsS = saida.fotos||[];
+
+  if(!fotsE.length&&!fotsS.length){ alert('Nenhuma foto encontrada nas vistorias deste contrato.'); return; }
+
+  var gridE = fotsE.length ?
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+    fotsE.map(function(f,fi){
+      return '<div style="position:relative;cursor:pointer" onclick="selecionarFotoComparativo(\'E\','+fi+')" id="fe-'+fi+'">'+
+      '<img src="'+f+'" style="width:90px;height:68px;object-fit:cover;border-radius:6px;border:2px solid transparent;transition:border-color .15s">'+
+      '<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:#fff;font-size:9px;text-align:center;border-radius:0 0 4px 4px">'+fi+'</div>'+
+      '</div>';
+    }).join('')+
+    '</div>' : '<div style="font-size:11px;color:#94a3b8;font-style:italic">Sem fotos na entrada</div>';
+
+  var gridS = fotsS.length ?
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+    fotsS.map(function(f,fi){
+      return '<div style="position:relative;cursor:pointer" onclick="selecionarFotoComparativo(\'S\','+fi+')" id="fs-'+fi+'">'+
+      '<img src="'+f+'" style="width:90px;height:68px;object-fit:cover;border-radius:6px;border:2px solid transparent;transition:border-color .15s">'+
+      '<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:#fff;font-size:9px;text-align:center;border-radius:0 0 4px 4px">'+fi+'</div>'+
+      '</div>';
+    }).join('')+
+    '</div>' : '<div style="font-size:11px;color:#94a3b8;font-style:italic">Sem fotos na saída</div>';
+
+  window._compCtId    = ctId;
+  window._compEntrada = entrada;
+  window._compSaida   = saida;
+  window._selE = null;
+  window._selS = null;
+
+  oM('🔍 Comparativo de Fotos — Contrato '+ctId,
+    '<div style="background:#1e3a8a;border-radius:10px;padding:12px 16px;margin-bottom:14px;color:#fff;font-size:12px">'+
+    '📋 Selecione <strong>uma foto da Entrada</strong> e <strong>uma foto da Saída</strong> do mesmo cômodo para a IA comparar e identificar danos.'+
+    '</div>'+
+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'+
+    '<div>'+
+    '<div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">📥 Fotos da Entrada ('+fmtD(entrada.dt)+')</div>'+
+    gridE+
+    '<div id="prev-E" style="margin-top:8px;display:none">'+
+    '<img id="img-E" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:2px solid #1d4ed8">'+
+    '</div>'+
+    '</div>'+
+    '<div>'+
+    '<div style="font-size:11px;font-weight:700;color:#c2410c;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">📤 Fotos da Saída ('+fmtD(saida.dt)+')</div>'+
+    gridS+
+    '<div id="prev-S" style="margin-top:8px;display:none">'+
+    '<img id="img-S" style="width:100%;height:120px;object-fit:cover;border-radius:8px;border:2px solid #c2410c">'+
+    '</div>'+
+    '</div>'+
+    '</div>'+
+
+    '<div style="background:#f8fafc;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:11px;color:#475569">'+
+    '<div id="sel-status">Selecione uma foto de cada coluna para ativar a comparação.</div>'+
+    '</div>'+
+
+    '<div style="margin-bottom:8px">'+
+    '<label style="font-size:11px;color:#64748b">Cômodo sendo comparado</label>'+
+    '<select id="comp-comodo" style="width:100%;padding:7px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;margin-top:4px">'+
+    '<option value="sala">Sala</option><option value="cozinha">Cozinha</option>'+
+    '<option value="quarto1">Quarto 1</option><option value="quarto2">Quarto 2</option>'+
+    '<option value="banheiro">Banheiro</option><option value="servico">Área de Serviço</option>'+
+    '<option value="quintal">Quintal</option><option value="garagem">Garagem</option>'+
+    '<option value="eletrica">Elétrica</option><option value="hidraulica">Hidráulica</option>'+
+    '</select>'+
+    '</div>',
+
+    function(){ executarComparativoFotos(); },
+    '🤖 Comparar com IA', true);
+}
+
+window.selecionarFotoComparativo = function(lado, idx){
+  var fotos = lado==='E' ? (window._compEntrada&&window._compEntrada.fotos||[]) : (window._compSaida&&window._compSaida.fotos||[]);
+  if(!fotos[idx]) return;
+
+  // Highlight selecionado
+  document.querySelectorAll('[id^="f'+lado+'-"]').forEach(function(el){
+    var img = el.querySelector('img'); if(img) img.style.borderColor='transparent';
+  });
+  var sel = document.getElementById('f'+lado+'-'+idx);
+  if(sel){ var img=sel.querySelector('img'); if(img) img.style.borderColor=(lado==='E'?'#1d4ed8':'#c2410c'); }
+
+  // Preview
+  var prev = document.getElementById('prev-'+lado);
+  var imgEl = document.getElementById('img-'+lado);
+  if(prev&&imgEl){ prev.style.display='block'; imgEl.src=fotos[idx]; }
+
+  if(lado==='E') window._selE=idx; else window._selS=idx;
+
+  var st = document.getElementById('sel-status');
+  if(st){
+    if(window._selE!==null&&window._selS!==null){
+      st.innerHTML='<span style="color:#166534;font-weight:700">✅ Pronto! Clique em "Comparar com IA" para analisar.</span>';
+    } else {
+      st.textContent='Foto '+(lado==='E'?'de entrada':'de saída')+' selecionada. Selecione agora a foto '+(lado==='E'?'de saída':'de entrada')+'.';
+    }
+  }
+};
+
+async function executarComparativoFotos(){
+  if(window._selE===null||window._selS===null){
+    alert('Selecione uma foto de cada lado (entrada e saída) antes de comparar.');
+    return;
+  }
+
+  var comodo   = (document.getElementById('comp-comodo')||{}).value||'sala';
+  var entrada  = window._compEntrada;
+  var saida    = window._compSaida;
+  var fotoE    = entrada.fotos[window._selE];
+  var fotoS    = saida.fotos[window._selS];
+  var ctId     = window._compCtId;
+
+  var mc=document.getElementById('mc'); if(mc) mc.style.display='none';
+
+  var loadDiv=document.createElement('div');
+  loadDiv.id='comp-load';
+  loadDiv.innerHTML=
+    '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,26,53,.9);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center">'+
+    '<div style="font-size:36px;margin-bottom:12px">🔍</div>'+
+    '<div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:6px">Comparando fotos com IA...</div>'+
+    '<div style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:20px">Analisando diferenças entre entrada e saída do cômodo "'+comodo+'"</div>'+
+    '<div style="width:200px;height:4px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden">'+
+    '<div id="comp-bar" style="height:4px;background:#3b82f6;border-radius:4px;width:0%;transition:width 5s linear"></div>'+
+    '</div>'+
+    '</div>';
+  document.body.appendChild(loadDiv);
+  setTimeout(function(){ var b=document.getElementById('comp-bar'); if(b) b.style.width='85%'; },100);
+
+  var imgE = parseDataUrl(fotoE);
+  var imgS = parseDataUrl(fotoS);
+
+  var prompt =
+    'Você é um vistoriador imobiliário perito, especializado em comparação de estado de imóveis no Brasil.\n\n'+
+    'Compare as duas fotos do cômodo "'+comodo+'" de um imóvel em Caldas Novas - GO:\n'+
+    '- PRIMEIRA IMAGEM: estado na entrada do inquilino ('+fmtD(entrada.dt)+')\n'+
+    '- SEGUNDA IMAGEM: estado na saída do inquilino ('+fmtD(saida.dt)+')\n\n'+
+    'Analise cuidadosamente e identifique:\n'+
+    '1. Tudo que PIOROU entre entrada e saída (danos, sujeira, quebras, manchas, arranhões, etc.)\n'+
+    '2. O que se manteve igual ou melhorou\n'+
+    '3. O que é desgaste natural do uso (não cobrar do inquilino) vs dano real (cobrar)\n'+
+    '4. Estimativa de custo de reparo de cada dano identificado (preços de Goiás)\n\n'+
+    'Seja específico e objetivo. Se não identificar danos, diga claramente.\n\n'+
+    'Responda APENAS em JSON puro:\n'+
+    '{\n'+
+    '  "estado_entrada": "<Otimo|Bom|Regular|Ruim>",\n'+
+    '  "estado_saida": "<Otimo|Bom|Regular|Ruim>",\n'+
+    '  "houve_piora": <true|false>,\n'+
+    '  "danos_novos": [\n'+
+    '    {\n'+
+    '      "item": "<o que foi danificado>",\n'+
+    '      "descricao": "<descrição precisa do dano>",\n'+
+    '      "tipo": "<desgaste_natural|dano_cobravel>",\n'+
+    '      "custo_estimado": <valor numérico>,\n'+
+    '      "justificativa": "<por que é cobrado ou não>"\n'+
+    '    }\n'+
+    '  ],\n'+
+    '  "itens_mantidos": ["<item que não mudou>"],\n'+
+    '  "custo_total_cobravel": <soma dos danos cobráveis>,\n'+
+    '  "desconto_deposito_recomendado": <valor a descontar da caução>,\n'+
+    '  "parecer": "<APROVADO DEVOLUÇÃO TOTAL|DESCONTO PARCIAL|DESCONTO TOTAL|OBRA NECESSÁRIA>",\n'+
+    '  "observacao": "<2-3 frases sobre o resultado geral da comparação>"\n'+
+    '}';
+
+  try{
+    var resposta = await callClaudeVision([{
+      role:'user',
+      content:[
+        {type:'image', source:{type:'base64', media_type:imgE.mediaType, data:imgE.data}},
+        {type:'image', source:{type:'base64', media_type:imgS.mediaType, data:imgS.data}},
+        {type:'text',  text: prompt}
+      ]
+    }],
+    'Você é perito em vistoria imobiliária. Responda APENAS JSON puro válido.',
+    2000);
+
+    var ld=document.getElementById('comp-load'); if(ld) ld.remove();
+
+    var clean = resposta.replace(/```json|```/g,'').trim();
+    var m = clean.match(/\{[\s\S]*\}/);
+    var data = JSON.parse(m ? m[0] : clean);
+
+    // Salvar danos na vistoria de saída
+    if(!saida.danos) saida.danos=[];
+    (data.danos_novos||[]).forEach(function(d){
+      d.comodo=comodo; d.fotoE=window._selE; d.fotoS=window._selS;
+      saida.danos.push(d);
+    });
+    cM(); salvarTudo();
+
+    exibirResultadoComparativo(data, comodo, fotoE, fotoS, ctId);
+
+  } catch(e){
+    var ld=document.getElementById('comp-load'); if(ld) ld.remove();
+    alert('Erro na comparação: '+e.message);
+  }
+}
+
+function exibirResultadoComparativo(data, comodo, fotoE, fotoS, ctId){
+  var parecerCor = data.parecer==='APROVADO DEVOLUÇÃO TOTAL'?'#166534':
+                   data.parecer==='DESCONTO PARCIAL'?'#92400e':
+                   data.parecer==='DESCONTO TOTAL'?'#c2410c':'#991b1b';
+  var parecerBg  = data.parecer==='APROVADO DEVOLUÇÃO TOTAL'?'#f0fdf4':
+                   data.parecer==='DESCONTO PARCIAL'?'#fffbeb':
+                   data.parecer==='DESCONTO TOTAL'?'#fff7ed':'#fef2f2';
+
+  var danosHtml = (data.danos_novos||[]).length ?
+    (data.danos_novos||[]).map(function(d){
+      var cobravel = d.tipo==='dano_cobravel';
+      return '<div style="background:'+(cobravel?'#fef2f2':'#f8fafc')+';border-radius:8px;padding:10px 12px;margin-bottom:6px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
+      '<div style="font-size:12px;font-weight:700;color:'+(cobravel?'#991b1b':'#475569')+'">'+
+      (cobravel?'⚠ ':'✓ ')+d.item+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">'+
+      '<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;background:'+(cobravel?'#fca5a5':'#d1d5db')+';color:'+(cobravel?'#991b1b':'#374151')+'">'+
+      (cobravel?'COBRAR':'Desgaste natural')+'</span>'+
+      (cobravel?'<span style="font-size:13px;font-weight:900;color:#dc2626">'+fmt(d.custo_estimado)+'</span>':'')+
+      '</div>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#64748b">'+d.descricao+'</div>'+
+      '<div style="font-size:10px;color:#94a3b8;margin-top:3px;font-style:italic">'+d.justificativa+'</div>'+
+      '</div>';
+    }).join('') :
+    '<div style="background:#f0fdf4;border-radius:8px;padding:12px;text-align:center;font-size:12px;color:#166534;font-weight:600">✅ Nenhum dano cobrado identificado</div>';
+
+  var mantidosHtml = (data.itens_mantidos||[]).map(function(m){
+    return '<div style="font-size:11px;color:#166534;padding:2px 0">✓ '+m+'</div>';
+  }).join('');
+
+  oM('⚖ Resultado Comparativo — '+comodo,
+
+    // Fotos lado a lado
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">'+
+    '<div>'+
+    '<div style="font-size:9px;font-weight:700;color:#1d4ed8;text-transform:uppercase;margin-bottom:4px">Entrada</div>'+
+    '<img src="'+fotoE+'" style="width:100%;height:130px;object-fit:cover;border-radius:8px;border:2px solid #1d4ed8">'+
+    '<div style="text-align:center;margin-top:4px;font-size:11px;font-weight:700;color:#1d4ed8">'+data.estado_entrada+'</div>'+
+    '</div>'+
+    '<div>'+
+    '<div style="font-size:9px;font-weight:700;color:#c2410c;text-transform:uppercase;margin-bottom:4px">Saída</div>'+
+    '<img src="'+fotoS+'" style="width:100%;height:130px;object-fit:cover;border-radius:8px;border:2px solid #c2410c">'+
+    '<div style="text-align:center;margin-top:4px;font-size:11px;font-weight:700;color:#c2410c">'+data.estado_saida+'</div>'+
+    '</div>'+
+    '</div>'+
+
+    // Parecer
+    '<div style="background:'+parecerBg+';border-radius:10px;padding:14px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">'+
+    '<div>'+
+    '<div style="font-size:14px;font-weight:900;color:'+parecerCor+'">'+data.parecer+'</div>'+
+    '<div style="font-size:11px;color:#475569;margin-top:4px">'+data.observacao+'</div>'+
+    '</div>'+
+    (data.custo_total_cobravel>0?
+    '<div style="text-align:center;min-width:100px">'+
+    '<div style="font-size:10px;color:#991b1b;text-transform:uppercase">Desconto caução</div>'+
+    '<div style="font-size:22px;font-weight:900;color:#dc2626">'+fmt(data.desconto_deposito_recomendado)+'</div>'+
+    '<div style="font-size:10px;color:#94a3b8">de '+fmt(data.custo_total_cobravel)+' total</div>'+
+    '</div>':'<div style="font-size:13px;font-weight:700;color:#166534">Devolver integral</div>')+
+    '</div>'+
+
+    // Danos
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#991b1b;margin-bottom:8px">Danos identificados</div>'+
+    danosHtml+
+
+    // Mantidos
+    (mantidosHtml?
+    '<div style="background:#f0fdf4;border-radius:8px;padding:10px;margin-top:10px;margin-bottom:10px">'+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#166534;margin-bottom:6px">Sem alteração</div>'+
+    mantidosHtml+
+    '</div>':'')+
+
+    // Ações
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'+
+    '<button class="btn" style="background:#1e3a8a;color:#fff;font-weight:600" onclick="imprimirComparativo(\''+ctId+'\')">🖨 Imprimir laudo comparativo</button>'+
+    '<button class="btn" style="background:#7c3aed;color:#fff;font-weight:600" onclick="abrirComparativoFotos(\''+ctId+'\')">🔍 Nova comparação</button>'+
+    '</div>',
+    null,'Fechar',true);
+}
+
+function imprimirComparativo(ctId){
+  // Buscar último resultado salvo nos danos da vistoria de saída
+  var saida = vsD.find(function(v){ return v.ctId===ctId&&v.tipo==='Saida'; });
+  var entrada= vsD.find(function(v){ return v.ctId===ctId&&v.tipo==='Entrada'; });
+  if(!saida) return;
+
+  var danos = (saida.danos||[]);
+  var totalCobravel = danos.filter(function(d){return d.tipo==='dano_cobravel';}).reduce(function(s,d){return s+(d.custo_estimado||0);},0);
+
+  var rows = danos.map(function(d){
+    var cobravel=d.tipo==='dano_cobravel';
+    return '<tr style="background:'+(cobravel?'#fef2f2':'#f8fafc')+'">'+
+    '<td style="padding:6px 8px;font-weight:600">'+d.comodo+'</td>'+
+    '<td style="padding:6px 8px">'+d.item+'</td>'+
+    '<td style="padding:6px 8px;font-size:11px;color:#475569">'+d.descricao+'</td>'+
+    '<td style="padding:6px 8px;text-align:center;font-weight:700;color:'+(cobravel?'#dc2626':'#64748b')+'">'+
+    (cobravel?'Sim':'Não')+'</td>'+
+    '<td style="padding:6px 8px;text-align:right;font-weight:700;color:'+(cobravel?'#dc2626':'#94a3b8')+'">'+
+    (cobravel?fmt(d.custo_estimado):'—')+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Laudo Comparativo — '+ctId+'</title>'+
+  '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:28px;color:#1e293b;max-width:750px;margin:0 auto;line-height:1.5}'+
+  'h2{font-size:13px;color:#1e3a8a;margin:14px 0 6px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}'+
+  'table{width:100%;border-collapse:collapse;margin-top:10px}'+
+  'th{background:#1e3a8a;color:#fff;padding:7px 8px;text-align:left;font-size:10px}'+
+  'tr:nth-child(even){background:#f8fafc}'+
+  '.tot{background:#1e3a8a;color:#fff;font-weight:700}'+
+  '.ass{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:36px;padding-top:12px;border-top:1px solid #e2e8f0}'+
+  '.ass-f{text-align:center;border-top:1px solid #000;padding-top:3px;font-size:10px;margin-top:32px}'+
+  '@media print{button{display:none}}</style></head><body>'+
+  '<div style="display:flex;justify-content:space-between;border-bottom:2px solid #1e3a8a;padding-bottom:10px;margin-bottom:14px">'+
+  '<div><div style="font-size:18px;font-weight:900;color:#D42028">RE/MAX <span style="color:#1e3a8a">Space</span></div>'+
+  '<div style="font-size:10px;color:#64748b">CRECI/GO 41.377 | Caldas Novas — GO</div></div>'+
+  '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:#1e3a8a">LAUDO COMPARATIVO DE VISTORIA</div>'+
+  '<div style="font-size:10px;color:#64748b">Contrato: '+ctId+' | Emitido em '+new Date().toLocaleDateString('pt-BR')+'</div></div>'+
+  '</div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">'+
+  '<div style="background:#f8fafc;border-radius:6px;padding:10px">'+
+  '<div style="font-size:10px;color:#64748b;margin-bottom:4px">Entrada</div>'+
+  '<div style="font-weight:700">'+(entrada?entrada.inq:'—')+'</div>'+
+  '<div style="font-size:11px;color:#64748b">'+(entrada?fmtD(entrada.dt):'—')+' — '+(entrada?entrada.end:'')+'</div>'+
+  '</div>'+
+  '<div style="background:#f8fafc;border-radius:6px;padding:10px">'+
+  '<div style="font-size:10px;color:#64748b;margin-bottom:4px">Saída</div>'+
+  '<div style="font-weight:700">'+(saida?saida.inq:'—')+'</div>'+
+  '<div style="font-size:11px;color:#64748b">'+(saida?fmtD(saida.dt):'—')+'</div>'+
+  '</div>'+
+  '</div>'+
+  '<div style="background:#fef2f2;border-radius:6px;padding:12px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">'+
+  '<div><div style="font-size:12px;font-weight:700;color:#991b1b">Total de danos cobráveis</div>'+
+  '<div style="font-size:10px;color:#64748b;margin-top:2px">Identificados por análise IA com comparação de fotos</div></div>'+
+  '<div style="font-size:22px;font-weight:900;color:#dc2626">'+fmt(totalCobravel)+'</div>'+
+  '</div>'+
+  '<table><thead><tr><th>Cômodo</th><th>Item</th><th>Descrição do dano</th><th style="text-align:center">Cobrar?</th><th style="text-align:right">Valor</th></tr></thead>'+
+  '<tbody>'+rows+'</tbody>'+
+  '<tfoot><tr class="tot"><td colspan="4" style="padding:6px 8px">TOTAL COBRADO DO INQUILINO</td>'+
+  '<td style="padding:6px 8px;text-align:right">'+fmt(totalCobravel)+'</td></tr></tfoot>'+
+  '</table>'+
+  '<div class="ass">'+
+  '<div><div class="ass-f">Tatiana Basile — RE/MAX Space</div></div>'+
+  '<div><div class="ass-f">'+( saida?saida.inq:'Inquilino')+'</div></div>'+
+  '<div><div class="ass-f">Testemunha</div></div>'+
+  '</div>'+
+  '<div style="margin-top:22px;text-align:right"><button onclick="window.print()" style="padding:10px 24px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨 Imprimir</button></div>'+
+  '<div style="margin-top:12px;font-size:9px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px">'+
+  'Análise gerada por IA com base em comparação fotográfica. Caráter orientativo — sujeita a revisão. RE/MAX Space — CRECI/GO 41.377</div>'+
+  '</body></html>');
+  w.document.close();
+}
 
 
 function pFD(){
