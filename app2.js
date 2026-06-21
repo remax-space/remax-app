@@ -180,6 +180,7 @@ function pLV(){
     '<button class="btn btn-sm" style="flex:1;background:#eff6ff;color:#1d4ed8;font-weight:600" onclick="vVst('+ri+')">👁 Ver laudo</button>'+
     '<button class="btn btn-sm" style="flex:1;background:#f0fdf4;color:#166534;font-weight:600" onclick="imprimirVistoria('+ri+')">🖨 Imprimir</button>'+
     '<button class="btn btn-sm" style="background:#f8fafc;color:var(--navy);font-size:10px" onclick="eVst('+ri+')">✏ Editar</button>'+
+    '<button class="btn btn-sm" style="background:#7c3aed;color:#fff;font-size:10px;font-weight:700" onclick="analisarFotosVistoria('+ri+')">🤖 IA Foto</button>'+
     (vsD.filter(function(x){return x.ctId===v.ctId&&x.ctId;}).length>=2?
     '<button class="btn btn-sm" style="background:#faf5ff;color:#7c3aed" onclick="compararVistoria(\''+v.ctId+'\')" >⚖ Comp.</button>'+
     '<button class="btn btn-sm" style="background:#f0fdf4;color:#166534;font-size:10px" onclick="abrirComparativoFotos(\''+v.ctId+'\')" >🤖 Fotos IA</button>':'') +
@@ -3974,6 +3975,126 @@ function imprimirComparativo(ctId){
   w.document.close();
 }
 
+
+
+function analisarFotosVistoria(idx){
+  var v = vsD[idx];
+  if(!v) return;
+
+  var fotos = v.fotos||[];
+
+  if(!fotos.length){
+    // Sem fotos — abrir seletor de arquivo direto
+    var inp = document.createElement('input');
+    inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+    inp.onchange=function(){
+      if(!v.fotos) v.fotos=[];
+      var files=Array.from(inp.files);
+      var loaded=0;
+      files.forEach(function(file){
+        var rd=new FileReader();
+        rd.onload=function(e){
+          v.fotos.push(e.target.result);
+          loaded++;
+          if(loaded===files.length){
+            cM(); salvarTudo();
+            analisarFotosVistoria(idx);
+          }
+        };
+        rd.readAsDataURL(file);
+      });
+    };
+    inp.click();
+    return;
+  }
+
+  // Tem fotos — mostrar galeria para escolher
+  var comodos=[
+    {k:'sala',n:'Sala'},{k:'cozinha',n:'Cozinha'},
+    {k:'quarto1',n:'Quarto 1'},{k:'quarto2',n:'Quarto 2'},
+    {k:'quarto3',n:'Quarto 3'},{k:'quarto4',n:'Quarto 4'},
+    {k:'banheiro',n:'Banheiro'},{k:'banheiro2',n:'Banheiro 2'},
+    {k:'servico',n:'Área de Serviço'},{k:'quintal',n:'Quintal'},
+    {k:'garagem',n:'Garagem'},{k:'piscina',n:'Piscina'},
+    {k:'eletrica',n:'Elétrica'},{k:'hidraulica',n:'Hidráulica'}
+  ];
+
+  var grid = fotos.map(function(f,fi){
+    return '<div style="position:relative;cursor:pointer;display:inline-block" onclick="selecionarFotoAnalise('+idx+','+fi+')" id="fa-'+idx+'-'+fi+'">'+
+    '<img src="'+f+'" style="width:90px;height:68px;object-fit:cover;border-radius:8px;border:2px solid transparent;transition:border-color .15s">'+
+    '<div style="position:absolute;bottom:2px;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:9px;text-align:center;padding:1px 0;border-radius:0 0 6px 6px">Foto '+fi+'</div>'+
+    '</div>';
+  }).join('');
+
+  var comOpts = comodos.map(function(c){
+    return '<option value="'+c.k+'">'+c.n+'</option>';
+  }).join('');
+
+  window._fotoAnaliseIdx = null;
+  window._vstAnaliseIdx  = idx;
+
+  oM('🤖 Análise IA por Foto — Vistoria #'+v.id,
+    '<div style="background:#f0f9ff;border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:11px;color:#1d4ed8">'+
+    '📸 Selecione uma foto abaixo. A IA analisará o cômodo, identificará danos e preencherá o checklist automaticamente.</div>'+
+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:8px">'+fotos.length+' foto(s) disponível(is)</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px" id="fa-grid">'+grid+'</div>'+
+
+    '<div id="fa-preview" style="display:none;margin-bottom:14px">'+
+    '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:6px">Foto selecionada</div>'+
+    '<img id="fa-img" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;border:2px solid #7c3aed;background:#f8fafc">'+
+    '</div>'+
+
+    '<div class="fg"><label>Qual cômodo é esta foto?</label>'+
+    '<select id="fa-comodo" style="padding:8px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;width:100%">'+comOpts+'</select></div>'+
+
+    '<div style="margin-top:6px">'+
+    '<input type="file" id="fa-nova" accept="image/*" style="display:none">'+
+    '<label for="fa-nova" style="font-size:11px;color:#1d4ed8;cursor:pointer;text-decoration:underline">+ Adicionar nova foto agora</label>'+
+    '</div>',
+
+    function(){
+      if(window._fotoAnaliseIdx===null){ alert('Selecione uma foto para analisar.'); return; }
+      var comodo=(document.getElementById('fa-comodo')||{}).value||'sala';
+      analisarFotoComodo(window._vstAnaliseIdx, window._fotoAnaliseIdx, comodo);
+    },
+    '🤖 Analisar esta foto com IA', true);
+
+  // Listener para nova foto
+  setTimeout(function(){
+    var inp2=document.getElementById('fa-nova');
+    if(inp2) inp2.onchange=function(){
+      if(!v.fotos) v.fotos=[];
+      var rd=new FileReader();
+      rd.onload=function(e){
+        v.fotos.push(e.target.result);
+        cM(); salvarTudo();
+        var mc=document.getElementById('mc'); if(mc) mc.style.display='none';
+        analisarFotosVistoria(idx);
+      };
+      rd.readAsDataURL(inp2.files[0]);
+    };
+  },100);
+}
+
+window.selecionarFotoAnalise = function(vstIdx, fotoIdx){
+  window._fotoAnaliseIdx = fotoIdx;
+  window._vstAnaliseIdx  = vstIdx;
+  var v = vsD[vstIdx];
+  // Highlight
+  document.querySelectorAll('[id^="fa-'+vstIdx+'-"]').forEach(function(el){
+    var img=el.querySelector('img'); if(img) img.style.borderColor='transparent';
+  });
+  var sel = document.getElementById('fa-'+vstIdx+'-'+fotoIdx);
+  if(sel){ var img=sel.querySelector('img'); if(img) img.style.borderColor='#7c3aed'; }
+  // Preview
+  var prev=document.getElementById('fa-preview');
+  var imgEl=document.getElementById('fa-img');
+  if(prev&&imgEl&&v.fotos[fotoIdx]){
+    prev.style.display='block';
+    imgEl.src=v.fotos[fotoIdx];
+  }
+};
 
 function pFD(){
   var ta=ctD.reduce(function(s,c){return s+c.valor;},0),adm=ta*.1,tpag=cpD.reduce(function(s,c){return s+c.val;},0),sal=adm-tpag;
