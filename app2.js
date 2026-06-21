@@ -4099,6 +4099,7 @@ window.selecionarFotoAnalise = function(vstIdx, fotoIdx){
 
 // ===== RESUMO EXECUTIVO MENSAL IA =====
 function pResumoExecutivo(){
+  try{
   var hoje = new Date();
   var mesAtual = hoje.getMonth();
   var anoAtual = hoje.getFullYear();
@@ -4115,6 +4116,13 @@ function pResumoExecutivo(){
     '</div>';
 
   // Calcular métricas do mês anterior automaticamente
+  // Garantir que as variáveis globais existam
+  if(typeof ctD === 'undefined') ctD = [];
+  if(typeof ldD === 'undefined') ldD = [];
+  if(typeof cpD === 'undefined') cpD = [];
+  if(typeof vsD === 'undefined') vsD = [];
+  if(typeof COMISSOES === 'undefined') COMISSOES = [];
+
   var ativos = ctD.filter(function(c){ return c.status !== 'Inativo'; });
   var carteira = ativos.reduce(function(s,c){ return s+c.valor; }, 0);
   var adm = carteira * 0.10;
@@ -4237,6 +4245,15 @@ function pResumoExecutivo(){
       '<button class="btn btn-red" onclick="gerarResumoIA()" style="font-weight:700;font-size:14px;padding:12px 28px">🤖 Gerar Resumo de '+mesNome+'</button>'+
       '</div>')+
     '</div>';
+  } catch(e) {
+    document.getElementById('pc').innerHTML =
+      '<div style="background:#fef2f2;border-radius:12px;padding:24px;margin:20px">'+
+      '<div style="font-size:14px;font-weight:700;color:#991b1b;margin-bottom:8px">Erro ao carregar Resumo Executivo</div>'+
+      '<div style="font-size:12px;color:#dc2626;font-family:monospace">'+e.message+'</div>'+
+      '<button class="btn btn-red" onclick="pResumoExecutivo()" style="margin-top:12px">Tentar novamente</button>'+
+      '</div>';
+    console.error('pResumoExecutivo erro:', e);
+  }
 }
 
 function _rKpi(ico,label,val,sub,cor,bg){
