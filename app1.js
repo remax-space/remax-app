@@ -3874,69 +3874,245 @@ function leadsView(view){
   var area=document.getElementById('leads-view-area'); if(!area) return;
   var dados=window._ldDados||ldD;
   var isAdmin=window._ldAdmin!==undefined?window._ldAdmin:isA();
-  var catCores={'Digital':'#0d1f4e','Portal':'#5b21b6','Orgânico':'#1a6e3a','Referenciamento':'#b45309','Outros':'#64748b'};
 
+  // Atualizar botões toggle
   var btnL=document.getElementById('btn-lista'), btnK=document.getElementById('btn-kanban');
   if(btnL){btnL.style.background=view==='lista'?'#0d1f4e':'#fff'; btnL.style.color=view==='lista'?'#fff':'#0d1f4e';}
   if(btnK){btnK.style.background=view==='kanban'?'#0d1f4e':'#fff'; btnK.style.color=view==='kanban'?'#fff':'#0d1f4e';}
 
+  window._leadsViewAtual = view;
+
   if(view==='kanban'){
-    var cols=[{st:'Novo',cor:'#64748b'},{st:'Em contato',cor:'#0d1f4e'},{st:'Visita agendada',cor:'#1a6e3a'},{st:'Proposta',cor:'#b45309'},{st:'Fechado',cor:'#1a6e3a'},{st:'Perdido',cor:'#b91c1c'}];
-    var h='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">';
-    cols.forEach(function(col){
-      var ls=dados.filter(function(l){return l.st===col.st;});
-      h+='<div style="background:#f8fafc;border-radius:12px;padding:12px;min-height:180px;border:1px solid #e8edf2"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div style="font-size:9px;font-weight:800;color:'+col.cor+';letter-spacing:1px;text-transform:uppercase">'+col.st+'</div><div style="background:'+col.cor+';color:#fff;font-size:10px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center">'+ls.length+'</div></div>';
-      ls.forEach(function(l){
-        var ri=ldD.indexOf(l);
-        h+='<div style="background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid #e8edf2;cursor:pointer" onclick="eLead('+ri+')"><div style="font-size:12px;font-weight:700;color:#0d1829;margin-bottom:3px">'+l.nome+'</div><div style="font-size:10px;color:#64748b;margin-bottom:5px">'+l.tipo+' · '+l.faixa+'</div>'+(isAdmin?'<div style="font-size:10px;color:#94a3b8;margin-bottom:5px">'+l.cor+'</div>':'')+iaLabel(iaScore(l))+'</div>';
-      });
-      if(!ls.length) h+='<div style="text-align:center;padding:16px;color:#94a3b8;font-size:11px">Nenhum</div>';
-      h+='</div>';
-    });
-    h+='</div>';
-    area.innerHTML=h;
-
+    renderKanban(dados, isAdmin);
   } else {
-    var filtered=dados.slice().sort(function(a,b){return iaScore(b)-iaScore(a);});
-    var tr='';
-    filtered.forEach(function(l){
-      var ri=ldD.indexOf(l); var score=iaScore(l);
-      tr+='<tr style="border-bottom:1px solid #f4f6f8" data-sr="'+(l.nome+l.orig+(l.orig_cat||'')+l.cor+l.st+l.tipo).toLowerCase()+'">'+
-        '<td style="padding:10px 12px;font-size:10px;color:#64748b">'+l.dt+'</td>'+
-        '<td style="padding:10px 12px"><div style="font-size:10px;font-weight:700;color:'+(catCores[l.orig_cat||'Outros']||'#64748b')+'">'+( l.orig_cat||'Outros')+'</div><div style="font-size:10px;color:#94a3b8">'+l.orig+'</div></td>'+
-        '<td style="padding:10px 12px"><span style="background:#f1f5f9;color:#334155;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">'+l.tipo+'</span></td>'+
-        '<td style="padding:10px 12px;font-weight:700;color:#0d1829;font-size:13px">'+l.nome+'</td>'+
-        '<td style="padding:10px 12px"><a href="tel:'+l.tel+'" style="color:#0d1f4e;font-size:11px;font-weight:600;text-decoration:none">'+l.tel+'</a></td>'+
-        (isAdmin?'<td style="padding:10px 12px;font-size:11px;color:#4a5568">'+l.cor+'</td>':'')+
-        '<td style="padding:10px 12px;font-size:11px;color:#4a5568">'+l.faixa+'</td>'+
-        '<td style="padding:10px 12px">'+sBadge(l.st)+'</td>'+
-        '<td style="padding:10px 12px">'+iaLabel(score)+'</td>'+
-        '<td style="padding:10px 12px"><div style="display:flex;gap:4px"><button style="background:#eff6ff;color:#0d1f4e;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer" onclick="eLead('+ri+')">Editar</button><button style="background:#fef2f2;color:#b91c1c;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer" onclick="delLead('+ri+')">✕</button></div></td>'+
-      '</tr>';
-    });
-    area.innerHTML='<div style="background:#fff;border-radius:12px;border:1px solid #e8edf2;overflow:hidden"><div style="padding:12px 16px;border-bottom:1px solid #edf2f7;background:#fafbfd;display:flex;gap:8px;flex-wrap:wrap"><input id="ld-s" placeholder="🔍 Buscar nome, origem..." style="flex:2;min-width:160px;padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px">'+(isAdmin?'<select id="ld-fc" style="padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"><option value="">Todos corretores</option>'+COR.map(function(c){return '<option>'+c.nome+'</option>';}).join('')+'</select>':'')+
-    '<select id="ld-fo" style="padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"><option value="">Todos canais</option><option>Digital</option><option>Portal</option><option>Orgânico</option><option>Referenciamento</option><option>Outros</option></select><select id="ld-fs" style="padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"><option value="">Todos status</option><option>Novo</option><option>Em contato</option><option>Visita agendada</option><option>Proposta</option><option>Fechado</option><option>Perdido</option></select></div>'+
-    '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#fafbfd"><th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Data</th><th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Canal</th><th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Tipo</th><th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Nome</th><th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Tel</th>'+
-    (isAdmin?'<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Corretor</th>':'')+
-    '<th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Faixa</th><th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Status</th><th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">IA</th><th style="padding:10px 12px;text-align:left;font-size:10px;font-weight:800;color:#4a5568;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #edf2f7">Ações</th></tr></thead><tbody id="ld-b">'+tr+'</tbody></table></div></div>';
-
-    setTimeout(function(){
-      function filtLD(){
-        var q=(document.getElementById('ld-s')||{value:''}).value.toLowerCase();
-        var fo=(document.getElementById('ld-fo')||{value:''}).value.toLowerCase();
-        var fs=(document.getElementById('ld-fs')||{value:''}).value.toLowerCase();
-        document.querySelectorAll('#ld-b tr').forEach(function(row){
-          var sr=row.dataset.sr||'';
-          var ok=(!q||sr.includes(q))&&(!fo||sr.includes(fo))&&(!fs||sr.includes(fs));
-          row.style.display=ok?'':'none';
-        });
-      }
-      ['ld-s','ld-fo','ld-fs'].forEach(function(id){var el=document.getElementById(id);if(el){el.addEventListener('input',filtLD);el.addEventListener('change',filtLD);}});
-    },100);
+    renderListaLeads(dados, isAdmin);
   }
 }
 
-function nLead(){
+// ─── KANBAN ────────────────────────────────────────────────────────────────
+function renderKanban(dados, isAdmin){
+  var area=document.getElementById('leads-view-area'); if(!area) return;
+
+  var cols=[
+    {st:'Novo',         cor:'#64748b', bg:'#f8fafc', ico:'🆕'},
+    {st:'Em contato',   cor:'#1d4ed8', bg:'#eff6ff', ico:'📞'},
+    {st:'Visita agendada',cor:'#7c3aed',bg:'#faf5ff',ico:'🏠'},
+    {st:'Proposta',     cor:'#c2410c', bg:'#fff7ed', ico:'📋'},
+    {st:'Fechado',      cor:'#166534', bg:'#f0fdf4', ico:'✅'},
+    {st:'Perdido',      cor:'#991b1b', bg:'#fef2f2', ico:'❌'}
+  ];
+
+  // KPI rápido por coluna
+  var totalValor=dados.reduce(function(s,l){
+    var v=parseFloat((l.faixa||'').replace(/[^\d]/g,'').split('')[0])||0;
+    return s+v;
+  },0);
+
+  var h='<div style="display:flex;gap:3px;margin-bottom:6px">'+
+  cols.map(function(col){
+    var n=dados.filter(function(l){return l.st===col.st;}).length;
+    return '<div style="flex:1;text-align:center;font-size:9px;font-weight:700;color:'+col.cor+';padding:3px 0;background:'+col.bg+';border-radius:6px">'+n+'</div>';
+  }).join('')+
+  '</div>';
+
+  h+='<div style="display:grid;grid-template-columns:repeat(6,minmax(150px,1fr));gap:8px;overflow-x:auto;padding-bottom:8px">';
+
+  cols.forEach(function(col){
+    var ls=dados.filter(function(l){return l.st===col.st;});
+    var colTotal=ls.reduce(function(s,l){return s+1;},0);
+
+    h+='<div class="kb-col" data-st="'+col.st+'" style="background:'+col.bg+';border-radius:12px;padding:10px;min-height:200px;border:1px solid rgba(0,0,0,.06)" '+
+    'ondragover="event.preventDefault();this.style.outline=\'2px dashed '+col.cor+'\'" '+
+    'ondragleave="this.style.outline=\'\'" '+
+    'ondrop="dropLead(event,\''+col.st+'\')">' +
+
+    // Header coluna
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(0,0,0,.06)">'+
+    '<div style="font-size:11px;font-weight:700;color:'+col.cor+'">'+col.ico+' '+col.st+'</div>'+
+    '<div style="background:'+col.cor+';color:#fff;font-size:10px;font-weight:800;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px">'+colTotal+'</div>'+
+    '</div>';
+
+    // Cards dos leads
+    ls.forEach(function(l){
+      var ri=ldD.indexOf(l);
+      var score=iaScore(l);
+      var scoreCor=score>=70?'#166534':score>=50?'#d97706':'#dc2626';
+      var scoreBg=score>=70?'#f0fdf4':score>=50?'#fffbeb':'#fef2f2';
+      var tel=(l.tel||'').replace(/\D/g,'');
+      var waTxt=encodeURIComponent('Olá '+l.nome+'! Sou Tatiana da RE/MAX Space. Vi seu interesse em '+l.tipo+' na faixa '+l.faixa+' em '+( l.bairro||'Caldas Novas')+'. Podemos conversar? 😊');
+      var waLink=tel?'https://wa.me/55'+tel+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+
+      h+='<div class="kb-card" draggable="true" data-idx="'+ri+'" '+
+      'style="background:#fff;border-radius:10px;padding:10px;margin-bottom:7px;border:1px solid #e2e8f0;cursor:grab;transition:box-shadow .15s;box-shadow:0 1px 3px rgba(0,0,0,.06)" '+
+      'ondragstart="dragLead(event,'+ri+')" '+
+      'onmouseover="this.style.boxShadow=\'0 4px 12px rgba(0,0,0,.12)\'" '+
+      'onmouseout="this.style.boxShadow=\'0 1px 3px rgba(0,0,0,.06)\'">' +
+
+      // Nome e score
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'+
+      '<div style="font-size:12px;font-weight:700;color:#1e293b;line-height:1.3;max-width:110px">'+l.nome+'</div>'+
+      '<div style="background:'+scoreBg+';color:'+scoreCor+';font-size:9px;font-weight:800;padding:2px 5px;border-radius:6px;white-space:nowrap">'+score+'pts</div>'+
+      '</div>'+
+
+      // Tipo + faixa
+      '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px">'+
+      '<span style="background:#f1f5f9;color:#475569;font-size:9px;font-weight:600;padding:1px 5px;border-radius:4px">'+l.tipo+'</span>'+
+      '<span style="background:#f1f5f9;color:#475569;font-size:9px;padding:1px 5px;border-radius:4px">'+l.faixa+'</span>'+
+      (l.bairro?'<span style="background:#f1f5f9;color:#475569;font-size:9px;padding:1px 5px;border-radius:4px">'+l.bairro+'</span>':'')+
+      '</div>'+
+
+      // Corretor (admin) + data
+      (isAdmin&&l.cor?'<div style="font-size:9px;color:#94a3b8;margin-bottom:4px">👤 '+l.cor+'</div>':'')+
+      '<div style="font-size:9px;color:#94a3b8;margin-bottom:6px">📅 '+fmtD(l.dt)+'</div>'+
+
+      // Observação se tiver
+      (l.obs&&l.obs!=='-'?'<div style="font-size:10px;color:#64748b;background:#f8fafc;border-radius:5px;padding:4px 6px;margin-bottom:6px;line-height:1.4">'+l.obs+'</div>':'')+
+
+      // Ações rápidas
+      '<div style="display:flex;gap:4px">'+
+      '<a href="'+waLink+'" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;background:#25d366;color:#fff;border-radius:6px;width:26px;height:22px;text-decoration:none;font-size:11px" title="WhatsApp">💬</a>'+
+      '<button onclick="eLead('+ri+')" style="flex:1;background:#eff6ff;color:#1d4ed8;border:none;border-radius:6px;padding:3px 6px;font-size:9px;font-weight:700;cursor:pointer">✏ Editar</button>'+
+      '<button onclick="moverLeadSt('+ri+')" style="background:#f0fdf4;color:#166534;border:none;border-radius:6px;padding:3px 6px;font-size:9px;font-weight:700;cursor:pointer" title="Avançar etapa">▶</button>'+
+      '<button onclick="delLead('+ri+')" style="background:#fef2f2;color:#dc2626;border:none;border-radius:6px;padding:3px 5px;font-size:9px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '</div>';
+    });
+
+    // Drop zone vazia
+    if(!ls.length){
+      h+='<div style="text-align:center;padding:20px 8px;color:#94a3b8;font-size:11px;border:1.5px dashed #e2e8f0;border-radius:8px">'+
+      'Arraste leads aqui</div>';
+    }
+
+    // Botão adicionar lead nessa etapa
+    h+='<button onclick="nLeadNaEtapa(\''+col.st+'\')" '+
+    'style="width:100%;margin-top:6px;background:transparent;border:1px dashed '+col.cor+';color:'+col.cor+';border-radius:7px;padding:5px;font-size:10px;font-weight:600;cursor:pointer">'+
+    '+ Adicionar lead</button>';
+
+    h+='</div>';
+  });
+
+  h+='</div>';
+
+  // Estilos drag & drop
+  h+='<style>.kb-card.dragging{opacity:.4;transform:rotate(2deg)}.kb-col.drag-over{outline:2px dashed #1d4ed8!important}</style>';
+
+  area.innerHTML=h;
+
+  // Total valor estimado
+  var totF=dados.filter(function(l){return l.st!=='Perdido';}).length;
+  var summary=document.createElement('div');
+  summary.style.cssText='display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap';
+  summary.innerHTML=
+    '<div style="background:#fff;border-radius:8px;padding:8px 12px;font-size:11px;border:1px solid #e2e8f0">'+
+    '📊 <strong>'+dados.length+'</strong> leads totais | <strong style="color:#166534">'+
+    dados.filter(function(l){return l.st==='Fechado';}).length+'</strong> fechados | <strong style="color:#dc2626">'+
+    dados.filter(function(l){return l.st==='Perdido';}).length+'</strong> perdidos'+
+    '</div>'+
+    '<div style="background:#fff;border-radius:8px;padding:8px 12px;font-size:11px;border:1px solid #e2e8f0">'+
+    '🔥 <strong style="color:#dc2626">'+dados.filter(function(l){return iaScore(l)>=70&&l.st!=='Fechado'&&l.st!=='Perdido';}).length+'</strong> leads quentes no pipeline'+
+    '</div>';
+  area.insertBefore(summary, area.firstChild);
+}
+
+// Drag & Drop
+window.dragLead = function(event, idx){
+  event.dataTransfer.setData('text/plain', String(idx));
+  setTimeout(function(){
+    var el=document.querySelector('.kb-card[data-idx="'+idx+'"]');
+    if(el) el.classList.add('dragging');
+  },0);
+};
+
+window.dropLead = function(event, novoSt){
+  event.preventDefault();
+  var idx=parseInt(event.dataTransfer.getData('text/plain'));
+  if(isNaN(idx)||!ldD[idx]) return;
+  var stAntigo=ldD[idx].st;
+  ldD[idx].st=novoSt;
+  cM(); salvarTudo();
+  // Feedback visual
+  event.currentTarget.style.outline='';
+  var area=document.getElementById('leads-view-area');
+  if(area){
+    renderKanban(window._ldDados||ldD, window._ldAdmin!==undefined?window._ldAdmin:isA());
+    // Toast
+    var toast=document.createElement('div');
+    toast.style.cssText='position:fixed;bottom:24px;right:24px;background:#1e3a8a;color:#fff;padding:10px 18px;border-radius:10px;font-size:12px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+    toast.textContent='✓ '+ldD[idx].nome+' → '+novoSt;
+    document.body.appendChild(toast);
+    setTimeout(function(){toast.remove();},2500);
+  }
+};
+
+function moverLeadSt(idx){
+  var ordem=['Novo','Em contato','Visita agendada','Proposta','Fechado'];
+  var atual=ldD[idx].st;
+  var posAtual=ordem.indexOf(atual);
+  if(posAtual<0||posAtual>=ordem.length-1) return;
+  ldD[idx].st=ordem[posAtual+1];
+  cM(); salvarTudo();
+  leadsView('kanban');
+}
+
+function nLeadNaEtapa(st){
+  nLead(st);
+}
+
+// ─── LISTA ────────────────────────────────────────────────────────────────
+function renderListaLeads(dados, isAdmin){
+  var area=document.getElementById('leads-view-area'); if(!area) return;
+  var catCores={'Digital':'#0d1f4e','Portal':'#5b21b6','Orgânico':'#1a6e3a','Referenciamento':'#b45309','Outros':'#64748b'};
+  var filtered=dados.slice().sort(function(a,b){return iaScore(b)-iaScore(a);});
+
+  var tr='';
+  filtered.forEach(function(l){
+    var ri=ldD.indexOf(l); var score=iaScore(l);
+    var tel=(l.tel||'').replace(/\D/g,'');
+    var waLink='https://wa.me/55'+tel+'?text='+encodeURIComponent('Olá '+l.nome+'! Sou Tatiana da RE/MAX Space.');
+    tr+='<tr style="border-bottom:1px solid #f4f6f8" data-sr="'+(l.nome+l.orig+(l.orig_cat||'')+l.cor+l.st+l.tipo).toLowerCase()+'">'+
+    '<td style="padding:10px 12px;font-size:10px;color:#64748b">'+fmtD(l.dt)+'</td>'+
+    '<td style="padding:10px 12px"><div style="font-size:10px;font-weight:700;color:'+(catCores[l.orig_cat||'Outros']||'#64748b')+'">'+( l.orig_cat||'Outros')+'</div><div style="font-size:10px;color:#94a3b8">'+l.orig+'</div></td>'+
+    '<td style="padding:10px 12px"><span style="background:#f1f5f9;color:#334155;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px">'+l.tipo+'</span></td>'+
+    '<td style="padding:10px 12px;font-weight:700;color:#0d1829;font-size:13px">'+l.nome+'</td>'+
+    '<td style="padding:10px 12px"><a href="tel:'+l.tel+'" style="color:#0d1f4e;font-size:11px;font-weight:600;text-decoration:none">'+l.tel+'</a></td>'+
+    (isAdmin?'<td style="padding:10px 12px;font-size:11px;color:#4a5568">'+l.cor+'</td>':'')+
+    '<td style="padding:10px 12px;font-size:11px;color:#4a5568">'+l.faixa+'</td>'+
+    '<td style="padding:10px 12px">'+sBadge(l.st)+'</td>'+
+    '<td style="padding:10px 12px">'+iaLabel(score)+'</td>'+
+    '<td style="padding:10px 12px"><div style="display:flex;gap:4px">'+
+    '<a href="'+waLink+'" target="_blank" style="display:inline-flex;align-items:center;justify-content:center;background:#25d366;color:#fff;border-radius:6px;width:28px;height:26px;text-decoration:none;font-size:12px">💬</a>'+
+    '<button style="background:#eff6ff;color:#0d1f4e;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer" onclick="eLead('+ri+')">Editar</button>'+
+    '<button style="background:#fef2f2;color:#b91c1c;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer" onclick="delLead('+ri+')">✕</button>'+
+    '</div></td>'+
+    '</tr>';
+  });
+
+  area.innerHTML=
+    '<div style="background:#fff;border-radius:12px;border:1px solid #e8edf2;overflow:hidden">'+
+    '<div style="padding:12px 16px;border-bottom:1px solid #edf2f7;background:#fafbfd;display:flex;gap:8px;flex-wrap:wrap">'+
+    '<input id="ld-s" placeholder="🔍 Buscar nome, origem..." style="flex:2;min-width:160px;padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px">'+
+    (isAdmin?'<select id="ld-fc" style="padding:7px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px"><option value="">Todos corretores</option>'+COR.map(function(c){return '<option>'+c.nome+'</option>';}).join('')+'</select>':'')+'</div>'+
+    '<div class="tw"><table style="width:100%"><thead><tr>'+
+    '<th style="padding:10px 12px;font-size:10px;font-weight:700;color:#64748b">Data</th>'+
+    '<th>Canal</th><th>Tipo</th><th>Nome</th><th>Telefone</th>'+
+    (isAdmin?'<th>Corretor</th>':'')+
+    '<th>Faixa</th><th>Status</th><th>Score IA</th><th>Ações</th>'+
+    '</tr></thead><tbody id="ld-body">'+tr+'</tbody></table></div></div>';
+
+  // Busca
+  var si=document.getElementById('ld-s');
+  if(si) si.oninput=function(){
+    var q=this.value.toLowerCase();
+    document.querySelectorAll('#ld-body tr').forEach(function(r){
+      r.style.display=r.getAttribute('data-sr').indexOf(q)>=0?'':'none';
+    });
+  };
+}
+
+
+function nLead(etapaInicial){
+  etapaInicial=etapaInicial||'Novo';
   var origOpts='';
   Object.keys(ORIGENS_CAT).forEach(function(cat){
     origOpts+='<optgroup label="'+cat+'">';
