@@ -4096,6 +4096,386 @@ window.selecionarFotoAnalise = function(vstIdx, fotoIdx){
   }
 };
 
+
+// ===== RESUMO EXECUTIVO MENSAL IA =====
+function pResumoExecutivo(){
+  var hoje = new Date();
+  var mesAtual = hoje.getMonth();
+  var anoAtual = hoje.getFullYear();
+  var mesAnterior = mesAtual === 0 ? 11 : mesAtual - 1;
+  var anoAnterior = mesAtual === 0 ? anoAtual - 1 : anoAtual;
+  var meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  var mesNome = meses[mesAnterior];
+  var mesKey = anoAnterior+'-'+String(mesAnterior+1).padStart(2,'0');
+
+  document.getElementById('pa').innerHTML =
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+    '<button class="btn btn-red" onclick="gerarResumoIA()" style="font-weight:700">🤖 Gerar Resumo com IA</button>'+
+    '<button class="btn" onclick="imprimirResumo()" style="background:#1e3a8a;color:#fff;font-weight:600">🖨 Imprimir Relatório</button>'+
+    '</div>';
+
+  // Calcular métricas do mês anterior automaticamente
+  var ativos = ctD.filter(function(c){ return c.status !== 'Inativo'; });
+  var carteira = ativos.reduce(function(s,c){ return s+c.valor; }, 0);
+  var adm = carteira * 0.10;
+
+  // Inadimplência mês anterior
+  var inadList = ativos.filter(function(c){
+    var st = c.rs && c.rs[mesAnterior] || 'N';
+    return st !== 'R' && st !== 'X';
+  });
+  var inadVal = inadList.reduce(function(s,c){ return s+c.valor; },0);
+  var txInad = carteira > 0 ? (inadVal/carteira*100).toFixed(1) : 0;
+
+  // Contratos vencendo
+  var ct30 = ativos.filter(function(c){
+    if(!c.fim) return false;
+    var dias = Math.round((new Date(c.fim)-hoje)/86400000);
+    return dias >= 0 && dias <= 30;
+  }).length;
+  var ct60 = ativos.filter(function(c){
+    if(!c.fim) return false;
+    var dias = Math.round((new Date(c.fim)-hoje)/86400000);
+    return dias >= 0 && dias <= 60;
+  }).length;
+
+  // Leads
+  var leadsTotal = ldD.length;
+  var leadsFechados = ldD.filter(function(l){ return l.st==='Fechado'; }).length;
+  var leadsNovos = ldD.filter(function(l){ return l.st==='Novo'; }).length;
+  var conv = leadsTotal > 0 ? (leadsFechados/leadsTotal*100).toFixed(1) : 0;
+
+  // Vistorias
+  var vistMes = vsD.filter(function(v){ return (v.dt||'').slice(0,7) === mesKey; }).length;
+
+  // Despesas
+  var despMes = cpD.filter(function(c){ return (c.venc||'').slice(0,7) === mesKey; });
+  var despTotal = despMes.reduce(function(s,c){ return s+c.val; }, 0);
+  var despPago = despMes.filter(function(c){ return c.st==='Pago'; }).reduce(function(s,c){ return s+c.val; }, 0);
+
+  // Resultado líquido estimado
+  var resultado = adm - despTotal;
+
+  // Comissões pagas no mês
+  var comMes = (typeof COMISSOES !== 'undefined' ? COMISSOES : [])
+    .filter(function(c){ return (c.mes||c.dt||'').slice(0,7) === mesKey && c.status==='Pago'; })
+    .reduce(function(s,c){ return s+(c.comissao||0); }, 0);
+
+  // Salvar métricas para uso na IA
+  window._resumoMetricas = {
+    mes: mesNome, ano: anoAnterior, mesKey: mesKey,
+    carteira: carteira, adm: adm, ativos: ativos.length,
+    inadVal: inadVal, txInad: txInad, inadCount: inadList.length,
+    ct30: ct30, ct60: ct60,
+    leadsTotal: leadsTotal, leadsFechados: leadsFechados, leadsNovos: leadsNovos, conv: conv,
+    vistMes: vistMes, despTotal: despTotal, despPago: despPago,
+    resultado: resultado, comissoes: comMes
+  };
+
+  // Verificar se já tem resumo salvo para este mês
+  var resumoSalvo = window._resumosIA && window._resumosIA[mesKey];
+
+  document.getElementById('pc').innerHTML =
+    // Header
+    '<div style="background:linear-gradient(135deg,#0f1a35,#1e3a8a);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between">'+
+    '<div>'+
+    '<div style="font-size:12px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Resumo Executivo Mensal</div>'+
+    '<div style="font-size:22px;font-weight:900;color:#fff">'+mesNome+' '+anoAnterior+'</div>'+
+    '<div style="font-size:12px;color:rgba(255,255,255,.65);margin-top:4px">RE/MAX Space — Caldas Novas, GO</div>'+
+    '</div>'+
+    '<div style="text-align:right">'+
+    '<div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px">Carteira total</div>'+
+    '<div style="font-size:28px;font-weight:900;color:#fff">'+fmt(carteira)+'</div>'+
+    '<div style="font-size:11px;color:rgba(255,255,255,.6)">'+ativos.length+' contratos ativos</div>'+
+    '</div>'+
+    '</div>'+
+
+    // KPIs
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px">'+
+    _rKpi('💰','Receita ADM',fmt(adm),'taxa 10% da carteira','#166534','#f0fdf4')+
+    _rKpi('📉','Inadimplência',fmt(inadVal),txInad+'% — '+inadList.length+' contratos',parseFloat(txInad)>10?'#991b1b':'#166534',parseFloat(txInad)>10?'#fef2f2':'#f0fdf4')+
+    _rKpi('💸','Despesas',fmt(despTotal),fmt(despPago)+' pagos','#92400e','#fffbeb')+
+    _rKpi('📊','Resultado Est.',fmt(resultado),resultado>=0?'superávit':'déficit',resultado>=0?'#166534':'#991b1b',resultado>=0?'#f0fdf4':'#fef2f2')+
+    _rKpi('🎯','Leads',leadsTotal+' total',conv+'% conversão | '+leadsFechados+' fechados','#1d4ed8','#eff6ff')+
+    '</div>'+
+
+    // Grid 2 colunas
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">'+
+
+    // Alertas do mês
+    '<div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#1e293b;letter-spacing:.5px;margin-bottom:12px">⚠ Atenções do Mês</div>'+
+    (inadList.length ? '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fef2f2;border-radius:8px;margin-bottom:6px"><span style="font-size:14px">🔴</span><div style="font-size:12px"><strong>'+inadList.length+' inadimplente(s)</strong> — '+fmt(inadVal)+' em aberto</div></div>' : '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f0fdf4;border-radius:8px;margin-bottom:6px"><span>✅</span><div style="font-size:12px">Nenhuma inadimplência</div></div>')+
+    (ct30 ? '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fef2f2;border-radius:8px;margin-bottom:6px"><span style="font-size:14px">📅</span><div style="font-size:12px"><strong>'+ct30+' contrato(s)</strong> vencendo em 30 dias</div></div>' : '')+
+    (ct60 ? '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fffbeb;border-radius:8px;margin-bottom:6px"><span style="font-size:14px">📅</span><div style="font-size:12px"><strong>'+ct60+' contrato(s)</strong> vencendo em 60 dias</div></div>' : '')+
+    (leadsNovos ? '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#eff6ff;border-radius:8px;margin-bottom:6px"><span style="font-size:14px">🎯</span><div style="font-size:12px"><strong>'+leadsNovos+' lead(s)</strong> sem contato ainda</div></div>' : '')+
+    (resultado < 0 ? '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#fef2f2;border-radius:8px;margin-bottom:6px"><span style="font-size:14px">💸</span><div style="font-size:12px"><strong>Resultado negativo:</strong> '+fmt(Math.abs(resultado))+'</div></div>' : '')+
+    '</div>'+
+
+    // Destaques rápidos
+    '<div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px">'+
+    '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#1e293b;letter-spacing:.5px;margin-bottom:12px">📈 Indicadores</div>'+
+    _rRow('Contratos ativos',ativos.length)+
+    _rRow('Carteira mensal',fmt(carteira))+
+    _rRow('Taxa ADM (10%)',fmt(adm))+
+    _rRow('Comissões pagas',fmt(comMes))+
+    _rRow('Vistorias no mês',vistMes)+
+    _rRow('Taxa inadimplência',txInad+'%')+
+    _rRow('Conversão de leads',conv+'%')+
+    '</div>'+
+    '</div>'+
+
+    // Área do resumo IA
+    '<div id="resumo-ia-area" style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:20px;margin-bottom:16px">'+
+    (resumoSalvo ?
+      _renderResumoIA(resumoSalvo) :
+      '<div style="text-align:center;padding:30px 20px">'+
+      '<div style="font-size:36px;margin-bottom:12px">🤖</div>'+
+      '<div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:6px">Briefing Executivo IA</div>'+
+      '<div style="font-size:12px;color:#64748b;margin-bottom:20px;max-width:400px;margin-left:auto;margin-right:auto">'+
+      'A IA analisa todos os dados do mês e gera um relatório executivo completo: o que foi bem, o que precisa atenção e 3 ações prioritárias para o próximo mês.</div>'+
+      '<button class="btn btn-red" onclick="gerarResumoIA()" style="font-weight:700;font-size:14px;padding:12px 28px">🤖 Gerar Resumo de '+mesNome+'</button>'+
+      '</div>')+
+    '</div>';
+}
+
+function _rKpi(ico,label,val,sub,cor,bg){
+  return '<div style="background:'+bg+';border-radius:12px;padding:14px;border:1px solid rgba(0,0,0,.04)">'+
+  '<div style="font-size:16px;margin-bottom:4px">'+ico+'</div>'+
+  '<div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">'+label+'</div>'+
+  '<div style="font-size:16px;font-weight:800;color:'+cor+'">'+val+'</div>'+
+  '<div style="font-size:10px;color:#94a3b8;margin-top:2px">'+sub+'</div>'+
+  '</div>';
+}
+
+function _rRow(label, val){
+  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9">'+
+  '<div style="font-size:12px;color:#475569">'+label+'</div>'+
+  '<div style="font-size:12px;font-weight:700;color:#1e293b">'+val+'</div>'+
+  '</div>';
+}
+
+function _renderResumoIA(resumo){
+  var parecerCor = resumo.parecer==='EXCELENTE'?'#166534':resumo.parecer==='BOM'?'#1d4ed8':resumo.parecer==='ATENÇÃO'?'#92400e':'#991b1b';
+  var parecerBg  = resumo.parecer==='EXCELENTE'?'#f0fdf4':resumo.parecer==='BOM'?'#eff6ff':resumo.parecer==='ATENÇÃO'?'#fffbeb':'#fef2f2';
+
+  var acoeHtml = (resumo.acoes||[]).map(function(a,i){
+    return '<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9">'+
+    '<div style="min-width:22px;height:22px;background:#1e3a8a;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">'+( i+1)+'</div>'+
+    '<div>'+
+    '<div style="font-size:13px;font-weight:600;color:#1e293b">'+a.titulo+'</div>'+
+    '<div style="font-size:11px;color:#475569;margin-top:2px">'+a.descricao+'</div>'+
+    '<div style="font-size:10px;color:#7c3aed;font-weight:600;margin-top:3px">'+a.prazo+'</div>'+
+    '</div>'+
+    '</div>';
+  }).join('');
+
+  var alertHtml = (resumo.alertas||[]).map(function(a){
+    return '<div style="display:flex;gap:8px;background:#fef2f2;border-radius:8px;padding:8px 12px;margin-bottom:6px">'+
+    '<span style="font-size:14px">⚠</span>'+
+    '<span style="font-size:12px;color:#991b1b">'+a+'</span>'+
+    '</div>';
+  }).join('');
+
+  var posHtml = (resumo.destaques_positivos||[]).map(function(p){
+    return '<div style="display:flex;gap:8px;background:#f0fdf4;border-radius:8px;padding:8px 12px;margin-bottom:6px">'+
+    '<span style="font-size:14px">✅</span>'+
+    '<span style="font-size:12px;color:#166534">'+p+'</span>'+
+    '</div>';
+  }).join('');
+
+  return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #e2e8f0">'+
+  '<div>'+
+  '<div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px">Briefing Executivo IA — '+resumo.mes+'</div>'+
+  '<div style="font-size:15px;font-weight:800;color:#1e293b;margin-top:2px">'+resumo.titulo+'</div>'+
+  '</div>'+
+  '<div style="background:'+parecerBg+';color:'+parecerCor+';font-size:11px;font-weight:800;padding:5px 14px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px">'+resumo.parecer+'</div>'+
+  '</div>'+
+
+  // Resumo executivo
+  '<div style="background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#1e293b;line-height:1.7;font-style:italic">'+
+  '"'+resumo.resumo+'"'+
+  '</div>'+
+
+  // Grid positivos + alertas
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">'+
+  '<div>'+
+  '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#166534;margin-bottom:8px;letter-spacing:.5px">✅ Destaques positivos</div>'+
+  (posHtml||'<div style="font-size:11px;color:#94a3b8;font-style:italic">Nenhum destaque registrado</div>')+
+  '</div>'+
+  '<div>'+
+  '<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#991b1b;margin-bottom:8px;letter-spacing:.5px">⚠ Pontos de atenção</div>'+
+  (alertHtml||'<div style="font-size:11px;color:#94a3b8;font-style:italic">Nenhum alerta</div>')+
+  '</div>'+
+  '</div>'+
+
+  // Ações prioritárias
+  '<div style="background:#fff;border-radius:10px;border:1px solid #e2e8f0;padding:14px;margin-bottom:14px">'+
+  '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#1d4ed8;margin-bottom:10px;letter-spacing:.5px">🎯 3 Ações Prioritárias para o Próximo Mês</div>'+
+  acoeHtml+
+  '</div>'+
+
+  // Previsão
+  (resumo.previsao?
+  '<div style="background:#eff6ff;border-radius:10px;padding:12px 16px;margin-bottom:12px">'+
+  '<div style="font-size:10px;font-weight:700;color:#1d4ed8;text-transform:uppercase;margin-bottom:4px">🔮 Perspectiva para o próximo mês</div>'+
+  '<div style="font-size:12px;color:#1e293b;line-height:1.6">'+resumo.previsao+'</div>'+
+  '</div>':'')+
+
+  '<div style="display:flex;gap:8px;margin-top:4px">'+
+  '<button class="btn" style="background:#1e3a8a;color:#fff;font-weight:600" onclick="imprimirResumo()">🖨 Imprimir</button>'+
+  '<button class="btn" style="background:#7c3aed;color:#fff;font-weight:600" onclick="gerarResumoIA()">🔄 Regenerar</button>'+
+  '</div>';
+}
+
+async function gerarResumoIA(){
+  var m = window._resumoMetricas;
+  if(!m){ pResumoExecutivo(); m=window._resumoMetricas; }
+
+  // Loading
+  var area = document.getElementById('resumo-ia-area');
+  if(area){
+    area.innerHTML=
+      '<div style="text-align:center;padding:40px 20px">'+
+      '<div style="font-size:36px;margin-bottom:12px" id="re-ico">🤖</div>'+
+      '<div style="font-size:15px;font-weight:700;color:#1e293b;margin-bottom:6px" id="re-titulo">Analisando os dados de '+m.mes+'...</div>'+
+      '<div style="font-size:12px;color:#64748b;margin-bottom:20px" id="re-sub">Carteira, inadimplência, leads, despesas e indicadores</div>'+
+      '<div style="width:280px;height:4px;background:#f1f5f9;border-radius:4px;overflow:hidden;margin:0 auto">'+
+      '<div id="re-bar" style="height:4px;background:#1e3a8a;border-radius:4px;width:0%;transition:width 6s linear"></div>'+
+      '</div>'+
+      '</div>';
+    setTimeout(function(){ var b=document.getElementById('re-bar'); if(b) b.style.width='90%'; },100);
+  }
+
+  // Construir prompt rico com todos os dados
+  var inadNomes = (typeof ctD !== 'undefined' ? ctD : [])
+    .filter(function(c){ return c.status!=='Inativo' && c.rs && c.rs[new Date().getMonth()-1] && c.rs[new Date().getMonth()-1]!=='R' && c.rs[new Date().getMonth()-1]!=='X'; })
+    .map(function(c){ return c.inq+' ('+fmt(c.valor)+')'; }).slice(0,5).join(', ');
+
+  var ct30Nomes = (typeof ctD !== 'undefined' ? ctD : [])
+    .filter(function(c){ var d=Math.round((new Date(c.fim||'9999')-new Date())/86400000); return d>=0&&d<=30; })
+    .map(function(c){ return c.id+'/'+c.inq; }).join(', ');
+
+  var prompt =
+    'Você é o assistente executivo da RE/MAX Space, imobiliária em Caldas Novas - GO, dirigida por Tatiana Basile (diretora, CRECI/GO 41.377).\n\n'+
+    'Com base nos dados abaixo, gere o BRIEFING EXECUTIVO MENSAL de '+m.mes+'/'+m.ano+' em formato JSON.\n\n'+
+    '=== DADOS DO MÊS ===\n'+
+    'Carteira total: '+fmt(m.carteira)+'/mês ('+m.ativos+' contratos ativos)\n'+
+    'Receita ADM (10%): '+fmt(m.adm)+'\n'+
+    'Inadimplência: '+fmt(m.inadVal)+' ('+m.txInad+'% da carteira, '+m.inadCount+' contratos)\n'+
+    (inadNomes?'Inadimplentes: '+inadNomes+'\n':'')+
+    'Despesas do mês: '+fmt(m.despTotal)+' ('+fmt(m.despPago)+' pago)\n'+
+    'Resultado estimado: '+fmt(m.resultado)+(m.resultado>=0?' (superávit)':' (déficit)')+'\n'+
+    'Comissões pagas corretores: '+fmt(m.comissoes)+'\n'+
+    'Contratos vencendo em 30 dias: '+m.ct30+'\n'+
+    'Contratos vencendo em 60 dias: '+m.ct60+'\n'+
+    (ct30Nomes?'Contratos críticos: '+ct30Nomes+'\n':'')+
+    'Leads: '+m.leadsTotal+' total | '+m.leadsFechados+' fechados | '+m.leadsNovos+' novos sem contato\n'+
+    'Taxa de conversão de leads: '+m.conv+'%\n'+
+    'Vistorias realizadas no mês: '+m.vistMes+'\n\n'+
+    '=== CONTEXTO ===\n'+
+    '- Imobiliária especializada em locação e venda em Caldas Novas (cidade turística de Goiás)\n'+
+    '- Equipe: Tatiana Basile (diretora), Meirielli (gerente/corretora), T. Moraes, Sérgio Justino, Talyta, Carlos, Lucas, Dubem\n'+
+    '- Franquia RE/MAX com foco em gestão de locações de curta e longa temporada\n'+
+    '- Meta: crescer carteira, reduzir inadimplência e aumentar conversão de leads\n\n'+
+    'Responda APENAS em JSON puro válido:\n'+
+    '{\n'+
+    '  "mes": "'+m.mes+' '+m.ano+'",\n'+
+    '  "titulo": "<título impactante de 5-8 palavras para o mês>",\n'+
+    '  "parecer": "<EXCELENTE|BOM|ATENÇÃO|CRÍTICO>",\n'+
+    '  "resumo": "<2-3 frases executivas diretas sobre o mês — como se fosse para a diretora ler em 30 segundos>",\n'+
+    '  "destaques_positivos": ["<conquista ou ponto positivo>", "<outro destaque>"],\n'+
+    '  "alertas": ["<alerta importante>", "<outro alerta>"],\n'+
+    '  "acoes": [\n'+
+    '    {"titulo": "<ação 1 — mais urgente>", "descricao": "<como executar>", "prazo": "<até quando>"},\n'+
+    '    {"titulo": "<ação 2>", "descricao": "<como executar>", "prazo": "<prazo>"},\n'+
+    '    {"titulo": "<ação 3>", "descricao": "<como executar>", "prazo": "<prazo>"}\n'+
+    '  ],\n'+
+    '  "previsao": "<perspectiva e expectativa para o próximo mês em 2 frases>",\n'+
+    '  "gerado_em": "'+new Date().toLocaleDateString('pt-BR')+' às '+new Date().toLocaleTimeString('pt-BR')+'"\n'+
+    '}';
+
+  try{
+    var resposta = await callClaude(
+      prompt,
+      'Você é assistente executivo de imobiliária. Responda APENAS JSON puro válido, sem markdown, sem texto adicional.',
+      1500
+    );
+
+    var clean = resposta.replace(/```json|```/g,'').trim();
+    var jm = clean.match(/\{[\s\S]*\}/);
+    var data = JSON.parse(jm ? jm[0] : clean);
+
+    // Salvar
+    if(!window._resumosIA) window._resumosIA = {};
+    window._resumosIA[m.mesKey] = data;
+
+    // Renderizar
+    var areaR = document.getElementById('resumo-ia-area');
+    if(areaR) areaR.innerHTML = _renderResumoIA(data);
+
+  } catch(e){
+    var areaR = document.getElementById('resumo-ia-area');
+    if(areaR) areaR.innerHTML =
+      '<div style="background:#fef2f2;border-radius:10px;padding:20px;text-align:center">'+
+      '<div style="font-size:13px;font-weight:700;color:#991b1b">Erro ao gerar resumo</div>'+
+      '<div style="font-size:11px;color:#dc2626;margin-top:4px">'+e.message+'</div>'+
+      '<button class="btn btn-red" onclick="gerarResumoIA()" style="margin-top:12px">Tentar novamente</button>'+
+      '</div>';
+  }
+}
+
+function imprimirResumo(){
+  var m = window._resumoMetricas || {};
+  var resumo = window._resumosIA && window._resumosIA[m.mesKey];
+  var w = window.open('','_blank');
+
+  var acoeHtml = resumo ? (resumo.acoes||[]).map(function(a,i){
+    return '<div style="margin-bottom:10px;padding-left:20px"><strong>'+(i+1)+'. '+a.titulo+'</strong><br>'+a.descricao+'<br><em style="color:#7c3aed">'+a.prazo+'</em></div>';
+  }).join('') : '';
+
+  var posHtml = resumo ? (resumo.destaques_positivos||[]).map(function(p){return '<li>'+p+'</li>';}).join('') : '';
+  var alertHtml = resumo ? (resumo.alertas||[]).map(function(a){return '<li>'+a+'</li>';}).join('') : '';
+
+  w.document.write('<!DOCTYPE html><html><head><title>Resumo Executivo '+( m.mes||'')+'</title>'+
+  '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:30px;color:#1e293b;max-width:750px;margin:0 auto;line-height:1.6}'+
+  'h1{font-size:20px;margin:0 0 4px;color:#0f1a35}h2{font-size:13px;color:#1e3a8a;margin:14px 0 8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}'+
+  '.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}'+
+  '.kpi{background:#f8fafc;border-radius:6px;padding:10px;text-align:center}'+
+  '.kpi-v{font-size:16px;font-weight:800;color:#0f1a35}.kpi-l{font-size:9px;text-transform:uppercase;color:#64748b;margin-bottom:3px}'+
+  '.parecer{display:inline-block;padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;text-transform:uppercase}'+
+  '.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}'+
+  '@media print{button{display:none}}</style></head><body>'+
+  '<div style="display:flex;justify-content:space-between;border-bottom:2px solid #0f1a35;padding-bottom:10px;margin-bottom:16px">'+
+  '<div><div style="font-size:20px;font-weight:900;color:#D42028">RE/MAX <span style="color:#0f1a35">Space</span></div>'+
+  '<div style="font-size:10px;color:#64748b">CRECI/GO 41.377 | Caldas Novas — GO | Tatiana Basile, Diretora</div></div>'+
+  '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:#0f1a35">RESUMO EXECUTIVO</div>'+
+  '<div style="font-size:11px;color:#64748b">'+(m.mes||'')+' '+(m.ano||'')+'</div>'+
+  (resumo?'<span class="parecer" style="background:'+(resumo.parecer==='EXCELENTE'?'#dcfce7':resumo.parecer==='BOM'?'#dbeafe':resumo.parecer==='ATENÇÃO'?'#fef3c7':'#fee2e2')+';color:'+(resumo.parecer==='EXCELENTE'?'#166534':resumo.parecer==='BOM'?'#1e40af':resumo.parecer==='ATENÇÃO'?'#92400e':'#991b1b')+'">'+resumo.parecer+'</span>':'')+
+  '</div></div>'+
+  (resumo?'<h1>'+resumo.titulo+'</h1><p style="font-style:italic;color:#475569;margin-bottom:14px">"'+resumo.resumo+'"</p>':'')+
+  '<div class="kpis">'+
+  '<div class="kpi"><div class="kpi-l">Carteira Total</div><div class="kpi-v">'+fmt(m.carteira||0)+'</div><div style="font-size:9px;color:#94a3b8">'+(m.ativos||0)+' contratos</div></div>'+
+  '<div class="kpi"><div class="kpi-l">Receita ADM</div><div class="kpi-v">'+fmt(m.adm||0)+'</div><div style="font-size:9px;color:#94a3b8">taxa 10%</div></div>'+
+  '<div class="kpi"><div class="kpi-l">Inadimplência</div><div class="kpi-v">'+fmt(m.inadVal||0)+'</div><div style="font-size:9px;color:#94a3b8">'+(m.txInad||0)+'% da carteira</div></div>'+
+  '<div class="kpi"><div class="kpi-l">Despesas</div><div class="kpi-v">'+fmt(m.despTotal||0)+'</div></div>'+
+  '<div class="kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:'+(( m.resultado||0)>=0?'#166534':'#dc2626')+'">'+fmt(m.resultado||0)+'</div></div>'+
+  '<div class="kpi"><div class="kpi-l">Conversão Leads</div><div class="kpi-v">'+(m.conv||0)+'%</div><div style="font-size:9px;color:#94a3b8">'+(m.leadsFechados||0)+' fechados</div></div>'+
+  '</div>'+
+  (resumo?
+  '<div class="cols">'+
+  '<div><h2>Destaques positivos</h2><ul>'+posHtml+'</ul></div>'+
+  '<div><h2>Pontos de atenção</h2><ul>'+alertHtml+'</ul></div>'+
+  '</div>'+
+  '<h2>3 Ações Prioritárias para o Próximo Mês</h2>'+acoeHtml+
+  (resumo.previsao?'<h2>Perspectiva</h2><p>'+resumo.previsao+'</p>':'')+
+  '<div style="font-size:9px;color:#94a3b8;margin-top:8px">Gerado por IA em '+(resumo.gerado_em||'')+'</div>':'')+
+  '<div style="margin-top:24px;text-align:right"><button onclick="window.print()" style="padding:10px 24px;background:#0f1a35;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨 Imprimir / PDF</button></div>'+
+  '</body></html>');
+  w.document.close();
+}
+
+
 function pFD(){
   var ta=ctD.reduce(function(s,c){return s+c.valor;},0),adm=ta*.1,tpag=cpD.reduce(function(s,c){return s+c.val;},0),sal=adm-tpag;
   var rec=cpD.filter(function(c){return c.st==='Pago';}).reduce(function(s,c){return s+c.val;},0);
