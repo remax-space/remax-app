@@ -3456,7 +3456,7 @@ function gP(id){
     dashboard:pDash, whatsapp:pWhatsApp, leads:pLeads, prosp:pProsp, agenda:pAgenda, visitas:pVis,
     acm:pAcm, docs:pDocs, contratos:pContratos, acoes:pAcoes, mcmv:pMCMV,
     'loc-c':pLC, 'loc-r':pLR, 'repasses':pRepasses, 'loc-l':pLL, 'loc-v':pLV, 'boletos':pBoletos, 'extrato':pExtrato, 'os':pOS,
-    iv:pIV, prop:pProp, vitrine:pVitrine, usuarios:pUsuarios, senhas:pGerenciarSenhas, permissoes:pPermissoes, captacao:function(){if(typeof pCaptacao!=='undefined')pCaptacao();else{document.getElementById('pc').innerHTML='<div style="padding:40px;text-align:center;color:#9ca3af">Carregando...</div>';setTimeout(function(){pCaptacao();},500);}}, mkt:pMkt,
+    iv:(typeof pIV!=='undefined'?pIV:function(){document.getElementById('pc').innerHTML='<div style="padding:20px;text-align:center;color:#64748b">Módulo Imóveis Venda em manutenção</div>';}), prop:pProp, vitrine:pVitrine, usuarios:pUsuarios, senhas:pGerenciarSenhas, permissoes:pPermissoes, captacao:function(){if(typeof pCaptacao!=='undefined')pCaptacao();else{document.getElementById('pc').innerHTML='<div style="padding:40px;text-align:center;color:#9ca3af">Carregando...</div>';setTimeout(function(){pCaptacao();},500);}}, mkt:pMkt,
     fd:pFD, 'resumo-exec':pResumoExecutivo, dre:pDRE, fr:pFR, fp:pFP,
     'cad-cor':pCadCor, 'extrato-cor':pExtratoCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq, 'score-risco':pScoreRisco,
     rank:pRank, metas:pMetas, historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
