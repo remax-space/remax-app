@@ -3452,17 +3452,25 @@ function gP(id){
   document.getElementById('pt').textContent = TITLES[id]||id;
   var ca=document.getElementById('ca'); if(ca) ca.scrollTop=0;
   document.getElementById('pa').innerHTML = '';
+  // Router lazy — funções buscadas em tempo de execução para suportar app2.js
+  function _r(fn){ return function(){ var f=window[fn]||null; if(typeof f==='function') f(); else console.warn('Módulo não encontrado:',fn); }; }
   var pages = {
     dashboard:pDash, whatsapp:pWhatsApp, leads:pLeads, prosp:pProsp, agenda:pAgenda, visitas:pVis,
-    acm:pAcm, docs:pDocs, contratos:pContratos, acoes:pAcoes, mcmv:pMCMV,
-    'loc-c':pLC, 'loc-r':pLR, 'repasses':pRepasses, 'loc-l':pLL, 'loc-v':pLV, 'boletos':pBoletos, 'extrato':pExtrato, 'os':pOS,
-    iv:(typeof pIV!=='undefined'?pIV:function(){document.getElementById('pc').innerHTML='<div style="padding:20px;text-align:center;color:#64748b">Módulo Imóveis Venda em manutenção</div>';}), prop:pProp, vitrine:pVitrine, usuarios:pUsuarios, senhas:pGerenciarSenhas, permissoes:pPermissoes, captacao:function(){if(typeof pCaptacao!=='undefined')pCaptacao();else{document.getElementById('pc').innerHTML='<div style="padding:40px;text-align:center;color:#9ca3af">Carregando...</div>';setTimeout(function(){pCaptacao();},500);}}, mkt:pMkt,
-    fd:pFD, 'resumo-exec':pResumoExecutivo, dre:pDRE, fr:pFR, fp:pFP,
-    'cad-cor':pCadCor, 'extrato-cor':pExtratoCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq, 'score-risco':pScoreRisco,
-    rank:pRank, metas:pMetas, historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
-    relat:pRelat, modelos:pModelos, 'modelos-cor':pModeloRepresentacao,
-    auditoria:pAuditoria, alertas:pAlertas, 'cfg-ia':configurarChaveIA
-  };
+    acm:pAcm, docs:pDocs, contratos:_r('pContratos'), acoes:pAcoes, mcmv:pMCMV,
+    'loc-c':pLC, 'loc-r':_r('pLR'), 'repasses':_r('pRepasses'), 'loc-l':_r('pLL'), 'loc-v':_r('pLV'),
+    'boletos':_r('pBoletos'), 'extrato':_r('pExtrato'), 'os':_r('pOS'),
+    iv:function(){ var f=window.pIV; if(typeof f==='function') f(); else document.getElementById('pc').innerHTML='<div style="padding:30px;text-align:center;color:#64748b">Módulo Imóveis Venda não disponível</div>'; },
+    prop:_r('pProp'), vitrine:_r('pVitrine'),
+    usuarios:_r('pUsuarios'), senhas:_r('pGerenciarSenhas'), permissoes:_r('pPermissoes'),
+    captacao:_r('pCaptacao'),
+    fd:_r('pFD'), 'resumo-exec':_r('pResumoExecutivo'), dre:_r('pDRE'), fr:_r('pFR'), fp:_r('pFP'),
+    inad:_r('pInadimplencia'),
+    'cad-cor':pCadCor, 'extrato-cor':_r('pExtratoCor'), 'cad-prop':pCadProp, 'cad-inq':pCadInq,
+    'score-risco':_r('pScoreRisco'),
+    rank:_r('pRank'), metas:_r('pMetas'), historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
+    relat:_r('pRelat'), modelos:_r('pModelos'), 'modelos-cor':_r('pModeloRepresentacao'),
+    auditoria:pAuditoria, alertas:pAlertas, 'cfg-ia':_r('configurarChaveIA')
+    };
   if(pages[id]) pages[id](); else pDash();
 }
 
