@@ -62,6 +62,77 @@ var docsD = [
 ]; // Documentação
 
 // ===== PERSISTÊNCIA GLOBAL =====
+
+// ===== PERSISTÊNCIA LOCAL (localStorage) =====
+var _LS_KEY = 'remax_space_v1';
+
+function salvarLocal(){
+  try{
+    var estado = {
+      ct:ctD, iv:(typeof ivD!=='undefined'?ivD:[]),
+      ld:ldD, pr:prD, vd:vD, cp:cpD,
+      mc:(typeof mcmvD!=='undefined'?mcmvD:[]),
+      vs:(typeof vsD!=='undefined'?vsD:[]),
+      iq:(typeof inqCadManual!=='undefined'?inqCadManual:[]),
+      pc:(typeof propCad!=='undefined'?propCad:[]),
+      cc:(typeof corCad!=='undefined'?corCad:[]),
+      sn:(typeof senhas!=='undefined'?senhas:{}),
+      ll:(typeof llD!=='undefined'?llD:[]),
+      rc:(typeof recrutD!=='undefined'?recrutD:[]),
+      ag:(typeof agD!=='undefined'?agD:[]),
+      hi:(typeof histD!=='undefined'?histD:{}),
+      mt:(typeof metasD!=='undefined'?metasD:{}),
+      dc:(typeof docsD!=='undefined'?docsD:[]),
+      os:(typeof osD!=='undefined'?osD:[]),
+      vit:(typeof vitD!=='undefined'?vitD:[]),
+      mkt:(typeof _mktD!=='undefined'?_mktD:[]),
+      lg:(typeof logAcoes!=='undefined'?logAcoes:[]),
+      bl:(typeof boletosD!=='undefined'?boletosD:[]),
+      com:(typeof COMISSOES!=='undefined'?COMISSOES:[]),
+      pc2:(typeof PERMS_CUSTOM!=='undefined'?PERMS_CUSTOM:{}),
+      _ts: new Date().toISOString()
+    };
+    localStorage.setItem(_LS_KEY, JSON.stringify(estado));
+    return true;
+  }catch(e){ console.warn('salvarLocal erro:', e.message); return false; }
+}
+
+function carregarLocal(){
+  try{
+    var raw = localStorage.getItem(_LS_KEY);
+    if(!raw) return false;
+    var e = JSON.parse(raw);
+    if(!e||!e._ts) return false;
+    if(e.ct&&e.ct.length>0) ctD=e.ct;
+    if(e.iv&&e.iv.length>0) ivD=e.iv;
+    if(e.ld) ldD=e.ld;
+    if(e.pr) prD=e.pr;
+    if(e.vd) vD=e.vd;
+    if(e.cp&&e.cp.length>0) cpD=e.cp;
+    if(e.mc) mcmvD=e.mc;
+    if(e.vs) vsD=e.vs;
+    if(e.ll) llD=e.ll;
+    if(e.rc) recrutD=e.rc;
+    if(e.ag) agD=e.ag;
+    if(e.hi) histD=e.hi;
+    if(e.mt) metasD=e.mt;
+    if(e.dc) docsD=e.dc;
+    if(e.iq&&e.iq.length>0) inqCadManual=e.iq;
+    if(e.pc&&e.pc.length>0) propCad=e.pc;
+    if(e.cc&&e.cc.length>0) corCad=e.cc;
+    if(e.sn) Object.assign(senhas,e.sn);
+    if(e.os) osD=e.os;
+    if(e.vit) vitD=e.vit;
+    if(e.mkt) _mktD=e.mkt;
+    if(e.lg) logAcoes=e.lg;
+    if(e.bl) boletosD=e.bl;
+    if(e.com) COMISSOES=e.com;
+    if(e.pc2) PERMS_CUSTOM=e.pc2;
+    console.log('✅ localStorage carregado:', e._ts);
+    return true;
+  }catch(e){ console.warn('carregarLocal erro:', e.message); return false; }
+}
+
 function salvarTudo(){
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(async function(){
@@ -74,6 +145,7 @@ function salvarTudo(){
         // Outro usuário salvou dados mais recentes — recarregar antes de sobrescrever
         await carregarDados();
       }
+      salvarLocal(); // salvar local sempre
       var estado = JSON.stringify({
         ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
         cp:cpD, mc:mcmvD, vs:vsD, iq:inqCadManual,
@@ -110,8 +182,15 @@ function salvarTudo(){
 
 
 async function carregarDados(){
+  // Carregar local primeiro — garante dados mesmo sem Supabase
+  var temLocal = carregarLocal();
+
   try{
-    var sb = getSB(); if(!sb) return false;
+    var sb = getSB();
+    if(!sb){
+      console.log('Supabase indisponível — usando localStorage');
+      return temLocal;
+    } if(!sb) return false;
     var res = await sb.from('app_state').select('data').eq('id','remax_space_main').single();
     if(res.data && res.data.data){
       var e = JSON.parse(res.data.data);
@@ -147,10 +226,14 @@ async function carregarDados(){
       if(e.pc2) PERMS_CUSTOM = e.pc2;
       if(e.ak) ASAAS_KEY = e.ak;
       if(e.au) ASAAS_URL = e.au;
+      salvarLocal(); // atualizar cache local
       return true;
     }
-  }catch(e){ console.warn('Sem dados salvos, usando padrão.'); }
-  return false;
+  }catch(e){
+    console.warn('Supabase erro:', e.message);
+    return temLocal;
+  }
+  return temLocal;
 }
 
 // Salvar contrato locação no Supabase
@@ -687,6 +770,8 @@ function finalizarLogin(){
     setTimeout(function(){ verificarNovoMes(); }, 1500);
   }).catch(function(){
     gP('dashboard');
+    var t=document.getElementById('toast-nuvem');
+    if(t){t.style.background='#d97706';t.textContent='⚠ Offline — dados locais';t.style.opacity='1';setTimeout(function(){t.style.opacity='0';t.style.background='';t.textContent='✓ Salvo';},4000);}
     setTimeout(function(){ verificarNovoMes(); }, 1500);
   });
 }
