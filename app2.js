@@ -684,33 +684,67 @@ var CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 
 async function callClaude(prompt, system, maxTokens){
   maxTokens = maxTokens || 1000;
-  // Use Supabase Edge Function as CORS proxy for Anthropic API
-  var PROXY_URL = 'https://pokgfnlywtgubpuswmni.supabase.co/functions/v1/claude-proxy';
+  var SUPA_URL  = 'https://pokgfnlywtgubpuswmni.supabase.co/functions/v1/claude-proxy';
+  var SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBva2dmbmx5d3RndWJwdXN3bW5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1OTYwNzgsImV4cCI6MjA5NTE3MjA3OH0.wK2qG14wMA7FVnVT0NKEbbLZyAIZkSahsChRivgd-Ko';
+  var body = JSON.stringify({
+    model: CLAUDE_MODEL,
+    max_tokens: maxTokens,
+    system: system||'Você é um especialista em marketing imobiliário brasileiro, especializado em RE/MAX.',
+    messages:[{role:'user',content:prompt}]
+  });
+
+  // Tentativa 1: Supabase proxy
   try{
-    var resp = await fetch(PROXY_URL, {
+    var resp = await fetch(SUPA_URL, {
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBva2dmbmx5d3RndWJwdXN3bW5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1OTYwNzgsImV4cCI6MjA5NTE3MjA3OH0.wK2qG14wMA7FVnVT0NKEbbLZyAIZkSahsChRivgd-Ko'
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: maxTokens,
-        system: system||'Você é um especialista em marketing imobiliário brasileiro, especializado em RE/MAX.',
-        messages:[{role:'user',content:prompt}]
-      })
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_KEY},
+      body: body,
+      signal: AbortSignal.timeout(8000)
     });
-    if(!resp.ok){
-      // Fallback: try direct with no-cors workaround via allorigins
-      throw new Error('Proxy indisponível ('+resp.status+')');
+    if(resp.ok){
+      var data = await resp.json();
+      if(data.content && data.content[0]) return data.content[0].text;
+      if(data.error) throw new Error(data.error.message);
     }
-    var data = await resp.json();
-    if(data.content && data.content[0]) return data.content[0].text;
-    if(data.error) throw new Error(data.error.message||'Erro na API');
-    throw new Error('Resposta inválida da API');
-  } catch(e){
-    throw new Error('Erro IA: '+e.message+'. Verifique se o proxy Supabase está configurado.');
+  } catch(e1){
+    console.warn('Supabase proxy falhou:', e1.message, '— tentando fallback...');
   }
+
+  // Tentativa 2: allorigins.win como proxy CORS alternativo
+  try{
+    var ANTHR_URL = 'https://api.anthropic.com/v1/messages';
+    var encoded = encodeURIComponent(ANTHR_URL);
+    var aoResp = await fetch('https://api.allorigins.win/raw?url='+encoded, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: body,
+      signal: AbortSignal.timeout(15000)
+    });
+    if(aoResp.ok){
+      var aoData = await aoResp.json();
+      if(aoData.content && aoData.content[0]) return aoData.content[0].text;
+    }
+  } catch(e2){
+    console.warn('allorigins fallback falhou:', e2.message);
+  }
+
+  // Tentativa 3: corsproxy.io
+  try{
+    var cpResp = await fetch('https://corsproxy.io/?https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-anthropic-version':'2023-06-01'},
+      body: body,
+      signal: AbortSignal.timeout(15000)
+    });
+    if(cpResp.ok){
+      var cpData = await cpResp.json();
+      if(cpData.content && cpData.content[0]) return cpData.content[0].text;
+    }
+  } catch(e3){
+    console.warn('corsproxy.io falhou:', e3.message);
+  }
+
+  throw new Error('Todos os proxies falharam. Ative o Cloudflare WARP ou verifique sua conexão.');
 }
 
 // ===== 1. DESCRIÇÃO DO IMÓVEL COM IA =====
@@ -3417,23 +3451,45 @@ function imprimirScore(idx){
 
 async function callClaudeVision(mensagens, system, maxTokens){
   maxTokens = maxTokens || 1500;
-  var PROXY_URL = 'https://pokgfnlywtgubpuswmni.supabase.co/functions/v1/claude-proxy';
+  var SUPA_URL  = 'https://pokgfnlywtgubpuswmni.supabase.co/functions/v1/claude-proxy';
   var SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBva2dmbmx5d3RndWJwdXN3bW5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1OTYwNzgsImV4cCI6MjA5NTE3MjA3OH0.wK2qG14wMA7FVnVT0NKEbbLZyAIZkSahsChRivgd-Ko';
-  var resp = await fetch(PROXY_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_KEY},
-    body: JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens: maxTokens,
-      system: system||'Você é um vistoriador imobiliário experiente no Brasil.',
-      messages: mensagens
-    })
+  var body = JSON.stringify({
+    model:'claude-sonnet-4-6',
+    max_tokens: maxTokens,
+    system: system||'Você é um vistoriador imobiliário experiente no Brasil.',
+    messages: mensagens
   });
-  if(!resp.ok) throw new Error('Proxy erro '+resp.status);
-  var data = await resp.json();
-  if(data.error) throw new Error(data.error.message||'Erro API');
-  if(data.content&&data.content[0]) return data.content[0].text;
-  throw new Error('Resposta inválida');
+
+  // Tentativa 1: Supabase
+  try{
+    var resp = await fetch(SUPA_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_KEY},
+      body: body,
+      signal: AbortSignal.timeout(12000)
+    });
+    if(resp.ok){
+      var data = await resp.json();
+      if(data.content&&data.content[0]) return data.content[0].text;
+      if(data.error) throw new Error(data.error.message);
+    }
+  } catch(e1){ console.warn('Vision Supabase falhou:', e1.message); }
+
+  // Tentativa 2: corsproxy.io
+  try{
+    var cpResp = await fetch('https://corsproxy.io/?https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-anthropic-version':'2023-06-01'},
+      body: body,
+      signal: AbortSignal.timeout(20000)
+    });
+    if(cpResp.ok){
+      var cpData = await cpResp.json();
+      if(cpData.content&&cpData.content[0]) return cpData.content[0].text;
+    }
+  } catch(e2){ console.warn('Vision corsproxy falhou:', e2.message); }
+
+  throw new Error('Proxy de visão indisponível. Ative o Cloudflare WARP.');
 }
 
 // Converter data URL em base64 puro + mediaType
