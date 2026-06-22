@@ -4847,14 +4847,25 @@ function envRel(mod){
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
-var _pLC=pLC; pLC=function(){_pLC();var e=document.getElementById('pa');if(e)e.insertAdjacentHTML('beforeend', btnRel('loc'));};
-// wrapper pLR removido
-var _pLeads=pLeads; pLeads=function(){_pLeads();var e=document.getElementById('pa');if(e)e.insertAdjacentHTML('beforeend', btnRel('ld'));};
-var _pProsp=pProsp; pProsp=function(){_pProsp();var e=document.getElementById('pa');if(e)e.insertAdjacentHTML('beforeend', btnRel('pr'));};
-var _pVis=pVis; pVis=function(){_pVis();var e=document.getElementById('pa');if(e)e.insertAdjacentHTML('beforeend', btnRel('vis'));};
-// pIV wrapper removido — função não existe mais
-var _pMCMV=pMCMV; pMCMV=function(){_pMCMV();var e=document.getElementById('pa');if(e)e.insertAdjacentHTML('beforeend', btnRel('mc'));};
-var _pFD=pFD; pFD=function(){_pFD();var e=document.getElementById('pa');if(e)e.insertAdjacentHTML('beforeend', btnRel('fin'));};
+// pLC wrapper — movido para window.load
+// Wrappers de relatório aplicados depois do carregamento
+window.addEventListener('load', function(){
+  function wrapRelBtn(fnName, key){
+    if(typeof window[fnName] !== 'function') return;
+    var orig = window[fnName];
+    window[fnName] = function(){
+      orig.apply(this, arguments);
+      var e = document.getElementById('pa');
+      if(e && typeof btnRel === 'function') e.insertAdjacentHTML('beforeend', btnRel(key));
+    };
+  }
+  wrapRelBtn('pLeads','ld');
+  wrapRelBtn('pProsp','pr');
+  wrapRelBtn('pVis','vis');
+  wrapRelBtn('pMCMV','mc');
+  wrapRelBtn('pFD','fin');
+  wrapRelBtn('pLC','loc');
+});
 
 // ACM
 function calcACM(area,am){
