@@ -62,78 +62,6 @@ var docsD = [
 ]; // Documentação
 
 // ===== PERSISTÊNCIA GLOBAL =====
-
-// ===== PERSISTÊNCIA LOCAL (localStorage) =====
-var _LS_KEY = 'remax_space_v1';
-
-function salvarLocal(){
-  try{
-    var estado = {
-      ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
-      cp:cpD, mc:mcmvD, vs:vsD, iq:inqCadManual,
-      pc:propCad, cc:corCad, sn:senhas,
-      ll:(typeof llD!=='undefined'?llD:[]),
-      rc:(typeof recrutD!=='undefined'?recrutD:[]),
-      ag:(typeof agD!=='undefined'?agD:[]),
-      hi:(typeof histD!=='undefined'?histD:{}),
-      mt:(typeof metasD!=='undefined'?metasD:{}),
-      dc:(typeof docsD!=='undefined'?docsD:[]),
-      os:(typeof osD!=='undefined'?osD:[]),
-      vit:(typeof vitD!=='undefined'?vitD:[]),
-      mkt:(typeof _mktD!=='undefined'?_mktD:[]),
-      lg:(typeof logAcoes!=='undefined'?logAcoes:[]),
-      bl:(typeof boletosD!=='undefined'?boletosD:[]),
-      com:(typeof COMISSOES!=='undefined'?COMISSOES:[]),
-      pc2:(typeof PERMS_CUSTOM!=='undefined'?PERMS_CUSTOM:{}),
-      _ts: new Date().toISOString()
-    };
-    localStorage.setItem(_LS_KEY, JSON.stringify(estado));
-    return true;
-  } catch(e){
-    console.warn('Erro ao salvar local:', e.message);
-    return false;
-  }
-}
-
-function carregarLocal(){
-  try{
-    var raw = localStorage.getItem(_LS_KEY);
-    if(!raw) return false;
-    var e = JSON.parse(raw);
-    if(!e || !e._ts) return false;
-    if(e.ct && e.ct.length > 0) ctD = e.ct;
-    if(e.iv && e.iv.length > 0) ivD = e.iv;
-    if(e.ld) ldD = e.ld;
-    if(e.pr) prD = e.pr;
-    if(e.vd) vD = e.vd;
-    if(e.cp && e.cp.length > 0) cpD = e.cp;
-    if(e.mc) mcmvD = e.mc;
-    if(e.vs) vsD = e.vs;
-    if(e.ll) llD = e.ll;
-    if(e.rc) recrutD = e.rc;
-    if(e.ag) agD = e.ag;
-    if(e.hi) histD = e.hi;
-    if(e.mt) metasD = e.mt;
-    if(e.dc) docsD = e.dc;
-    if(e.iq && e.iq.length > 0) inqCadManual = e.iq;
-    if(e.pc && e.pc.length > 0) propCad = e.pc;
-    if(e.cc && e.cc.length > 0) corCad = e.cc;
-    if(e.sn) Object.assign(senhas, e.sn);
-    if(e.os) osD = e.os;
-    if(e.vit) vitD = e.vit;
-    if(e.mkt) _mktD = e.mkt;
-    if(e.lg) logAcoes = e.lg;
-    if(e.bl) boletosD = e.bl;
-    if(e.com) COMISSOES = e.com;
-    if(e.pc2) PERMS_CUSTOM = e.pc2;
-    console.log('✅ Dados carregados do localStorage (' + e._ts + ')');
-    return true;
-  } catch(e){
-    console.warn('Erro ao carregar local:', e.message);
-    return false;
-  }
-}
-
 function salvarTudo(){
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(async function(){
@@ -146,9 +74,6 @@ function salvarTudo(){
         // Outro usuário salvou dados mais recentes — recarregar antes de sobrescrever
         await carregarDados();
       }
-      // Sempre salvar localmente primeiro (funciona offline)
-      salvarLocal();
-
       var estado = JSON.stringify({
         ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
         cp:cpD, mc:mcmvD, vs:vsD, iq:inqCadManual,
@@ -170,14 +95,11 @@ function salvarTudo(){
         au:(typeof ASAAS_URL!=='undefined'?ASAAS_URL:'')
       });
       var _ts = new Date().toISOString();
-      // Timeout de 6s no save — não travar se Supabase estiver lento
-      var _savePromise = sb.from('app_state').upsert({
+      await sb.from('app_state').upsert({
         id:'remax_space_main',
         data: estado,
         updated_at: _ts
       });
-      var _timeoutPromise = new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, 6000); });
-      await Promise.race([_savePromise, _timeoutPromise]);
       _lastSaved = _ts;
       // Toast verde
       var t=document.getElementById('toast-nuvem');
@@ -188,14 +110,8 @@ function salvarTudo(){
 
 
 async function carregarDados(){
-  // Carregar local primeiro — garante dados mesmo sem Supabase
-  var temLocal = carregarLocal();
-
   try{
-    var sb = getSB(); if(!sb){
-      console.log('Supabase indisponível — usando dados locais');
-      return temLocal;
-    }
+    var sb = getSB(); if(!sb) return false;
     var res = await sb.from('app_state').select('data').eq('id','remax_space_main').single();
     if(res.data && res.data.data){
       var e = JSON.parse(res.data.data);
@@ -231,15 +147,10 @@ async function carregarDados(){
       if(e.pc2) PERMS_CUSTOM = e.pc2;
       if(e.ak) ASAAS_KEY = e.ak;
       if(e.au) ASAAS_URL = e.au;
-      // Atualizar cache local com dados frescos da nuvem
-      salvarLocal();
       return true;
     }
-  }catch(e){
-    console.warn('Supabase indisponível — usando dados locais:', e.message);
-    return temLocal;
-  }
-  return temLocal;
+  }catch(e){ console.warn('Sem dados salvos, usando padrão.'); }
+  return false;
 }
 
 // Salvar contrato locação no Supabase
@@ -775,15 +686,7 @@ function finalizarLogin(){
     // Detectar novo mês automaticamente
     setTimeout(function(){ verificarNovoMes(); }, 1500);
   }).catch(function(){
-    // Supabase falhou — dados locais já foram carregados em carregarDados()
     gP('dashboard');
-    var t=document.getElementById('toast-nuvem');
-    if(t){
-      t.style.background='#d97706';
-      t.textContent='⚠ Offline — dados locais';
-      t.style.opacity='1';
-      setTimeout(function(){t.style.opacity='0'; t.style.background=''; t.textContent='✓ Salvo';},4000);
-    }
     setTimeout(function(){ verificarNovoMes(); }, 1500);
   });
 }
@@ -1034,7 +937,7 @@ var NAV = [
   {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'resumo-exec',l:'🤖 Resumo Executivo IA',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},
   {s:'Clientes',a:true},{id:'cad-prop',l:'👥 Proprietários',a:true},{id:'cad-inq',l:'👥 Inquilinos',a:true},{id:'score-risco',l:'🛡 Score de Risco',a:true},{id:'cad-cor',l:'Corretores',a:true},
   {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'extrato-cor',l:'💰 Extrato Corretor',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
-  {s:'Sistema',a:true},{id:'auditoria',l:'📋 Log de Auditoria',a:true},{id:'alertas',l:'🔔 Alertas & Avisos',a:true},
+  {s:'Sistema',a:true},{id:'auditoria',l:'📋 Log de Auditoria',a:true},{id:'alertas',l:'🔔 Alertas & Avisos',a:true},{id:'cfg-ia',l:'🔑 Configurar IA',a:true},
 ];
 
 function calcNavBadges(){
@@ -3558,7 +3461,7 @@ function gP(id){
     'cad-cor':pCadCor, 'extrato-cor':pExtratoCor, 'cad-prop':pCadProp, 'cad-inq':pCadInq, 'score-risco':pScoreRisco,
     rank:pRank, metas:pMetas, historico:pHistorico, recrut:pRecrutar, perms:pPermissoes,
     relat:pRelat, modelos:pModelos, 'modelos-cor':pModeloRepresentacao,
-    auditoria:pAuditoria, alertas:pAlertas
+    auditoria:pAuditoria, alertas:pAlertas, 'cfg-ia':configurarChaveIA
   };
   if(pages[id]) pages[id](); else pDash();
 }
@@ -4595,22 +4498,10 @@ window.assinarDigitalLC = assinarDigitalLC;
 // ===== SYNC AUTOMÁTICO MULTI-USUÁRIO =====
 function iniciarSync(){
   if(_pollTimer) clearInterval(_pollTimer);
-  // Contador de falhas consecutivas do Supabase
-  var _supaFalhas = 0;
-
   _pollTimer = setInterval(async function(){
-    // Se Supabase falhou 3x seguidas, reduzir polling para 5min
-    if(_supaFalhas >= 3){
-      if(Date.now() % 300000 > 30000) return; // só tenta a cada 5 min
-    }
     try{
-      var sb = getSB(); if(!sb){ _supaFalhas++; return; }
-      var res = await sb.from('app_state')
-        .select('updated_at')
-        .eq('id','remax_space_main')
-        .single()
-        .abortSignal(AbortSignal.timeout(5000));
-      _supaFalhas = 0; // reset contador em caso de sucesso
+      var sb = getSB(); if(!sb) return;
+      var res = await sb.from('app_state').select('updated_at').eq('id','remax_space_main').single();
       var updAt = res.data && res.data.updated_at ? res.data.updated_at : null;
       if(updAt && _lastSaved && updAt > _lastSaved && (new Date(updAt)-new Date(_lastSaved)) > 2000){
         // Outro usuário salvou — recarregar silenciosamente
@@ -4618,15 +4509,12 @@ function iniciarSync(){
         _lastSaved = updAt;
         // Atualizar tela atual
         var modAtual = document.querySelector('.nav-item.active');
-        if(modAtual){ var fn = modAtual.getAttribute('onclick'); if(fn){ try{eval(fn);}catch(_e){} } }
+        if(modAtual){ var fn = modAtual.getAttribute('onclick'); if(fn) eval(fn); }
         // Toast azul discreto
         var t = document.getElementById('toast-sync');
         if(t){ t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
       }
-    }catch(e){
-      _supaFalhas++;
-      // Silencioso — não logar spam de erros de rede
-    }
+    }catch(e){}
   }, 30000);
 }
 window.iniciarSync = iniciarSync;
