@@ -13,7 +13,7 @@ var MES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"
 // ESTADO
 
 // ===== SUPABASE CONFIG =====
-var SUPA_URL = 'https://pokgfnlywtgubpuswmni.supabase.co';
+var SUPA_URL = 'https://raspy-remax-proxyking-3cbb.carlosalvesbasile.workers.dev'; // Cloudflare Worker proxy → Supabase
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBva2dmbmx5d3RndWJwdXN3bW5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1OTYwNzgsImV4cCI6MjA5NTE3MjA3OH0.wK2qG14wMA7FVnVT0NKEbbLZyAIZkSahsChRivgd-Ko';
 var _sb = null;
 var _saveTimer = null;
