@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Deploy Worker RE/MAX Space</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:580px;margin:50px auto;padding:20px}
+h1{color:#D42028}
+.btn{background:#f38020;color:#fff;border:none;padding:14px 28px;font-size:15px;font-weight:700;border-radius:8px;cursor:pointer;width:100%;margin-top:12px}
+.btn:disabled{background:#ccc}
+.fg{margin-bottom:12px}
+label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:4px}
+input{width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;box-sizing:border-box}
+.ok{background:#f0fdf4;color:#166534;border:1px solid #86efac;border-radius:8px;padding:14px;margin-top:14px}
+.err{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;border-radius:8px;padding:14px;margin-top:14px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<h1>Deploy Worker RE/MAX Space</h1>
+<p>Preencha os dados abaixo e clique em Instalar.</p>
+<div class="fg">
+  <label>Account ID da Cloudflare</label>
+  <input id="acct" value="3d951b924534e0e81424141100f32145" readonly>
+</div>
+<div class="fg">
+  <label>Worker Name</label>
+  <input id="wname" value="raspy-remax-proxyking-3cbb" readonly>
+</div>
+<div class="fg">
+  <label>API Token da Cloudflare</label>
+  <input id="tok" type="password" placeholder="Cole aqui o token cfk_...">
+</div>
+<button class="btn" onclick="deploy()" id="btn">Instalar código no Worker</button>
+<div id="res" class="hide"></div>
+
+<script>
+const CODE = `export default {
+  async fetch(request, env) {
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, GET, OPTIONS, DELETE, PATCH",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, Prefer",
+      }});
+    }
+    try {
+      const body = request.method !== "GET" ? await request.text() : undefined;
+      const path = new URL(request.url).pathname + new URL(request.url).search;
+      const resp = await fetch("https://pokgfnlywtgubpuswmni.supabase.co" + path, {
+        method: request.method,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": request.headers.get("Authorization") || "",
+          "apikey": request.headers.get("apikey") || "",
+          "Prefer": request.headers.get("Prefer") || "",
+        },
+        body: body
+      });
+      const data = await resp.text();
+      return new Response(data, {
+        status: resp.status,
+        headers: {"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}
+      });
+    } catch(e) {
+      return new Response(JSON.stringify({error:e.message}),{
+        status:500,headers:{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"}
+      });
+    }
+  }
+};`;
+
+async function deploy(){
+  const tok=document.getElementById('tok').value.trim();
+  const acct=document.getElementById('acct').value.trim();
+  const wname=document.getElementById('wname').value.trim();
+  const btn=document.getElementById('btn');
+  const res=document.getElementById('res');
+  if(!tok){alert('Cole o API Token!');return;}
+  btn.disabled=true;btn.textContent='Instalando...';
+  res.className='hide';res.textContent='';
+  try{
+    const fd=new FormData();
+    fd.append('metadata',JSON.stringify({main_module:'w.js',compatibility_date:'2024-01-01'}));
+    fd.append('w.js',new Blob([CODE],{type:'application/javascript+module'}),'w.js');
+    const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${acct}/workers/scripts/${wname}`,{
+      method:'PUT',headers:{'Authorization':'Bearer '+tok},body:fd
+    });
+    const d=await r.json();
+    if(d.success){
+      res.className='ok';
+      res.innerHTML='<strong>Instalado com sucesso!</strong><br>O Worker est\u00e1 ativo. Volte ao app RE/MAX Space e teste o salvamento.';
+    }else{
+      throw new Error(JSON.stringify(d.errors));
+    }
+  }catch(e){
+    res.className='err';
+    res.innerHTML='<strong>Erro:</strong> '+e.message;
+    btn.disabled=false;btn.textContent='Tentar novamente';
+  }
+  res.classList.remove('hide');
+}
+</script>
+</body>
+</html>
