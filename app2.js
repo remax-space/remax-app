@@ -1893,6 +1893,322 @@ function configurarChaveIA(){
     });
 }
 
+// ===== PAINEL INADIMPLÊNCIA =====
+function pInadimplencia(){
+  document.getElementById('pa').innerHTML=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'+
+    '<button class="btn" onclick="imprimirInad()" style="background:#1d4ed8;color:#fff;font-weight:600">🖨 Imprimir Relatório</button>'+
+    '<button class="btn" onclick="gerarNotifInad()" style="background:#7c3aed;color:#fff;font-weight:600">📄 Gerar Notificação</button>'+
+    '</div>';
+
+  var hoje=new Date();
+  var mesIdx=hoje.getMonth();
+  var mesNome=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][mesIdx];
+  var anoAtual=hoje.getFullYear();
+
+  var inadList=[];
+  var totalInad=0;
+  var totalCarteira=0;
+
+  ctD.forEach(function(c){
+    if(c.status==='Inativo'||c.status==='Encerrado') return;
+    totalCarteira+=c.valor;
+    var st=c.rs&&c.rs[mesIdx]||'N';
+    if(st==='R'||st==='X') return;
+    var diaVenc=parseInt(c.venc)||10;
+    var dtVenc=new Date(anoAtual,mesIdx,diaVenc);
+    var diasAtraso=Math.floor((hoje-dtVenc)/(1000*60*60*24));
+    if(diasAtraso<0) return;
+    var multa=c.valor*0.10;
+    var juros=c.valor*0.01*(diasAtraso/30);
+    var total=c.valor+multa+juros;
+    totalInad+=c.valor;
+    inadList.push({
+      id:c.id,prop:c.prop,inq:c.inq,end:c.end||'',
+      valor:c.valor,venc:diaVenc,dtVenc:dtVenc,
+      diasAtraso:diasAtraso,st:st,
+      multa:multa,juros:juros,total:total,
+      tel:c.tel_prop||''
+    });
+  });
+
+  inadList.sort(function(a,b){return b.diasAtraso-a.diasAtraso;});
+
+  var txInad=totalCarteira>0?((totalInad/totalCarteira)*100).toFixed(1):0;
+  var criticos=inadList.filter(function(i){return i.diasAtraso>15;}).length;
+  var totalEncargos=inadList.reduce(function(s,i){return s+i.multa+i.juros;},0);
+
+  var rows='';
+  inadList.forEach(function(c){
+    var isCritico=c.diasAtraso>15;
+    var isParcial=c.st==='P';
+    var rowBg=isCritico?'background:#fef2f2;border-left:3px solid #dc2626;':
+              isParcial?'background:#fffbeb;border-left:3px solid #f59e0b;':
+              'background:#fff7ed;border-left:3px solid #fb923c;';
+    var stLabel=isParcial?
+      '<span style="background:#fef3c7;color:#92400e;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px">Parcial</span>':
+      isCritico?
+      '<span style="background:#fef2f2;color:#991b1b;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px">Crítico</span>':
+      '<span style="background:#fff7ed;color:#92400e;font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px">Em atraso</span>';
+    var inqData=inqCad?inqCad.find(function(q){return q.ct===c.id||q.nome===c.inq;})||{}:{};
+    var tel=(inqData.tel||c.tel||'').replace(/\D/g,'');
+    var waTxt=encodeURIComponent('Prezado(a) '+c.inq+', identificamos que o aluguel referente ao imóvel '+c.end+' está em aberto. Valor: R$ '+c.valor.toLocaleString('pt-BR',{minimumFractionDigits:2})+'. Por favor regularize. RE/MAX Space — (64) 9 9123-4567 | PIX: +5511969197881');
+    var waLink=tel?'https://wa.me/55'+tel+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+    rows+=
+    '<tr style="'+rowBg+'">'+
+    '<td style="min-width:160px">'+
+    '<div style="font-weight:700;font-size:13px;color:#1e293b">'+c.inq+'</div>'+
+    '<div style="font-size:10px;color:#64748b;margin-top:1px">'+c.id+' — '+c.prop+'</div>'+
+    (c.end?'<div style="font-size:10px;color:#94a3b8;margin-top:1px">'+c.end+'</div>':'')+
+    '</td>'+
+    '<td style="text-align:right;font-weight:800;font-size:14px;color:#dc2626">'+fmt(c.valor)+'</td>'+
+    '<td style="text-align:center">'+
+    '<div style="font-size:12px;font-weight:700">Dia '+c.venc+'</div>'+
+    '<div style="font-size:10px;color:#64748b">'+c.dtVenc.toLocaleDateString('pt-BR')+'</div>'+
+    '</td>'+
+    '<td style="text-align:center">'+
+    '<div style="font-size:15px;font-weight:900;color:'+(c.diasAtraso>15?'#dc2626':c.diasAtraso>7?'#d97706':'#ea580c')+'">'+c.diasAtraso+'</div>'+
+    '<div style="font-size:9px;color:#94a3b8">dias</div>'+
+    '</td>'+
+    '<td style="text-align:right;font-size:11px;color:#dc2626">'+fmt(c.multa+c.juros)+'</td>'+
+    '<td style="text-align:right;font-weight:800;color:#991b1b">'+fmt(c.total)+'</td>'+
+    '<td style="text-align:center">'+stLabel+'</td>'+
+    '<td style="white-space:nowrap;text-align:center">'+
+    '<div style="display:flex;flex-direction:column;gap:3px;align-items:center">'+
+    '<button class="btn btn-xs btn-green" style="min-width:80px" onclick="marcarRecebidoInad(\''+c.id+'\')">✓ Recebido</button>'+
+    '<a href="'+waLink+'" target="_blank" class="btn btn-xs" style="min-width:80px;background:#dcfce7;color:#166534;text-decoration:none;text-align:center">💬 WhatsApp</a>'+
+    '<button class="btn btn-xs" style="min-width:80px;background:#eff6ff;color:#1d4ed8" onclick="gerarNotifInadCt(\''+c.id+'\')">📄 Notificar</button>'+
+    '</div>'+
+    '</td>'+
+    '</tr>';
+  });
+
+  // Histórico 6 meses
+  var histRows='';
+  for(var m=Math.max(0,mesIdx-5);m<=mesIdx;m++){
+    var mNome=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][m];
+    var inadMes=ctD.filter(function(c){
+      if(c.status==='Inativo'||c.status==='Encerrado') return false;
+      var st2=c.rs&&c.rs[m]||'N';
+      return st2!=='R'&&st2!=='X';
+    });
+    var valMes=inadMes.reduce(function(s,c){return s+c.valor;},0);
+    var cartM=ctD.filter(function(c){return c.status!=='Inativo'&&c.status!=='Encerrado';}).reduce(function(s,c){return s+c.valor;},0);
+    var txM=cartM>0?((valMes/cartM)*100).toFixed(1):0;
+    var barW=Math.min(100,parseFloat(txM)*5);
+    histRows+=
+    '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f1f5f9">'+
+    '<div style="width:28px;font-size:11px;font-weight:700;color:#64748b">'+mNome+'</div>'+
+    '<div style="flex:1;background:#f1f5f9;border-radius:4px;height:8px;overflow:hidden">'+
+    '<div style="background:'+(parseFloat(txM)>15?'#dc2626':parseFloat(txM)>8?'#f59e0b':'#16a34a')+';height:8px;width:'+barW+'%;border-radius:4px"></div>'+
+    '</div>'+
+    '<div style="width:40px;text-align:right;font-size:11px;font-weight:700;color:'+(parseFloat(txM)>15?'#dc2626':parseFloat(txM)>8?'#d97706':'#16a34a')+'">'+txM+'%</div>'+
+    '<div style="width:70px;text-align:right;font-size:10px;color:#64748b">'+fmt(valMes)+'</div>'+
+    '</div>';
+  }
+
+  document.getElementById('pc').innerHTML=
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">'+
+    '<div style="background:linear-gradient(135deg,#991b1b,#dc2626);color:#fff;border-radius:12px;padding:14px;text-align:center">'+
+    '<div style="font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Inadimplência '+mesNome+'</div>'+
+    '<div style="font-size:20px;font-weight:900">'+fmt(totalInad)+'</div>'+
+    '<div style="font-size:10px;opacity:.75;margin-top:2px">'+inadList.length+' contrato(s)</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#92400e,#d97706);color:#fff;border-radius:12px;padding:14px;text-align:center">'+
+    '<div style="font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Taxa</div>'+
+    '<div style="font-size:20px;font-weight:900">'+txInad+'%</div>'+
+    '<div style="font-size:10px;opacity:.75;margin-top:2px">da carteira</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#7c2d12,#c2410c);color:#fff;border-radius:12px;padding:14px;text-align:center">'+
+    '<div style="font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Críticos</div>'+
+    '<div style="font-size:20px;font-weight:900">'+criticos+'</div>'+
+    '<div style="font-size:10px;opacity:.75;margin-top:2px">> 15 dias</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#78350f,#f59e0b);color:#fff;border-radius:12px;padding:14px;text-align:center">'+
+    '<div style="font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Multas+Juros</div>'+
+    '<div style="font-size:20px;font-weight:900">'+fmt(totalEncargos)+'</div>'+
+    '</div>'+
+    '<div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;border-radius:12px;padding:14px;text-align:center">'+
+    '<div style="font-size:10px;opacity:.75;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Carteira Total</div>'+
+    '<div style="font-size:20px;font-weight:900">'+fmt(totalCarteira)+'</div>'+
+    '</div>'+
+    '</div>'+
+
+    '<div style="display:grid;grid-template-columns:1fr 280px;gap:14px">'+
+    '<div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden">'+
+    '<div style="background:#f8fafc;padding:10px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center">'+
+    '<span style="font-size:12px;font-weight:700;color:#1e293b">'+inadList.length+' inadimplente(s) — '+mesNome+' '+anoAtual+'</span>'+
+    '<span style="font-size:11px;color:#64748b">Total c/ encargos: <strong style="color:#dc2626">'+fmt(inadList.reduce(function(s,i){return s+i.total;},0))+'</strong></span>'+
+    '</div>'+
+    (inadList.length===0?
+    '<div style="padding:40px;text-align:center;color:#16a34a">'+
+    '<div style="font-size:32px;margin-bottom:8px">✅</div>'+
+    '<div style="font-size:14px;font-weight:700">Nenhuma inadimplência em '+mesNome+'!</div>'+
+    '</div>':
+    '<div class="tw"><table><thead><tr>'+
+    '<th style="min-width:160px">Inquilino</th>'+
+    '<th style="text-align:right">Aluguel</th>'+
+    '<th style="text-align:center">Vencimento</th>'+
+    '<th style="text-align:center">Atraso</th>'+
+    '<th style="text-align:right">Multa+Juros</th>'+
+    '<th style="text-align:right">Total</th>'+
+    '<th style="text-align:center">Status</th>'+
+    '<th style="text-align:center">Ações</th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>')+
+    '</div>'+
+    '<div style="display:flex;flex-direction:column;gap:12px">'+
+    '<div style="background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.06);padding:14px 16px">'+
+    '<div style="font-size:11px;font-weight:700;color:#1e293b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">📈 Histórico</div>'+
+    histRows+
+    '</div>'+
+    '</div>'+
+    '</div>';
+}
+
+function marcarRecebidoInad(ctId){
+  var ct=ctD.find(function(c){return c.id===ctId;});
+  if(!ct) return;
+  if(!confirm('Marcar '+ctId+' como RECEBIDO?\nInquilino: '+ct.inq)) return;
+  if(!ct.rs) ct.rs=Array(12).fill('N');
+  ct.rs[new Date().getMonth()]='R';
+  cM(); salvarTudo();
+  pInadimplencia();
+}
+
+function gerarNotifInadCt(ctId){
+  var ct=ctD.find(function(c){return c.id===ctId;});
+  if(!ct) return;
+  var hoje=new Date();
+  var diaVenc=parseInt(ct.venc)||10;
+  var dtVenc=new Date(hoje.getFullYear(),hoje.getMonth(),diaVenc);
+  var diasAtraso=Math.floor((hoje-dtVenc)/(1000*60*60*24));
+  var multa=ct.valor*0.10;
+  var juros=ct.valor*0.01*(diasAtraso/30);
+  var total=ct.valor+multa+juros;
+  var inqData=inqCad?inqCad.find(function(q){return q.ct===ct.id||q.nome===ct.inq;})||{}:{};
+  var tel=(inqData.tel||ct.tel_prop||'').replace(/\D/g,'');
+  var mesNomeNotif=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][hoje.getMonth()];
+  var texto=
+    'NOTIFICAÇÃO DE INADIMPLÊNCIA\n\n'+
+    'Caldas Novas, '+hoje.toLocaleDateString('pt-BR')+'\n\n'+
+    'Prezado(a) '+ct.inq+',\n\n'+
+    'Comunicamos que até a presente data não identificamos o pagamento referente ao aluguel do mês de '+mesNomeNotif+', com vencimento em '+ct.venc+'/'+String(hoje.getMonth()+1).padStart(2,'0')+'/'+hoje.getFullYear()+'.\n\n'+
+    'Dados do débito:\n'+
+    '• Imóvel: '+ct.end+'\n'+
+    '• Contrato: '+ct.id+'\n'+
+    '• Valor do aluguel: '+fmt(ct.valor)+'\n'+
+    '• Multa (10%): '+fmt(multa)+'\n'+
+    '• Juros (1% a.m. pro rata): '+fmt(juros)+'\n'+
+    '• TOTAL A PAGAR: '+fmt(total)+'\n\n'+
+    'Solicitamos a regularização no prazo de 5 (cinco) dias úteis, sob pena de adoção das medidas judiciais cabíveis, nos termos da Lei nº 8.245/91.\n\n'+
+    'RE/MAX Space — (64) 9 9123-4567\nPIX: +5511969197881 (Itaú)\n\nAtenciosamente,\nTatiana Basile\nDiretora — RE/MAX Space\nCRECI/GO 41.377';
+  var waNum=tel.length>=10?'55'+tel:'';
+  var waTxt=encodeURIComponent(texto);
+  var waLink=waNum?'https://wa.me/'+waNum+'?text='+waTxt:'https://wa.me/?text='+waTxt;
+  oM('📄 Notificação — '+ct.inq,
+    '<div style="background:#f8fafc;border-radius:10px;padding:14px;margin-bottom:12px">'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;margin-bottom:8px">'+
+    '<div><span style="color:#64748b">Inquilino:</span> <strong>'+ct.inq+'</strong></div>'+
+    '<div><span style="color:#64748b">Contrato:</span> <strong>'+ct.id+'</strong></div>'+
+    '<div><span style="color:#64748b">Atraso:</span> <strong style="color:#dc2626">'+diasAtraso+' dias</strong></div>'+
+    '<div><span style="color:#64748b">Total devido:</span> <strong style="color:#dc2626">'+fmt(total)+'</strong></div>'+
+    '</div>'+
+    (inqData.tel||ct.tel_prop?
+    '<div style="background:#f0fdf4;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px">'+
+    '<span>📱</span><span style="font-size:12px;color:#166534;font-weight:600">'+(inqData.tel||ct.tel_prop)+'</span>'+
+    '</div>':
+    '<div style="background:#fff7ed;border-radius:8px;padding:8px 12px;font-size:11px;color:#92400e">⚠ Sem telefone cadastrado</div>')+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
+    '<a href="'+waLink+'" target="_blank" style="display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-size:13px;font-weight:700;padding:9px 16px;border-radius:8px;text-decoration:none">'+
+    '💬 Enviar WhatsApp</a>'+
+    '<button class="btn" style="background:#1d4ed8;color:#fff;font-weight:600" onclick="copiarNotif()">📋 Copiar</button>'+
+    '<button class="btn" style="background:#374151;color:#fff;font-weight:600" onclick="imprimirNotif()">🖨 Imprimir</button>'+
+    '</div>'+
+    '<textarea id="notif-txt" style="width:100%;height:240px;font-family:monospace;font-size:11px;padding:10px;border:1px solid #e2e8f0;border-radius:8px;resize:vertical">'+texto+'</textarea>',
+    null,'Fechar',true);
+  setTimeout(function(){
+    var ta=document.getElementById('notif-txt');
+    var waBtn=document.querySelector('a[href*="wa.me"]');
+    if(ta&&waBtn){
+      ta.oninput=function(){
+        waBtn.href=(waNum?'https://wa.me/'+waNum+'?text=':'https://wa.me/?text=')+encodeURIComponent(ta.value);
+      };
+    }
+  },100);
+}
+
+function gerarNotifInad(){
+  alert('Selecione um inadimplente na lista e use o botão 📄 Notificar na linha correspondente.');
+}
+
+function copiarNotif(){
+  var txt=document.getElementById('notif-txt');
+  if(txt) navigator.clipboard.writeText(txt.value).then(function(){alert('Copiado!');});
+}
+
+function imprimirNotif(){
+  var txt=document.getElementById('notif-txt');
+  if(!txt) return;
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Notificação</title>'+
+  '<style>body{font-family:Arial,sans-serif;font-size:12px;padding:40px;max-width:600px;margin:0 auto;line-height:1.7}pre{white-space:pre-wrap;font-family:Arial,sans-serif}@media print{button{display:none}}</style></head><body>'+
+  '<pre>'+txt.value.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</pre>'+
+  '<div style="margin-top:30px;text-align:right"><button onclick="window.print()" style="padding:10px 24px;background:#1e3a8a;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨 Imprimir</button></div>'+
+  '</body></html>');
+  w.document.close();
+}
+
+function imprimirInad(){
+  var mesIdx=new Date().getMonth();
+  var mesNome=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][mesIdx];
+  var inadList=[];
+  ctD.forEach(function(c){
+    if(c.status==='Inativo'||c.status==='Encerrado') return;
+    var st=c.rs&&c.rs[mesIdx]||'N';
+    if(st==='R'||st==='X') return;
+    var hoje=new Date(),diaVenc=parseInt(c.venc)||10;
+    var dtVenc=new Date(hoje.getFullYear(),mesIdx,diaVenc);
+    var dias=Math.floor((hoje-dtVenc)/(1000*60*60*24));
+    if(dias<0) return;
+    var multa=c.valor*0.10,juros=c.valor*0.01*(dias/30);
+    inadList.push({id:c.id,inq:c.inq,prop:c.prop,end:c.end||'',valor:c.valor,dias:dias,multa:multa,juros:juros,total:c.valor+multa+juros});
+  });
+  var rows=inadList.map(function(i){
+    return '<tr><td style="padding:5px 8px;font-weight:600">'+i.inq+'</td>'+
+    '<td style="padding:5px 8px;font-size:11px;color:#64748b">'+i.id+'</td>'+
+    '<td style="padding:5px 8px;font-size:11px">'+i.prop+'</td>'+
+    '<td style="padding:5px 8px;text-align:right;font-weight:700">'+fmt(i.valor)+'</td>'+
+    '<td style="padding:5px 8px;text-align:center;font-weight:700;color:#dc2626">'+i.dias+'d</td>'+
+    '<td style="padding:5px 8px;text-align:right;color:#d97706">'+fmt(i.multa+i.juros)+'</td>'+
+    '<td style="padding:5px 8px;text-align:right;font-weight:800;color:#991b1b">'+fmt(i.total)+'</td>'+
+    '</tr>';
+  }).join('');
+  var w=window.open('','_blank');
+  w.document.write('<!DOCTYPE html><html><head><title>Inadimplência '+mesNome+'</title>'+
+  '<style>body{font-family:Arial,sans-serif;padding:24px;font-size:12px;color:#1e293b}'+
+  'h1{font-size:16px;color:#D42028;margin:0 0 4px}table{width:100%;border-collapse:collapse;margin-top:16px}'+
+  'th{background:#1e3a8a;color:#fff;padding:7px 8px;text-align:left;font-size:10px}'+
+  'tr:nth-child(even){background:#f8fafc}td{font-size:11px;border-bottom:1px solid #e2e8f0}'+
+  '.tot{background:#1e3a8a;color:#fff;font-weight:700}@media print{button{display:none}}</style></head><body>'+
+  '<div style="display:flex;justify-content:space-between;border-bottom:2px solid #1e3a8a;padding-bottom:10px;margin-bottom:16px">'+
+  '<div><div style="font-size:18px;font-weight:900;color:#D42028">RE/MAX <span style="color:#1e3a8a">Space</span></div>'+
+  '<div style="font-size:10px;color:#64748b">CRECI/GO 41.377 | Caldas Novas — GO</div></div>'+
+  '<div style="text-align:right"><div style="font-size:13px;font-weight:800;color:#dc2626">INADIMPLÊNCIA — '+mesNome.toUpperCase()+'</div>'+
+  '<div style="font-size:10px;color:#64748b">Emitido em '+new Date().toLocaleDateString('pt-BR')+'</div></div></div>'+
+  '<table><thead><tr><th>Inquilino</th><th>CT</th><th>Proprietário</th><th style="text-align:right">Aluguel</th><th style="text-align:center">Atraso</th><th style="text-align:right">Multa+Juros</th><th style="text-align:right">Total</th></tr></thead>'+
+  '<tbody>'+rows+'</tbody>'+
+  '<tfoot><tr class="tot"><td colspan="3" style="padding:6px 8px">TOTAL</td>'+
+  '<td style="padding:6px 8px;text-align:right">'+fmt(inadList.reduce(function(s,i){return s+i.valor;},0))+'</td><td></td>'+
+  '<td style="padding:6px 8px;text-align:right">'+fmt(inadList.reduce(function(s,i){return s+i.multa+i.juros;},0))+'</td>'+
+  '<td style="padding:6px 8px;text-align:right">'+fmt(inadList.reduce(function(s,i){return s+i.total;},0))+'</td>'+
+  '</tr></tfoot></table>'+
+  '<div style="margin-top:24px;text-align:right"><button onclick="window.print()" style="padding:10px 24px;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer">🖨 Imprimir</button></div>'+
+  '</body></html>');
+  w.document.close();
+}
+
+
 function pFD(){
   var ta=ctD.reduce(function(s,c){return s+c.valor;},0),adm=ta*.1,tpag=cpD.reduce(function(s,c){return s+c.val;},0),sal=adm-tpag;
   var rec=cpD.filter(function(c){return c.st==='Pago';}).reduce(function(s,c){return s+c.val;},0);
