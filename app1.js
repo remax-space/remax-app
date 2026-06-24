@@ -193,7 +193,16 @@ function salvarTudo(){
 
       // Salvar no GitHub
       // Encoding UTF-8 correto para base64
-      var b64 = btoa(encodeURIComponent(estado).replace(/%([0-9A-F]{2})/g, function(match, p1){return String.fromCharCode('0x'+p1);}));
+      var b64;
+      try{
+        // Método moderno - TextEncoder
+        var bytes = new TextEncoder().encode(estado);
+        var binStr = Array.from(bytes).map(function(b){return String.fromCharCode(b);}).join('');
+        b64 = btoa(binStr);
+      }catch(_){
+        // Fallback
+        b64 = btoa(unescape(encodeURIComponent(estado)));
+      }
       var payload = {
         message: 'sync: '+new Date().toLocaleString('pt-BR'),
         content: b64
@@ -245,7 +254,14 @@ async function carregarDados(){
       var dGet = await rGet.json();
       if(dGet.content){
         var raw = dGet.content.replace(/\n/g,'');
-          var conteudo = decodeURIComponent(atob(raw).split('').map(function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2);}).join(''));
+          var conteudo;
+          try{
+            // Tentar UTF-8 decode primeiro
+            conteudo = decodeURIComponent(atob(raw).split('').map(function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2);}).join(''));
+          }catch(_){
+            // Fallback: decode simples
+            conteudo = atob(raw);
+          }
         var e = JSON.parse(conteudo);
         // Se dados da nuvem são mais novos que o local, usar nuvem
         var tsNuvem = e._ts || '';
