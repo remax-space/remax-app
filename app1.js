@@ -170,7 +170,7 @@ function salvarTudo(){
       var shaAtual = '';
       try{
         var rGet = await fetch(GH_API, {
-          headers:{'Authorization':'token '+GH_TOKEN,'Cache-Control':'no-cache'},
+          headers:{'Authorization':'token '+GH_TOKEN},
           signal: AbortSignal.timeout(8000)
         });
         if(rGet.ok){
@@ -236,7 +236,7 @@ async function carregarDados(){
     var GH_API   = 'https://api.github.com/repos/remax-space/remax-app/contents/dados.json';
 
     var rGet = await fetch(GH_API, {
-      headers:{'Authorization':'token '+GH_TOKEN,'Cache-Control':'no-cache'},
+      headers:{'Authorization':'token '+GH_TOKEN},
       signal: AbortSignal.timeout(10000)
     });
 
@@ -1118,7 +1118,7 @@ var NAV = [
   {s:'Locação'},{id:'loc-c',l:'Contratos Ativos'},{id:'repasses',l:'💰 Repasses',a:true},{id:'loc-l',l:'Leads Locação'},{id:'loc-v',l:'Vistorias'},{id:'boletos',l:'📨 Boletos',a:true},{id:'extrato',l:'📄 Extrato Prop.',a:true},{id:'os',l:'🔧 Ordens Serviço'},
   {s:'Portfólio'},{id:'captacao',l:'🔑 Captação Locação'},{id:'vitrine',l:'🏠 Vitrine Imóveis'},{id:'iv',l:'Imóveis Venda'},{id:'prop',l:'Proprietários'},
   {s:'Marketing'},{id:'mkt',l:'🎨 Marketing'},{s:'Admin'},{id:'usuarios',l:'👥 Usuários',a:true},{id:'senhas',l:'🔐 Senhas',a:true},{id:'permissoes',l:'🛡️ Permissões',a:true},
-  {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'resumo-exec',l:'🤖 Resumo Executivo IA',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},{id:'inad',l:'🔴 Inadimplência',a:true},
+  {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'resumo-exec',l:'🤖 Resumo Executivo IA',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},
   {s:'Clientes',a:true},{id:'cad-prop',l:'👥 Proprietários',a:true},{id:'cad-inq',l:'👥 Inquilinos',a:true},{id:'score-risco',l:'🛡 Score de Risco',a:true},{id:'cad-cor',l:'Corretores',a:true},
   {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'extrato-cor',l:'💰 Extrato Corretor',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
   {s:'Sistema',a:true},{id:'auditoria',l:'📋 Log de Auditoria',a:true},{id:'alertas',l:'🔔 Alertas & Avisos',a:true},{id:'cfg-ia',l:'🔑 Configurar IA',a:true},
