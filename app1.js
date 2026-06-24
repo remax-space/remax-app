@@ -192,7 +192,8 @@ function salvarTudo(){
       }catch(_){}
 
       // Salvar no GitHub
-      var b64 = btoa(unescape(encodeURIComponent(estado)));
+      // Encoding UTF-8 correto para base64
+      var b64 = btoa(encodeURIComponent(estado).replace(/%([0-9A-F]{2})/g, function(match, p1){return String.fromCharCode('0x'+p1);}));
       var payload = {
         message: 'sync: '+new Date().toLocaleString('pt-BR'),
         content: b64
@@ -243,7 +244,8 @@ async function carregarDados(){
     if(rGet.ok){
       var dGet = await rGet.json();
       if(dGet.content){
-        var conteudo = atob(dGet.content.replace(/\n/g,''));
+        var raw = dGet.content.replace(/\n/g,'');
+          var conteudo = decodeURIComponent(atob(raw).split('').map(function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2);}).join(''));
         var e = JSON.parse(conteudo);
         // Se dados da nuvem são mais novos que o local, usar nuvem
         var tsNuvem = e._ts || '';
