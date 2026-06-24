@@ -1115,15 +1115,76 @@ function fStD(el,cid,val){
 
 // ===== SIDEBAR =====
 var NAV = [
-  {s:'Principal'},{id:'dashboard',l:'Dashboard'},{id:'whatsapp',l:'📱 WhatsApp'},{id:'leads',l:'Leads'},
-  {s:'Venda'},{id:'prosp',l:'Prospecção'},{id:'agenda',l:'📅 Agenda'},{id:'visitas',l:'Visitas'},{id:'acm',l:'ACM'},{id:'docs',l:'Documentação'},{id:'contratos',l:'Contratos'},{id:'modelos',l:'📁 Modelos',a:true},{id:'modelos-cor',l:'📄 Representação'},{id:'acoes',l:'Ações no Imóvel'},{id:'mcmv',l:'MCMV'},
-  {s:'Locação'},{id:'loc-c',l:'Contratos Ativos'},{id:'repasses',l:'💰 Repasses',a:true},{id:'loc-l',l:'Leads Locação'},{id:'loc-v',l:'Vistorias'},{id:'boletos',l:'📨 Boletos',a:true},{id:'extrato',l:'📄 Extrato Prop.',a:true},{id:'os',l:'🔧 Ordens Serviço'},
-  {s:'Portfólio'},{id:'captacao',l:'🔑 Captação Locação'},{id:'vitrine',l:'🏠 Vitrine Imóveis'},{id:'iv',l:'Imóveis Venda'},{id:'prop',l:'Proprietários'},
-  {s:'Marketing'},{id:'mkt',l:'🎨 Marketing'},{s:'Admin'},{id:'usuarios',l:'👥 Usuários',a:true},{id:'senhas',l:'🔐 Senhas',a:true},{id:'permissoes',l:'🛡️ Permissões',a:true},
-  {s:'Financeiro',a:true},{id:'fd',l:'Dashboard Financeiro',a:true},{id:'resumo-exec',l:'🤖 Resumo Executivo IA',a:true},{id:'dre',l:'📊 DRE + Comissões',a:true},{id:'fr',l:'A Receber',a:true},{id:'fp',l:'Contas a Pagar',a:true},{id:'inad',l:'🔴 Inadimplência',a:true},
-  {s:'Clientes',a:true},{id:'cad-prop',l:'👥 Proprietários',a:true},{id:'cad-inq',l:'👥 Inquilinos',a:true},{id:'score-risco',l:'🛡 Score de Risco',a:true},{id:'cad-cor',l:'Corretores',a:true},
-  {s:'Equipe',a:true},{id:'rank',l:'Ranking',a:true},{id:'metas',l:'Metas',a:true},{id:'extrato-cor',l:'💰 Extrato Corretor',a:true},{id:'historico',l:'Histórico Mensal',a:true},{id:'relat',l:'📊 Relatórios',a:true},{id:'recrut',l:'🎯 Recrutamento',a:true},
-  {s:'Sistema',a:true},{id:'auditoria',l:'📋 Log de Auditoria',a:true},{id:'alertas',l:'🔔 Alertas & Avisos',a:true},{id:'cfg-ia',l:'🔑 Configurar IA',a:true},
+  // ── PRINCIPAL ──────────────────────────────
+  {s:'Principal'},
+  {id:'dashboard',l:'🏠 Dashboard'},
+  {id:'whatsapp',l:'📱 WhatsApp'},
+  {id:'alertas',l:'🔔 Alertas',a:true},
+
+  // ── LOCAÇÃO ────────────────────────────────
+  {s:'Locação'},
+  {id:'loc-c',l:'📋 Contratos Ativos'},
+  {id:'repasses',l:'💰 Repasses',a:true},
+  {id:'inad',l:'🔴 Inadimplência',a:true},
+  {id:'loc-v',l:'🔍 Vistorias'},
+  {id:'extrato',l:'📄 Extrato Prop.',a:true},
+  {id:'boletos',l:'📨 Boletos',a:true},
+  {id:'os',l:'🔧 Ordens Serviço'},
+  {id:'loc-l',l:'🎯 Leads Locação'},
+  {id:'captacao',l:'🔑 Captação'},
+
+  // ── VENDA ──────────────────────────────────
+  {s:'Venda'},
+  {id:'iv',l:'🏠 Imóveis Venda'},
+  {id:'vitrine',l:'🖼 Vitrine'},
+  {id:'leads',l:'🎯 Leads Venda'},
+  {id:'prosp',l:'📡 Prospecção'},
+  {id:'agenda',l:'📅 Agenda'},
+  {id:'visitas',l:'👁 Visitas'},
+  {id:'acm',l:'📊 ACM'},
+  {id:'docs',l:'📁 Documentação'},
+  {id:'contratos',l:'📝 Contratos'},
+  {id:'acoes',l:'🏗 Ações no Imóvel'},
+  {id:'mcmv',l:'🏘 MCMV'},
+
+  // ── FINANCEIRO ─────────────────────────────
+  {s:'Financeiro',a:true},
+  {id:'fd',l:'📊 Dashboard'},
+  {id:'fr',l:'💵 A Receber'},
+  {id:'fp',l:'💸 Contas a Pagar'},
+  {id:'dre',l:'📈 DRE + Comissões'},
+  {id:'resumo-exec',l:'🤖 Resumo IA'},
+  {id:'relat',l:'📋 Relatórios'},
+
+  // ── CLIENTES ───────────────────────────────
+  {s:'Clientes',a:true},
+  {id:'cad-prop',l:'🏠 Proprietários'},
+  {id:'cad-inq',l:'👤 Inquilinos'},
+  {id:'score-risco',l:'🛡 Score de Risco'},
+  {id:'prop',l:'📂 Base Proprietários'},
+
+  // ── CORRETORES ─────────────────────────────
+  {s:'Corretores',a:true},
+  {id:'cad-cor',l:'👥 Equipe'},
+  {id:'rank',l:'🏆 Ranking'},
+  {id:'metas',l:'🎯 Metas'},
+  {id:'extrato-cor',l:'💰 Extrato Corretor'},
+  {id:'historico',l:'📅 Histórico'},
+  {id:'recrut',l:'🎯 Recrutamento'},
+
+  // ── MARKETING ──────────────────────────────
+  {s:'Marketing'},
+  {id:'mkt',l:'🎨 Marketing'},
+  {id:'modelos',l:'📁 Modelos',a:true},
+  {id:'modelos-cor',l:'📄 Representação'},
+
+  // ── SISTEMA ────────────────────────────────
+  {s:'Sistema',a:true},
+  {id:'usuarios',l:'👥 Usuários'},
+  {id:'senhas',l:'🔐 Senhas'},
+  {id:'permissoes',l:'🛡️ Permissões'},
+  {id:'auditoria',l:'📋 Log Auditoria'},
+  {id:'cfg-ia',l:'🔑 Configurar IA'},
 ];
 
 function calcNavBadges(){
