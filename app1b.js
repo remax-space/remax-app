@@ -256,10 +256,10 @@ async function carregarDados(){
         var raw = dGet.content.replace(/\n/g,'');
           var conteudo;
           try{
-            // Tentar UTF-8 decode primeiro
-            conteudo = decodeURIComponent(atob(raw).split('').map(function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2);}).join(''));
+            // Decode UTF-8 correto via TextDecoder
+            var bytes = Uint8Array.from(atob(raw), function(c){return c.charCodeAt(0);});
+            conteudo = new TextDecoder('utf-8').decode(bytes);
           }catch(_){
-            // Fallback: decode simples
             conteudo = atob(raw);
           }
         var e = JSON.parse(conteudo);
