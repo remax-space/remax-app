@@ -215,30 +215,58 @@ function salvarTudo(){
 
       if(rPut.ok){
         _lastSaved = obj._ts;
-        // Toast verde
         var t = document.getElementById('toast-nuvem');
         if(t){ t.textContent='✓ Salvo'; t.style.background=''; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';}, 2500); }
       } else {
         var errTxt = await rPut.text();
-        var errObj = {};
-        try{ errObj = JSON.parse(errTxt); }catch(_){}
-
-        // Erro 409 = conflito de SHA — tentar novamente
         if(rPut.status === 409){
-          console.warn('SHA conflito — tentando novamente em 2s');
           clearTimeout(_saveTimer);
           _saveTimer = setTimeout(salvarTudo, 2000);
           return;
         }
-        console.warn('GitHub save erro:', rPut.status, errTxt.slice(0,100));
         var t = document.getElementById('toast-nuvem');
         if(t){ t.textContent='💾 Local'; t.style.background='#d97706'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0'; t.style.background='';}, 3000); }
       }
 
     }catch(e){
-      console.warn('Erro ao salvar no GitHub:', e.message);
-      var t = document.getElementById('toast-nuvem');
-      if(t){ t.textContent='💾 Local'; t.style.background='#64748b'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0'; t.style.background='';}, 2500); }
+      console.warn('GitHub save falhou:', e.message);
+    }
+
+    // ── 4. Salvar no Supabase via Worker (sincronização em tempo real) ────
+    try{
+      var sb = getSB();
+      if(sb){
+        var _ts = obj._ts;
+        var supaPayload = JSON.stringify({
+          ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
+          cp:cpD, mc:mcmvD, vs:vsD, iq:inqCadManual,
+          pc:propCad, cc:corCad, sn:senhas,
+          ll:(typeof llD!=='undefined'?llD:[]),
+          rc:(typeof recrutD!=='undefined'?recrutD:[]),
+          ag:(typeof agD!=='undefined'?agD:[]),
+          hi:(typeof histD!=='undefined'?histD:{}),
+          mt:(typeof metasD!=='undefined'?metasD:{}),
+          dc:(typeof docsD!=='undefined'?docsD:[]),
+          os:(typeof osD!=='undefined'?osD:[]),
+          vit:(typeof vitD!=='undefined'?vitD:[]),
+          mkt:(typeof _mktD!=='undefined'?_mktD:[]),
+          lg:(typeof logAcoes!=='undefined'?logAcoes:[]),
+          bl:(typeof boletosD!=='undefined'?boletosD:[]),
+          com:(typeof COMISSOES!=='undefined'?COMISSOES:[]),
+          pc2:(typeof PERMS_CUSTOM!=='undefined'?PERMS_CUSTOM:{})
+        });
+        await sb.from('app_state').upsert({
+          id: 'remax_space_main',
+          data: supaPayload,
+          updated_at: _ts
+        });
+        _lastSaved = _ts;
+        var t = document.getElementById('toast-nuvem');
+        if(t){ t.textContent='✓ Salvo'; t.style.background=''; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';}, 2000); }
+        console.log('✅ Salvo no Supabase');
+      }
+    }catch(eSupa){
+      console.warn('Supabase save falhou:', eSupa.message);
     }
 
   }, 1500);
