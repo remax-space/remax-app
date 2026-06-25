@@ -136,10 +136,9 @@ function carregarLocal(){
 function salvarTudo(){
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(async function(){
-    // 1. Sempre salvar localmente primeiro
-    salvarLocal();
 
-    var estado = JSON.stringify({
+    // ── 1. Montar estado ──────────────────────────────────
+    var obj = {
       ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
       cp:cpD, mc:mcmvD, vs:vsD, iq:inqCadManual,
       pc:propCad, cc:corCad, sn:senhas,
@@ -156,83 +155,93 @@ function salvarTudo(){
       bl:(typeof boletosD!=='undefined'?boletosD:[]),
       com:(typeof COMISSOES!=='undefined'?COMISSOES:[]),
       pc2:(typeof PERMS_CUSTOM!=='undefined'?PERMS_CUSTOM:{}),
-      ak:(typeof ASAAS_KEY!=='undefined'?ASAAS_KEY:''),
-      au:(typeof ASAAS_URL!=='undefined'?ASAAS_URL:''),
-      _ts: new Date().toISOString()
-    });
+      _ts: new Date().toISOString(),
+      _u: (typeof U!=='undefined'&&U?U.nome:'')
+    };
+    var estado = JSON.stringify(obj);
 
-    // 2. Salvar no GitHub como banco de dados (funciona em Caldas Novas)
+    // ── 2. Salvar local (sempre, instantâneo) ─────────────
+    salvarLocal();
+
+    // ── 3. Salvar no GitHub (banco principal) ─────────────
+    var GH_TOKEN = ['ghp_PsYXzYn','JGG9ojQKyw','QnqCYF2LXq','gRW1kZPOL'].join('');
+    var GH_API   = 'https://api.github.com/repos/remax-space/remax-app/contents/dados.json';
+
     try{
-      var GH_TOKEN = ['ghp_PsYXzYn','JGG9ojQKyw','QnqCYF2LXq','gRW1kZPOL'].join('');
-      var GH_API   = 'https://api.github.com/repos/remax-space/remax-app/contents/dados.json';
+      // Buscar SHA atual
+      var rGet = await fetch(GH_API, {
+        headers: {'Authorization':'token '+GH_TOKEN},
+        signal: AbortSignal.timeout(8000)
+      });
 
-      // Buscar SHA do arquivo atual
       var shaAtual = '';
-      try{
-        var rGet = await fetch(GH_API, {
-          headers:{'Authorization':'token '+GH_TOKEN},
-          signal: AbortSignal.timeout(8000)
-        });
-        if(rGet.ok){
-          var dGet = await rGet.json();
-          shaAtual = dGet.sha || '';
-          // Verificar se outro usuário salvou algo mais recente
-          var conteudoNuvem = atob(dGet.content.replace(/\n/g,''));
-          try{
-            var dadosNuvem = JSON.parse(conteudoNuvem);
-            if(dadosNuvem._ts && _lastSaved && dadosNuvem._ts > _lastSaved){
-              // Outro usuário tem dados mais novos — não sobrescrever
-              // Apenas mostrar aviso
-              console.log('Dados mais recentes na nuvem — recarregando...');
-              await carregarDados();
-              return;
-            }
-          }catch(_){}
-        }
-      }catch(_){}
+      var tsNuvem  = '';
 
-      // Salvar no GitHub
-      // Encoding UTF-8 correto para base64
-      var b64;
-      try{
-        // Método moderno - TextEncoder
-        var bytes = new TextEncoder().encode(estado);
-        var binStr = Array.from(bytes).map(function(b){return String.fromCharCode(b);}).join('');
-        b64 = btoa(binStr);
-      }catch(_){
-        // Fallback
-        b64 = btoa(unescape(encodeURIComponent(estado)));
+      if(rGet.ok){
+        var dGet = await rGet.json();
+        shaAtual = dGet.sha || '';
+
+        // Verificar conflito: outro usuário salvou depois de mim?
+        try{
+          var bytes = Uint8Array.from(atob(dGet.content.replace(/\n/g,'')), function(c){return c.charCodeAt(0);});
+          var dadosNuvem = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+          tsNuvem = dadosNuvem._ts || '';
+          if(tsNuvem && _lastSaved && tsNuvem > _lastSaved){
+            // Nuvem mais nova — recarregar silenciosamente em vez de sobrescrever
+            console.log('⚠ Conflito detectado — recarregando dados mais recentes');
+            await carregarDados();
+            return;
+          }
+        }catch(_){}
       }
+
+      // Codificar UTF-8 → base64
+      var bytes2 = new TextEncoder().encode(estado);
+      var binStr = Array.from(bytes2).map(function(b){return String.fromCharCode(b);}).join('');
+      var b64 = btoa(binStr);
+
       var payload = {
-        message: 'sync: '+new Date().toLocaleString('pt-BR'),
+        message: 'sync:' + new Date().toISOString().slice(0,19) + ' u:' + obj._u,
         content: b64
       };
       if(shaAtual) payload.sha = shaAtual;
 
       var rPut = await fetch(GH_API, {
         method: 'PUT',
-        headers:{'Authorization':'token '+GH_TOKEN,'Content-Type':'application/json'},
+        headers: {'Authorization':'token '+GH_TOKEN, 'Content-Type':'application/json'},
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(12000)
+        signal: AbortSignal.timeout(15000)
       });
 
       if(rPut.ok){
-        _lastSaved = new Date().toISOString();
-        var t=document.getElementById('toast-nuvem');
-        if(t){t.textContent='✓ Salvo';t.style.background='';t.style.opacity='1';setTimeout(function(){t.style.opacity='0';},2500);}
-        console.log('✅ Salvo no GitHub');
+        _lastSaved = obj._ts;
+        // Toast verde
+        var t = document.getElementById('toast-nuvem');
+        if(t){ t.textContent='✓ Salvo'; t.style.background=''; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';}, 2500); }
       } else {
-        var errBody = await rPut.text();
-        console.warn('GitHub save erro:', rPut.status, errBody.slice(0,100));
-        var t=document.getElementById('toast-nuvem');
-        if(t){t.textContent='⚠ Local only';t.style.background='#d97706';t.style.opacity='1';setTimeout(function(){t.style.opacity='0';t.style.background='';},3000);}
+        var errTxt = await rPut.text();
+        var errObj = {};
+        try{ errObj = JSON.parse(errTxt); }catch(_){}
+
+        // Erro 409 = conflito de SHA — tentar novamente
+        if(rPut.status === 409){
+          console.warn('SHA conflito — tentando novamente em 2s');
+          clearTimeout(_saveTimer);
+          _saveTimer = setTimeout(salvarTudo, 2000);
+          return;
+        }
+        console.warn('GitHub save erro:', rPut.status, errTxt.slice(0,100));
+        var t = document.getElementById('toast-nuvem');
+        if(t){ t.textContent='💾 Local'; t.style.background='#d97706'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0'; t.style.background='';}, 3000); }
       }
+
     }catch(e){
-      console.warn('GitHub save falhou:', e.message);
-      var t=document.getElementById('toast-nuvem');
-      if(t){t.textContent='💾 Local';t.style.background='#64748b';t.style.opacity='1';setTimeout(function(){t.style.opacity='0';t.style.background='';},2500);}
+      console.warn('Erro ao salvar no GitHub:', e.message);
+      var t = document.getElementById('toast-nuvem');
+      if(t){ t.textContent='💾 Local'; t.style.background='#64748b'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0'; t.style.background='';}, 2500); }
     }
-  }, 2000);
+
+  }, 1500);
 }
 
 
@@ -256,11 +265,10 @@ async function carregarDados(){
         var raw = dGet.content.replace(/\n/g,'');
           var conteudo;
           try{
-            // Decode UTF-8 correto via TextDecoder
-            var bytes = Uint8Array.from(atob(raw), function(c){return c.charCodeAt(0);});
-            conteudo = new TextDecoder('utf-8').decode(bytes);
+            var bytesArr = Uint8Array.from(atob(raw), function(c){return c.charCodeAt(0);});
+            conteudo = new TextDecoder('utf-8').decode(bytesArr);
           }catch(_){
-            conteudo = atob(raw);
+            try{ conteudo = atob(raw); }catch(__){ conteudo = '{}'; }
           }
         var e = JSON.parse(conteudo);
         // Se dados da nuvem são mais novos que o local, usar nuvem
@@ -4786,7 +4794,7 @@ function iniciarSync(){
         if(t){ t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
       }
     }catch(e){}
-  }, 30000);
+  }, 20000);
 }
 window.iniciarSync = iniciarSync;
 
