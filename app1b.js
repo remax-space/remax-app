@@ -216,7 +216,18 @@ function salvarTudo(){
       if(rPut.ok){
         _lastSaved = obj._ts;
         var t = document.getElementById('toast-nuvem');
-        if(t){ t.textContent='✓ Salvo'; t.style.background=''; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';}, 2500); }
+        if(t){
+          t.textContent='✓ Salvo';
+          t.style.background='#16a34a';
+          t.style.color='#fff';
+          t.style.opacity='1';
+          t.style.display='block';
+          setTimeout(function(){
+            t.style.opacity='0';
+            setTimeout(function(){ t.style.display=''; },500);
+          }, 3000);
+        }
+        console.log('✅ GitHub salvo:', obj._ts);
       } else {
         var errTxt = await rPut.text();
         if(rPut.status === 409){
@@ -232,46 +243,38 @@ function salvarTudo(){
       console.warn('GitHub save falhou:', e.message);
     }
 
-    // ── 4. Salvar no Supabase via Worker (fetch direto sem client) ────
+    // ── 4. Salvar no Supabase via Worker (sincronização em tempo real) ────
     try{
-      var WORKER = 'https://raspy-remax-proxyking-3cbb.carlosalvesbasile.workers.dev';
-      var SUPA_KEY_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBva2dmbmx5d3RndWJwdXN3bW5pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1OTYwNzgsImV4cCI6MjA5NTE3MjA3OH0.wK2qG14wMA7FVnVT0NKEbbLZyAIZkSahsChRivgd-Ko';
-      var supaPayload = JSON.stringify({
-        ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
-        cp:cpD, mc:mcmvD, vs:vsD, iq:inqCadManual,
-        pc:propCad, cc:corCad, sn:senhas,
-        ll:(typeof llD!=='undefined'?llD:[]),
-        rc:(typeof recrutD!=='undefined'?recrutD:[]),
-        ag:(typeof agD!=='undefined'?agD:[]),
-        hi:(typeof histD!=='undefined'?histD:{}),
-        mt:(typeof metasD!=='undefined'?metasD:{}),
-        dc:(typeof docsD!=='undefined'?docsD:[]),
-        os:(typeof osD!=='undefined'?osD:[]),
-        vit:(typeof vitD!=='undefined'?vitD:[]),
-        mkt:(typeof _mktD!=='undefined'?_mktD:[]),
-        lg:(typeof logAcoes!=='undefined'?logAcoes:[]),
-        bl:(typeof boletosD!=='undefined'?boletosD:[]),
-        com:(typeof COMISSOES!=='undefined'?COMISSOES:[]),
-        pc2:(typeof PERMS_CUSTOM!=='undefined'?PERMS_CUSTOM:{})
-      });
-      var rSupa = await fetch(WORKER+'/rest/v1/app_state', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer '+SUPA_KEY_ANON,
-          'apikey': SUPA_KEY_ANON,
-          'Prefer': 'resolution=merge-duplicates'
-        },
-        body: JSON.stringify({id:'remax_space_main', data: supaPayload, updated_at: obj._ts}),
-        signal: AbortSignal.timeout(10000)
-      });
-      if(rSupa.ok){
-        _lastSaved = obj._ts;
+      var sb = getSB();
+      if(sb){
+        var _ts = obj._ts;
+        var supaPayload = JSON.stringify({
+          ct:ctD, iv:ivD, ld:ldD, pr:prD, vd:vD,
+          cp:cpD, mc:mcmvD, vs:vsD, iq:inqCadManual,
+          pc:propCad, cc:corCad, sn:senhas,
+          ll:(typeof llD!=='undefined'?llD:[]),
+          rc:(typeof recrutD!=='undefined'?recrutD:[]),
+          ag:(typeof agD!=='undefined'?agD:[]),
+          hi:(typeof histD!=='undefined'?histD:{}),
+          mt:(typeof metasD!=='undefined'?metasD:{}),
+          dc:(typeof docsD!=='undefined'?docsD:[]),
+          os:(typeof osD!=='undefined'?osD:[]),
+          vit:(typeof vitD!=='undefined'?vitD:[]),
+          mkt:(typeof _mktD!=='undefined'?_mktD:[]),
+          lg:(typeof logAcoes!=='undefined'?logAcoes:[]),
+          bl:(typeof boletosD!=='undefined'?boletosD:[]),
+          com:(typeof COMISSOES!=='undefined'?COMISSOES:[]),
+          pc2:(typeof PERMS_CUSTOM!=='undefined'?PERMS_CUSTOM:{})
+        });
+        await sb.from('app_state').upsert({
+          id: 'remax_space_main',
+          data: supaPayload,
+          updated_at: _ts
+        });
+        _lastSaved = _ts;
         var t = document.getElementById('toast-nuvem');
-        if(t){ t.textContent='✓ Salvo'; t.style.background='#166534'; t.style.color='#fff'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0'; t.style.background=''; t.style.color='';}, 2500); }
-        console.log('✅ Salvo no Supabase via Worker');
-      } else {
-        console.warn('Supabase save status:', rSupa.status);
+        if(t){ t.textContent='✓ Salvo'; t.style.background=''; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';}, 2000); }
+        console.log('✅ Salvo no Supabase');
       }
     }catch(eSupa){
       console.warn('Supabase save falhou:', eSupa.message);
