@@ -66,6 +66,21 @@ var docsD = [
 // ===== PERSISTÊNCIA LOCAL (localStorage) =====
 var _LS_KEY = 'remax_space_v1';
 
+function showToast(msg, cor){
+  var t = document.getElementById('toast-nuvem');
+  if(!t) return;
+  t.textContent = msg || '✓ Salvo';
+  t.style.background = cor || '#16a34a';
+  t.style.color = '#fff';
+  t.style.opacity = '1';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){
+    t.style.opacity = '0';
+    setTimeout(function(){ t.style.display = ''; }, 500);
+  }, 3000);
+}
+
 function salvarLocal(){
   try{
     var estado = {
@@ -215,18 +230,7 @@ function salvarTudo(){
 
       if(rPut.ok){
         _lastSaved = obj._ts;
-        var t = document.getElementById('toast-nuvem');
-        if(t){
-          t.textContent='✓ Salvo';
-          t.style.background='#16a34a';
-          t.style.color='#fff';
-          t.style.opacity='1';
-          t.style.display='block';
-          setTimeout(function(){
-            t.style.opacity='0';
-            setTimeout(function(){ t.style.display=''; },500);
-          }, 3000);
-        }
+        showToast('✓ Salvo');
         console.log('✅ GitHub salvo:', obj._ts);
       } else {
         var errTxt = await rPut.text();
