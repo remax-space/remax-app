@@ -6327,6 +6327,13 @@ function badgeGarantia(c){
 function editCtLocacao(i){
   window._ecParcelasCtIdx = i;
   var c = ctD[i];
+  // Normalizar garantia: converter string para objeto se necessário
+  if(typeof c.garantia === 'string'){
+    c.garantia = {tipo: c.garantia, valorTotal:0, parcelas:1, ref:'', obs:'', parcelasPagas:[]};
+  }
+  if(!c.garantia || typeof c.garantia !== 'object'){
+    c.garantia = {tipo:'Sem Garantia', valorTotal:0, parcelas:1, ref:'', obs:'', parcelasPagas:[]};
+  }
   var corrOpts = COR.map(function(u){
     return '<option value="'+u.nome+'"'+(c.corretor===u.nome?' selected':'')+'>'+u.nome+'</option>';
   }).join('');
@@ -6387,7 +6394,7 @@ function editCtLocacao(i){
         '<div class="fg"><label>Apolice/Referencia Externa</label><input id="ec-gar-ref" value="'+(c.garantia&&c.garantia.ref||'')+'" placeholder="numero da apolice, contrato Loft, etc"></div>'+
       '</div>'+
       '<div class="fg"><label>Observacoes da Garantia</label><input id="ec-gar-obs" value="'+(c.garantia&&c.garantia.obs||'')+'"></div>'+
-      (c.garantia && c.garantia.tipo && c.garantia.tipo!=='Sem Garantia' ? renderParcelasGarantiaHtml(c) : '<div style="font-size:11px;color:#9ca3af;margin-top:6px">Salve o contrato com um tipo de garantia para gerenciar as parcelas.</div>')+
+      (c.garantia && c.garantia.tipo && c.garantia.tipo!=='Sem Garantia' ? (function(){try{return renderParcelasGarantiaHtml(c);}catch(e){return '<div style="font-size:11px;color:#9ca3af">Salve para gerenciar parcelas.</div>';}}()) : '<div style="font-size:11px;color:#9ca3af;margin-top:6px">Salve o contrato com um tipo de garantia para gerenciar as parcelas.</div>')+
     '</div>',
     function(){
       c.prop    = document.getElementById('ec-p').value.trim();
@@ -6714,72 +6721,6 @@ function nCT(){
   oM('Novo Contrato','<div class="fg2"><div class="fg"><label>Proprietário</label><input id="nc-p"></div><div class="fg"><label>Inquilino</label><input id="nc-i"></div></div><div class="fg2"><div class="fg"><label>CPF do Inquilino</label><input id="nc-cpf" placeholder="000.000.000-00"></div><div class="fg"><label>Data de Nascimento (Inquilino)</label><input id="nc-nasc" type="date"></div></div><div class="fg"><label>Endereco</label><input id="nc-e"></div><div class="fg3"><div class="fg"><label>Tipo</label><select id="nc-t"><option>Casa</option><option>Apartamento</option><option>Kitnet</option><option>Sala Comercial</option><option>Chale</option></select></div><div class="fg"><label>Valor R$</label><input id="nc-v" type="number"></div><div class="fg"><label>Venc dia</label><input id="nc-ve" type="number" value="10"></div></div><div class="fg2"><div class="fg"><label>Inicio</label><input type="date" id="nc-in"></div><div class="fg"><label>Fim</label><input type="date" id="nc-fi"></div></div><div class="fg"><label>Corretor</label><select id="nc-c">'+corrSel()+'</select></div>',
   function(){var nid='CT-0'+String(ctD.length+1).padStart(2,'0');registrarLog('Novo Contrato','Contrato '+nid+' criado');ctD.push({id:nid,prop:document.getElementById('nc-p').value,inq:document.getElementById('nc-i').value,cpf_inq:document.getElementById('nc-cpf').value.trim(),nasc_inq:document.getElementById('nc-nasc').value,tipo:document.getElementById('nc-t').value,end:document.getElementById('nc-e').value,valor:parseFloat(document.getElementById('nc-v').value)||0,venc:parseInt(document.getElementById('nc-ve').value)||10,inicio:document.getElementById('nc-in').value,fim:document.getElementById('nc-fi').value,corretor:document.getElementById('nc-c').value,status:'Ativa',rs:Array(12).fill('N'),forma:'PIX',banco:'',obs:''});cM();salvarTudo();pLC();});
 }
-
-// ===== EDITAR CONTRATO DE LOCAÇÃO (ctD) =====
-function eCT(i){
-  var c = ctD[i];
-  if(!c){ alert('Contrato não encontrado.'); return; }
-
-  var corrOpts = (typeof COR !== 'undefined' ? COR : []).map(function(x){
-    return '<option value="'+x.nome+'"'+(c.corretor===x.nome?' selected':'')+'>'+x.nome+'</option>';
-  }).join('');
-
-  oM('Editar Contrato — '+c.id,
-    '<div class="fg2">'+
-    '<div class="fg"><label>Proprietário</label><input id="ec-p" value="'+( c.prop||'')+'"></div>'+
-    '<div class="fg"><label>Inquilino</label><input id="ec-i" value="'+( c.inq||'')+'"></div>'+
-    '</div>'+
-    '<div class="fg"><label>Endereço do imóvel</label><input id="ec-e" value="'+( c.end||'')+'"></div>'+
-    '<div class="fg3">'+
-    '<div class="fg"><label>Tipo</label><select id="ec-t">'+
-    ['Casa','Apartamento','Kitnet','Sala Comercial','Chalé','Flat'].map(function(t){
-      return '<option value="'+t+'"'+(c.tipo===t?' selected':'')+'>'+t+'</option>';
-    }).join('')+
-    '</select></div>'+
-    '<div class="fg"><label>Valor R$</label><input id="ec-v" type="number" value="'+( c.valor||0)+'"></div>'+
-    '<div class="fg"><label>Venc. dia</label><input id="ec-ve" type="number" value="'+( c.venc||10)+'"></div>'+
-    '</div>'+
-    '<div class="fg2">'+
-    '<div class="fg"><label>Início</label><input type="date" id="ec-in" value="'+( c.inicio||'')+'"></div>'+
-    '<div class="fg"><label>Fim</label><input type="date" id="ec-fi" value="'+( c.fim||'')+'"></div>'+
-    '</div>'+
-    '<div class="fg3">'+
-    '<div class="fg"><label>Garantia</label><input id="ec-g" value="'+( c.garantia||'')+'"></div>'+
-    '<div class="fg"><label>PIX Proprietário</label><input id="ec-pix" value="'+( c.pix||'')+'"></div>'+
-    '<div class="fg"><label>Tel. Proprietário</label><input id="ec-tel" value="'+( c.tel_prop||'')+'"></div>'+
-    '</div>'+
-    '<div class="fg2">'+
-    '<div class="fg"><label>% ADM</label><input id="ec-adm" type="number" value="'+( c.adm||10)+'"></div>'+
-    '<div class="fg"><label>Status</label><select id="ec-st">'+
-    ['Ativa','Inativa','Encerrada'].map(function(s){return '<option'+(c.status===s?' selected':'')+'>'+s+'</option>';}).join('')+
-    '</select></div>'+
-    '</div>'+
-    '<div class="fg"><label>Corretor</label><select id="ec-c"><option value="">-</option>'+corrOpts+'</select></div>'+
-    '<div class="fg"><label>Observações</label><textarea id="ec-ob" rows="2">'+( c.obs||'')+'</textarea></div>',
-    function(){
-      ctD[i].prop     = (document.getElementById('ec-p')||{}).value||c.prop;
-      ctD[i].inq      = (document.getElementById('ec-i')||{}).value||c.inq;
-      ctD[i].end      = (document.getElementById('ec-e')||{}).value||'';
-      ctD[i].tipo     = (document.getElementById('ec-t')||{}).value||c.tipo;
-      ctD[i].valor    = parseFloat((document.getElementById('ec-v')||{}).value)||c.valor;
-      ctD[i].venc     = parseInt((document.getElementById('ec-ve')||{}).value)||c.venc;
-      ctD[i].inicio   = (document.getElementById('ec-in')||{}).value||c.inicio;
-      ctD[i].fim      = (document.getElementById('ec-fi')||{}).value||c.fim;
-      ctD[i].garantia = (document.getElementById('ec-g')||{}).value||'';
-      ctD[i].pix      = (document.getElementById('ec-pix')||{}).value||'';
-      ctD[i].tel_prop = (document.getElementById('ec-tel')||{}).value||'';
-      ctD[i].adm      = parseFloat((document.getElementById('ec-adm')||{}).value)||10;
-      ctD[i].status   = (document.getElementById('ec-st')||{}).value||c.status;
-      ctD[i].corretor = (document.getElementById('ec-c')||{}).value||'';
-      ctD[i].obs      = (document.getElementById('ec-ob')||{}).value||'';
-      cM();
-      salvarTudo();
-      pLC();
-      showToast('✓ Contrato salvo!');
-    },
-    'Salvar');
-}
-window.eCT = eCT;
 
 // ===== REPASSES =====
 function pLR(){
