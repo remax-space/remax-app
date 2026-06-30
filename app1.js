@@ -626,6 +626,12 @@ var PERMS = {
     'loc-l':1, captacao:1, vitrine:1, iv:1,
     rank:1, metas:1, mkt:1, wpp:1, 'extrato-cor':1
     // SEM: contratos, repasses, extrato, boletos, financeiro, cadastros, clientes
+  },
+
+  // CADASTRO DE CLIENTES: somente cadastro de proprietarios e inquilinos, sem financeiro, sem locacao, sem exportar
+  'cadastro_clientes': {
+    dashboard:1, 'cad-prop':1, 'cad-inq':1
+    // SEM: tudo o resto, incluindo exportar_clientes (bloqueia download de listas)
   }
 };
 
@@ -653,7 +659,7 @@ var USR = {
   // ADM - sem financeiro
   'meirielli':{nome:'Meirielli',      ini:'ME',cor:'#003DA5',role:'Administradora',role_key:'adm',    id:'meirielli'},
   // ADM - sem financeiro
-  'tayna':    {nome:'Tayna',           ini:'TY',cor:'#7c3aed',role:'Administradora',role_key:'adm',    id:'tayna'},
+  'tayna':    {nome:'Tayna',           ini:'TY',cor:'#7c3aed',role:'Cadastro de Clientes',role_key:'cadastro_clientes',    id:'tayna'},
   // CORRETORES
   'tmoraes':  {nome:'T. Moraes',      ini:'TM',cor:'#B9975B',role:'Corretora',   role_key:'corretor', id:'tmoraes'},
   'sjustino': {nome:'Sergio Justino', ini:'SJ',cor:'#1D9E75',role:'Corretor',    role_key:'corretor', id:'sjustino'},
@@ -3089,7 +3095,9 @@ function pCadInq(filtro){
   btnExp.textContent = '\uD83D\uDDD2\uFE0F Exportar Lista';
   btnExp.style.cssText = 'background:#0d1f4e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer';
   btnExp.onclick = function(){ gerarListaClientes('inq'); };
-  [btnNovo,btnWA,btnExp].forEach(function(b){pa.appendChild(b);});
+  var _restrito = U && U.role_key==='cadastro_clientes';
+  pa.appendChild(btnNovo);
+  if(!_restrito){ pa.appendChild(btnWA); pa.appendChild(btnExp); }
 
   var lista = ctD.map(function(c,i){
     return {tipo:'ct', idx:i, ct:c.id, nome:c.inq, cpf:c.cpf_inq||'', nasc:c.nasc_inq||'', tel:c.tel_inq||'', email:c.email_inq||'', status:c.status, imovel:c.end};
@@ -3258,7 +3266,9 @@ function pCadProp(filtro){
   btnExp.textContent = '\uD83D\uDDD2\uFE0F Exportar Lista';
   btnExp.style.cssText = 'background:#0d1f4e;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer';
   btnExp.onclick = function(){ gerarListaClientes('prop'); };
-  [btnNovo,btnWA,btnExp].forEach(function(b){pa.appendChild(b);});
+  var _restrito = U && U.role_key==='cadastro_clientes';
+  pa.appendChild(btnNovo);
+  if(!_restrito){ pa.appendChild(btnWA); pa.appendChild(btnExp); }
 
   var ativos = propCad.filter(function(p){return (p.statusCad||'Ativo')==='Ativo';});
   var inativos = propCad.filter(function(p){return p.statusCad==='Inativo';});
@@ -3404,6 +3414,7 @@ function toggleStatusProp(i){
 }
 
 function dispararWAmassa(tipo){
+  if(U && U.role_key==='cadastro_clientes'){ alert('Voce nao tem permissao para disparo em massa.'); return; }
   var contatos;
   if(tipo === 'inq'){
     contatos = ctD.filter(function(c){return c.tel_inq;}).map(function(c){
@@ -3558,6 +3569,7 @@ function editCliente(tipo, idx, subtipo){
 }
 
 function gerarListaClientes(tipo){
+  if(U && U.role_key==='cadastro_clientes'){ alert('Voce nao tem permissao para exportar listas.'); return; }
   var html;
   if(tipo === 'inq'){
     var lista = ctD.map(function(c){
